@@ -15,7 +15,8 @@ import {
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
-  setDoc
+  setDoc,
+  writeBatch
 } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -105,22 +106,45 @@ export async function loadUserData(uid: string) {
 export async function saveUserData(uid: string, data: any) {
   if (!db) throw new Error('Firebase is not configured.');
 
-  const batchWrites = [];
+  const [projectsSnap, notesSnap, suggestionsSnap, gallerySnap] = await Promise.all([
+    getDocs(collection(db, `users/${uid}/projects`)),
+    getDocs(collection(db, `users/${uid}/notes`)),
+    getDocs(collection(db, `users/${uid}/suggestions`)),
+    getDocs(collection(db, `users/${uid}/galleryImages`)),
+  ]);
+
+  const projectIds = new Set((data.projects ?? []).map((project) => project.id));
+  const captureIds = new Set((data.captures ?? []).map((capture) => capture.id));
+  const suggestionIds = new Set((data.suggestions ?? []).map((suggestion) => suggestion.id));
+  const galleryImages = (data.projects ?? []).flatMap((project) => (project.gallery ?? []).map((image) => ({ ...image, id: image.id ?? crypto.randomUUID(), projectId: project.id })));
+  const galleryImageIds = new Set(galleryImages.map((image) => image.id));
+
+  const batch = writeBatch(db);
   for (const project of data.projects ?? []) {
-    batchWrites.push(setDoc(doc(db, `users/${uid}/projects/${project.id}`), project));
-    for (const image of project.gallery ?? []) {
-      const imageId = image.id ?? crypto.randomUUID();
-      batchWrites.push(setDoc(doc(db, `users/${uid}/galleryImages/${imageId}`), { ...image, id: imageId, projectId: project.id }));
-    }
+    batch.set(doc(db, `users/${uid}/projects/${project.id}`), project);
   }
-
   for (const capture of data.captures ?? []) {
-    batchWrites.push(setDoc(doc(db, `users/${uid}/notes/${capture.id}`), capture));
+    batch.set(doc(db, `users/${uid}/notes/${capture.id}`), capture);
   }
-
   for (const suggestion of data.suggestions ?? []) {
-    batchWrites.push(setDoc(doc(db, `users/${uid}/suggestions/${suggestion.id}`), suggestion));
+    batch.set(doc(db, `users/${uid}/suggestions/${suggestion.id}`), suggestion);
+  }
+  for (const image of galleryImages) {
+    batch.set(doc(db, `users/${uid}/galleryImages/${image.id}`), image);
   }
 
-  await Promise.all(batchWrites);
+  for (const snapshot of projectsSnap.docs) {
+    if (!projectIds.has(snapshot.id)) batch.delete(snapshot.ref);
+  }
+  for (const snapshot of notesSnap.docs) {
+    if (!captureIds.has(snapshot.id)) batch.delete(snapshot.ref);
+  }
+  for (const snapshot of suggestionsSnap.docs) {
+    if (!suggestionIds.has(snapshot.id)) batch.delete(snapshot.ref);
+  }
+  for (const snapshot of gallerySnap.docs) {
+    if (!galleryImageIds.has(snapshot.id)) batch.delete(snapshot.ref);
+  }
+
+  await batch.commit();
 }

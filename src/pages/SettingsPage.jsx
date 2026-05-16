@@ -100,7 +100,28 @@ export default function SettingsPage({ api }) {
   const resetAppData = () => {
     api.createRollback?.('Before app data reset');
     const defaults = buildDefaultData();
-    api.setData({ ...defaults, projects: [], suggestions: [] });
+    api.setData({
+      ...defaults,
+      projects: [],
+      captures: [],
+      notes: [],
+      rawNotes: [],
+      archivedRawNotes: [],
+      projectNotes: [],
+      inbox: [],
+      inboxItems: [],
+      suggestions: [],
+      tasks: [],
+      checklists: [],
+      questions: [],
+      questionFeedbackLog: [],
+      inboxActionLog: [],
+      badIdeaLog: [],
+      generatedOutputs: [],
+      importedOutputs: [],
+      galleryMetadata: [],
+    });
+    window.setTimeout(() => window.location.reload(), 0);
   };
 
   return <div className="stack"><h2>Settings</h2>
