@@ -12,7 +12,8 @@ export default function SettingsPage({ api }) {
 
   const profile = api.data.settings.promptProfiles.find((p) => p.id === api.data.settings.activePromptProfileId) || api.data.settings.promptProfiles[0];
   const actions = profile.promptActions;
-  const latestRollback = useMemo(() => api.getLatestRollback?.(), [api.data]);
+  const rollbackSnapshots = useMemo(() => api.getRollbacks?.() || [], [api.data]);
+  const latestRollback = rollbackSnapshots[0] || null;
   const confirmAction = (message, action) => {
     if (!window.confirm(message)) return;
     action();
@@ -60,8 +61,21 @@ export default function SettingsPage({ api }) {
     if (!preview?.data) return;
     api.createRollback?.('Before JSON import');
     api.setData(preview.data);
-    setImportMessage('Import completed. Previous app state saved. You can roll back if something looks wrong.');
+    setImportMessage('Import completed. Previous app state saved. You can review and apply any import snapshot below.');
     setPreview(null); setPasteText('');
+  };
+
+  const applyImportSnapshot = (snapshot) => {
+    if (!snapshot?.state) return;
+    if (!window.confirm('This will replace your current app state with this saved import snapshot. Continue?')) return;
+    api.setData(migrateData(snapshot.state));
+    setImportMessage('Selected import snapshot applied.');
+  };
+
+  const deleteImportSnapshot = (snapshotId) => {
+    if (!snapshotId) return;
+    api.deleteRollbackById?.(snapshotId);
+    setImportMessage('Import snapshot deleted.');
   };
 
   const handleFileImport = async (event) => {
@@ -77,12 +91,6 @@ export default function SettingsPage({ api }) {
 
   const importPlainText = () => api.setData((prev) => ({ ...prev, captures: [{ id: crypto.randomUUID(), text: (preview?.plainText || '').trim(), projectId: null, isNewIdea: false, rawState: 'unprocessed', analysisState: 'not-analyzed', processedAt: null, archivedRawAt: null, createdAt: Date.now() }, ...prev.captures] }));
 
-  const restoreRollback = () => {
-    const rollback = api.getLatestRollback?.();
-    if (!rollback) return;
-    if (!window.confirm('This will replace the current app state with the previous saved state. Current changes after the import may be lost.')) return;
-    api.setData(migrateData(rollback.state));
-  };
   const resetAppData = () => {
     api.createRollback?.('Before app data reset');
     api.setData(buildDefaultData());
@@ -103,19 +111,25 @@ export default function SettingsPage({ api }) {
 
       <div className="card stack">
         <div className="settings-button-grid">
-          <button onClick={() => confirmAction('Restore the latest rollback snapshot?', restoreRollback)} disabled={!latestRollback}>Restore previous state</button>
-          <button onClick={() => confirmAction('Toggle rollback info visibility?', () => setRollbackInfoOpen((v) => !v))}>View rollback info</button>
-          <button onClick={() => confirmAction('Delete the rollback snapshot?', api.clearRollbacks)} disabled={!latestRollback}>Delete rollback snapshot</button>
+          <button onClick={() => confirmAction('Toggle rollback/import info visibility?', () => setRollbackInfoOpen((v) => !v))}>View rollback info</button>
         </div>
-        {rollbackInfoOpen && (latestRollback ? <div>
-          <p>createdAt: {new Date(latestRollback.createdAt).toISOString()}</p>
-          <p>reason: {latestRollback.reason}</p>
-          <p>projects: {latestRollback.counts.projects}</p>
-          <p>captures/notes: {latestRollback.counts.captures}</p>
-          <p>suggestions: {latestRollback.counts.suggestions}</p>
-          <p>questions: {latestRollback.counts.questions}</p>
-          <p>settings/prompt profiles included: {latestRollback.counts.includesSettings ? 'yes' : 'no'}</p>
-        </div> : <p>No rollback snapshot saved yet.</p>)}
+        {rollbackInfoOpen && (rollbackSnapshots.length ? <div className="stack">
+          <p>Each import, reset, or major settings reset keeps a saved snapshot below. Use <strong>Apply import</strong> to roll back to that snapshot, or delete snapshots you no longer need.</p>
+          {rollbackSnapshots.map((snapshot, index) => <div className="card stack" key={snapshot.id}>
+            <p><strong>Snapshot #{rollbackSnapshots.length - index}</strong>{snapshot.id === latestRollback?.id ? ' (latest)' : ''}</p>
+            <p>createdAt: {new Date(snapshot.createdAt).toISOString()}</p>
+            <p>reason: {snapshot.reason}</p>
+            <p>projects: {snapshot.counts.projects}</p>
+            <p>captures/notes: {snapshot.counts.captures}</p>
+            <p>suggestions: {snapshot.counts.suggestions}</p>
+            <p>questions: {snapshot.counts.questions}</p>
+            <p>settings/prompt profiles included: {snapshot.counts.includesSettings ? 'yes' : 'no'}</p>
+            <div className="settings-button-grid">
+              <button onClick={() => confirmAction('Apply this import snapshot to your current data?', () => applyImportSnapshot(snapshot))}>Apply import</button>
+              <button onClick={() => confirmAction('Delete this saved import snapshot?', () => deleteImportSnapshot(snapshot.id))}>Delete import</button>
+            </div>
+          </div>)}
+        </div> : <p>No import snapshots saved yet.</p>)}
       </div>
 
       {preview && <div className="card stack"><strong>Import preview</strong>

@@ -35,6 +35,7 @@ export default function App() {
     getLatestRollback: () => localDataStore.getLatestRollback?.(),
     getRollbacks: () => localDataStore.getRollbacks?.(),
     clearRollbacks: () => localDataStore.clearRollbacks?.(),
+    deleteRollbackById: (id) => localDataStore.deleteRollbackById?.(id),
   }), [data, user]);
 
   if (isFirebaseConfigured && user === undefined) return <div className="stack"><p>Checking authentication…</p></div>;

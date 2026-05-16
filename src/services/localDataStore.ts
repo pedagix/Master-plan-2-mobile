@@ -63,6 +63,10 @@ function saveRollbackSnapshot(state, reason) {
 }
 
 function getLatestRollback() { return getRollbacks()[0] || null; }
+function deleteRollbackById(id) {
+  const next = getRollbacks().filter((entry) => entry.id !== id);
+  localStorage.setItem(ROLLBACK_KEY, JSON.stringify(next));
+}
 function clearRollbacks() { localStorage.removeItem(ROLLBACK_KEY); }
 
 export const localDataStore: DataStore<any> = {
@@ -75,4 +79,5 @@ export const localDataStore: DataStore<any> = {
   getLatestRollback,
   getRollbacks,
   clearRollbacks,
+  deleteRollbackById,
 };
