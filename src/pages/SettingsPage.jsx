@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { isFirebaseConfigured, signOutUser } from '../services/firebase';
-import { buildDefaultPromptProfile, migrateData } from '../lib/model';
+import { buildDefaultData, buildDefaultPromptProfile, migrateData } from '../lib/model';
 
 export default function SettingsPage({ api }) {
   const user = api.user;
@@ -71,7 +71,7 @@ export default function SettingsPage({ api }) {
     catch { setPreview({ plainText: pasteText }); }
   };
 
-  const importPlainText = () => api.setData((prev) => ({ ...prev, captures: [{ id: crypto.randomUUID(), text: (preview?.plainText || '').trim(), projectId: null, isNewIdea: false, createdAt: Date.now() }, ...prev.captures] }));
+  const importPlainText = () => api.setData((prev) => ({ ...prev, captures: [{ id: crypto.randomUUID(), text: (preview?.plainText || '').trim(), projectId: null, isNewIdea: false, rawState: 'unprocessed', analysisState: 'not-analyzed', processedAt: null, archivedRawAt: null, createdAt: Date.now() }, ...prev.captures] }));
 
   const restoreRollback = () => {
     const rollback = api.getLatestRollback?.();
@@ -79,10 +79,15 @@ export default function SettingsPage({ api }) {
     if (!window.confirm('This will replace the current app state with the previous saved state. Current changes after the import may be lost.')) return;
     api.setData(migrateData(rollback.state));
   };
+  const resetAppData = () => {
+    api.createRollback?.('Before app data reset');
+    api.setData(buildDefaultData());
+  };
 
   return <div className="stack"><h2>Settings</h2>
     <section className="card stack"><h3>Import / Export</h3>
       <button onClick={api.exportFullBackup}>Export full backup</button>
+      <button onClick={resetAppData}>Reset app data</button>
       <button onClick={api.exportAiAnalysis}>Export for AI analysis</button>
       <button onClick={() => fileRef.current?.click()}>Import updated JSON file</button>
       <input ref={fileRef} type="file" accept="application/json" onChange={handleFileImport} style={{ display: 'none' }} />

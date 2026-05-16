@@ -2,6 +2,10 @@ import { useState } from 'react';
 
 export default function ReviewPage({ api }) {
   const [answerByQuestion, setAnswerByQuestion] = useState({});
+  const markAnalyzed = () => api.setData((prev) => {
+    const now = Date.now();
+    return { ...prev, captures: prev.captures.map((c) => c.rawState === 'archived' ? c : { ...c, rawState: 'archived', analysisState: 'analyzed', processedAt: now, archivedRawAt: now, needsReanalysis: false }) };
+  });
 
   const setFeedback = (question, feedback) => api.setData((prev) => ({
     ...prev,
@@ -21,7 +25,7 @@ export default function ReviewPage({ api }) {
     }));
   };
 
-  return <div className="stack"><h2>Review</h2><p>Total captures: {api.data.captures.length}</p><p>Total projects: {api.data.projects.length}</p><button onClick={api.exportAiAnalysis}>Export AI analysis JSON</button>
+  return <div className="stack"><h2>Review</h2><p>Total captures: {api.data.captures.length}</p><p>Total projects: {api.data.projects.length}</p><button onClick={api.exportAiAnalysis}>Export AI analysis JSON</button><button onClick={markAnalyzed}>Mark unprocessed RAW notes as analyzed</button>
     <h3>Follow-up Questions</h3>
     {api.data.questions.map((q) => <div key={q.id} className="card stack"><strong>{q.question}</strong><p>{q.reason}</p><small>Type: {q.questionType} • State: {q.state}</small>
       <small>Project: {q.projectId || 'none'} • Source capture: {q.sourceCaptureId || 'n/a'}</small>
