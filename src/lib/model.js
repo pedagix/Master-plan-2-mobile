@@ -38,6 +38,25 @@ export function buildDefaultData() {
   return { meta: { appName: 'Master Plan', schemaVersion: 2, exportType: 'full-backup', exportedAt: new Date(now).toISOString() }, settings: { activePromptProfileId: profile.id, promptProfiles: [profile] }, aiInstructions: { activePromptProfileId: profile.id, mainRole: 'You are analyzing a private mobile-first second brain system.', tone: 'Clear, direct, practical, and honest. Be brutally honest when useful, but still constructive.', goal: 'Help the user turn captured notes into useful next actions, project structure, suggestions, checklists, warnings, cleanup recommendations, and follow-up questions.', promptActions: structuredClone(DEFAULT_PROMPT_ACTIONS) }, projects: [normalizeProject({ id: 'p1', title: 'Master Plan Product', description: 'Shape v1 private system.', status: 'active' }), normalizeProject({ id: 'p2', title: 'Health Reboot', description: 'Daily routines and food plan.', status: 'active' }), normalizeProject({ id: 'p3', title: 'Backlog Ideas', description: 'Parking lot for ideas.', status: 'hidden' })], captures: [], suggestions: [], tasks: [], checklists: [], questions: [], badIdeaLog: [], inboxActionLog: [], questionFeedbackLog: [], questionLearningSettings: { enabled: true, recentQuestionLimit: 150, generationMix: { upvotedTypeRatio: 0.5, downvotedTypeRatio: 0.1, newTypeRatio: 0.4 }, avoidRecentlyDownvoted: true, preferAnsweredAndUpvoted: true } };
 }
 
+export function buildResetData() {
+  const defaults = buildDefaultData();
+  return migrateData({
+    meta: defaults.meta,
+    settings: defaults.settings,
+    aiInstructions: defaults.aiInstructions,
+    questionLearningSettings: defaults.questionLearningSettings,
+    projects: [],
+    captures: [],
+    suggestions: [],
+    tasks: [],
+    checklists: [],
+    questions: [],
+    badIdeaLog: [],
+    inboxActionLog: [],
+    questionFeedbackLog: [],
+  });
+}
+
 export const seedData = buildDefaultData();
 
 export function migrateData(input) {

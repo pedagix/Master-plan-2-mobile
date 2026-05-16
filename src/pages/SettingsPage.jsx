@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { isFirebaseConfigured, signOutUser } from '../services/firebase';
-import { buildDefaultData, buildDefaultPromptProfile, migrateData } from '../lib/model';
+import { buildDefaultPromptProfile, migrateData } from '../lib/model';
 
 export default function SettingsPage({ api }) {
   const user = api.user;
@@ -98,37 +98,25 @@ export default function SettingsPage({ api }) {
   const importPlainText = () => api.setData((prev) => ({ ...prev, captures: [{ id: crypto.randomUUID(), text: (preview?.plainText || '').trim(), projectId: null, isNewIdea: false, rawState: 'unprocessed', analysisState: 'not-analyzed', processedAt: null, archivedRawAt: null, createdAt: Date.now() }, ...prev.captures] }));
 
   const resetAppData = () => {
-    api.createRollback?.('Before app data reset');
-    const defaults = buildDefaultData();
-    api.setData({
-      ...defaults,
-      projects: [],
-      captures: [],
-      notes: [],
-      rawNotes: [],
-      archivedRawNotes: [],
-      projectNotes: [],
-      inbox: [],
-      inboxItems: [],
-      suggestions: [],
-      tasks: [],
-      checklists: [],
-      questions: [],
-      questionFeedbackLog: [],
-      inboxActionLog: [],
-      badIdeaLog: [],
-      generatedOutputs: [],
-      importedOutputs: [],
-      galleryMetadata: [],
-    });
-    window.setTimeout(() => window.location.reload(), 0);
+    setImportMessage('Resetting app data...');
+    api.resetAppData?.()
+      .then(() => {
+        setPreview(null);
+        setPasteText('');
+        setRollbackInfoOpen(false);
+        setImportMessage('App data reset. Active notes, captures, RAW notes, inbox items, suggestions, tasks, questions, logs, and rollback snapshots are empty.');
+      })
+      .catch((error) => {
+        console.warn('Failed to finish app data reset.', error);
+        setImportMessage('Local app data was reset, but cloud sync may not have finished. Check your connection and try Reset app data again if old notes reappear.');
+      });
   };
 
   return <div className="stack"><h2>Settings</h2>
     <section className="card stack"><h3>Import / Export</h3>
       <div className="settings-button-grid">
         <button onClick={() => confirmAction('Export full backup now?', api.exportFullBackup)}>Export full backup</button>
-        <button onClick={() => confirmAction('Reset app data to defaults? This cannot be undone without rollback.', resetAppData)}>Reset app data</button>
+        <button onClick={() => confirmAction('Reset app data to defaults? This deletes active data and rollback snapshots.', resetAppData)}>Reset app data</button>
         <button onClick={() => confirmAction('Export current data for AI analysis?', api.exportAiAnalysis)}>Export for AI analysis</button>
         <button onClick={() => confirmAction('Select and import a JSON file?', () => fileRef.current?.click())}>Import updated JSON file</button>
       </div>
