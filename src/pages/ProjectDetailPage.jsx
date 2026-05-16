@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import ContentSection from '../components/ContentSection';
 import { fileToDataUrl } from '../lib/storage';
 
 export default function ProjectDetailPage({ api }) {
@@ -27,11 +28,11 @@ export default function ProjectDetailPage({ api }) {
     <div className="card"><h3>Project actions</h3><button onClick={() => patchProject((p) => ({ ...p, status: 'archived' }))}>Archive project</button></div>
     <h3>Notes</h3><textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} /><button onClick={addNote}>Add Note</button>
     {project.notes.map((n) => <div className="card" key={n.id}>{n.text}</div>)}
-    <h3>Captures</h3>{captures.map((n) => <div className="card" key={n.id}>{n.text}</div>)}
-    <h3>Approved Suggestions</h3>{approvedSuggestions.map((s) => <div className="card" key={s.id}>{s.text}</div>)}
-    <h3>Approved Tasks / Next Steps</h3>{approvedTasks.map((t) => <div className="card" key={t.id}>{t.title}</div>)}
-    <h3>Approved Checklists</h3>{approvedChecklists.map((c) => <div className="card" key={c.id}>{c.title}</div>)}
-    <h3>Approved Follow-up Questions</h3>{approvedQuestions.map((q) => <div className="card" key={q.id}>{q.question}</div>)}
+    <ContentSection title="Captures" items={captures} headingLevel={3}>{captures.map((n) => <div className="card" key={n.id}>{n.text}</div>)}</ContentSection>
+    <ContentSection title="Approved Suggestions" items={approvedSuggestions} headingLevel={3}>{approvedSuggestions.map((s) => <div className="card" key={s.id}>{s.text}</div>)}</ContentSection>
+    <ContentSection title="Approved Next steps" items={approvedTasks} headingLevel={3}>{approvedTasks.map((t) => <div className="card" key={t.id}>{t.title}</div>)}</ContentSection>
+    <ContentSection title="Approved Checklists" items={approvedChecklists} headingLevel={3}>{approvedChecklists.map((c) => <div className="card" key={c.id}>{c.title}</div>)}</ContentSection>
+    <ContentSection title="Approved Follow-up Questions" items={approvedQuestions} headingLevel={3}>{approvedQuestions.map((q) => <div className="card" key={q.id}>{q.question}</div>)}</ContentSection>
     <h3>Gallery</h3><input type="file" accept="image/*" onChange={upload} />
     <div className="gallery">{[...project.gallery].sort((a,b)=>a.createdAt-b.createdAt).map((img) => <div className="img-card" key={img.id}><img src={img.previewUrl} alt={img.name} /><small>{img.name}</small></div>)}</div>
   </div>;

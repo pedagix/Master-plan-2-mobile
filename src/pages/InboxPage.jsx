@@ -19,6 +19,14 @@ function isActiveInboxItem(item) {
   return (item.inboxStatus === 'pending-review' || item.state === 'pending') && !excludedStates.has(item.state) && !excludedStatus.has(item.inboxStatus);
 }
 
+function isQuestionProposal(item) {
+  return String(item.type || '').includes('question') || Boolean(item.question);
+}
+
+function isChecklistProposal(item) {
+  return String(item.type || '').includes('checklist') || Array.isArray(item.items) && item.items.length > 0;
+}
+
 export default function InboxPage({ api }) {
   const pending = api.data.suggestions.filter(isActiveInboxItem);
 
@@ -33,20 +41,41 @@ export default function InboxPage({ api }) {
       const now = Date.now();
       let createdTask = null;
       let createdChecklist = null;
+      let createdQuestion = null;
 
       const suggestions = prev.suggestions.map((s) => {
         if (s.id !== item.id) return s;
-        if (s.selectedAction === 'important') return { ...s, state: 'marked-important', inboxStatus: 'approved', importance: 'important', approvedAt: now };
+        if (s.selectedAction === 'important') {
+          if (isQuestionProposal(s)) {
+            createdQuestion = {
+              id: crypto.randomUUID(),
+              projectId: s.projectId || null,
+              sourceSuggestionId: s.id,
+              sourceCaptureId: s.sourceCaptureId || null,
+              question: s.question || s.text || s.title,
+              reason: s.reason || 'Imported AI proposal approved from Inbox.',
+              questionType: s.questionType || 'ai-imported',
+              state: 'open',
+              createdAt: now,
+              answeredAt: null,
+              answerNoteId: null,
+              feedback: null,
+              needsProjectAssignment: !s.projectId,
+            };
+            return { ...s, state: 'converted-to-question', inboxStatus: 'approved', importance: 'important', approvedAt: now, needsProjectAssignment: !s.projectId };
+          }
+          return { ...s, state: 'marked-important', inboxStatus: 'approved', importance: 'important', approvedAt: now };
+        }
         if (s.selectedAction === 'bad-idea') return { ...s, state: 'bad-idea', inboxStatus: 'dismissed', dismissedAt: now };
         if (s.selectedAction === 'remind-me-later') return { ...s, state: 'hidden-until-next-analysis', inboxStatus: 'hidden', hiddenAt: now, hiddenUntil: 'next-analysis' };
         if (s.selectedAction === 'to-do-list') {
-          const shouldCreateChecklist = checklistPattern.test(s.text || '');
+          const shouldCreateChecklist = isChecklistProposal(s) || checklistPattern.test(s.text || '');
           if (shouldCreateChecklist) {
             createdChecklist = {
               id: crypto.randomUUID(),
               projectId: s.projectId || null,
               title: s.title || (s.text || '').slice(0, 80) || 'Checklist from inbox',
-              items: [],
+              items: Array.isArray(s.items) ? s.items : [],
               sourceSuggestionId: s.id,
               sourceInboxItemId: s.id,
               needsProjectAssignment: !s.projectId,
@@ -90,6 +119,7 @@ export default function InboxPage({ api }) {
         suggestions,
         tasks: createdTask ? [createdTask, ...(prev.tasks || [])] : prev.tasks,
         checklists: createdChecklist ? [createdChecklist, ...(prev.checklists || [])] : prev.checklists,
+        questions: createdQuestion ? [createdQuestion, ...(prev.questions || [])] : prev.questions,
         inboxActionLog: [log, ...(prev.inboxActionLog || [])],
         badIdeaLog,
       };

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ContentSection from '../components/ContentSection';
 import { normalizeProject } from '../lib/model';
 
 function projectLabel(projects, id) {
@@ -53,7 +54,7 @@ export default function RawNotesPage({ api }) {
   </div>;
 
   return <div className="stack"><h2>RAW Notes</h2>
-    <section className="stack"><h3>Unprocessed RAW notes</h3>{unprocessed.map((c) => renderCard(c, false))}{!unprocessed.length && <p>No unprocessed raw notes.</p>}</section>
-    <section className="stack"><h3>Archived RAW notes</h3>{archived.map((c) => renderCard(c, true))}{!archived.length && <p>No archived raw notes.</p>}</section>
+    <ContentSection title="Unprocessed RAW notes" items={unprocessed} headingLevel={3}>{unprocessed.map((c) => renderCard(c, false))}</ContentSection>
+    <ContentSection title="Archived RAW notes" items={archived} headingLevel={3}>{archived.map((c) => renderCard(c, true))}</ContentSection>
   </div>;
 }
