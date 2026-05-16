@@ -32,7 +32,7 @@ function exportAiAnalysis(data) {
     settings: migrated.settings,
     aiInstructions: { ...migrated.aiInstructions, promptActions: getEnabledPromptActions(migrated.aiInstructions.promptActions) },
     projects: migrated.projects, captures: migrated.captures, suggestions: migrated.suggestions,
-    questions: migrated.questions, questionFeedbackLog: migrated.questionFeedbackLog, questionLearningSettings: migrated.questionLearningSettings
+    questions: migrated.questions, tasks: migrated.tasks, checklists: migrated.checklists, badIdeaLog: migrated.badIdeaLog, inboxActionLog: migrated.inboxActionLog, questionFeedbackLog: migrated.questionFeedbackLog, questionLearningSettings: migrated.questionLearningSettings
   };
   downloadJson(payload, 'master-plan-ai-analysis');
 }
