@@ -5,6 +5,7 @@ const links = [
   ['/capture', 'Capture'],
   ['/projects', 'Projects'],
   ['/inbox', 'Inbox'],
+  ['/raw-notes', 'RAW Notes'],
   ['/review', 'Review'],
   ['/settings', 'Settings']
 ];

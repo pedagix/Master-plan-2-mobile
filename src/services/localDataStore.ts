@@ -27,11 +27,12 @@ function exportFullBackup(data) {
 
 function exportAiAnalysis(data) {
   const migrated = migrateData(data);
+  const capturesForAnalysis = migrated.captures.filter((c) => c.rawState !== 'archived' || c.needsReanalysis);
   const payload = {
     meta: { appName: 'Master Plan', schemaVersion: 2, exportType: 'ai-analysis-export', exportedAt: new Date().toISOString() },
     settings: migrated.settings,
     aiInstructions: { ...migrated.aiInstructions, promptActions: getEnabledPromptActions(migrated.aiInstructions.promptActions) },
-    projects: migrated.projects, captures: migrated.captures, suggestions: migrated.suggestions,
+    projects: migrated.projects, captures: capturesForAnalysis, suggestions: migrated.suggestions,
     questions: migrated.questions, tasks: migrated.tasks, checklists: migrated.checklists, badIdeaLog: migrated.badIdeaLog, inboxActionLog: migrated.inboxActionLog, questionFeedbackLog: migrated.questionFeedbackLog, questionLearningSettings: migrated.questionLearningSettings
   };
   downloadJson(payload, 'master-plan-ai-analysis');

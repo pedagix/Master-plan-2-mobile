@@ -10,6 +10,7 @@ import ProjectDetailPage from './pages/ProjectDetailPage';
 import InboxPage from './pages/InboxPage';
 import ReviewPage from './pages/ReviewPage';
 import SettingsPage from './pages/SettingsPage';
+import RawNotesPage from './pages/RawNotesPage';
 import { migrateData } from './lib/model';
 
 function LoginGate() { return <div className="stack"><h2>Sign in to Master Plan</h2><p>Use Google sign-in to sync your private data with Firebase.</p><button onClick={() => signInWithGoogle()}>Sign in with Google</button></div>; }
@@ -46,6 +47,7 @@ export default function App() {
     <Route path="/projects/:projectId" element={<ProjectDetailPage api={api} />} />
     <Route path="/inbox" element={<InboxPage api={api} />} />
     <Route path="/review" element={<ReviewPage api={api} />} />
+    <Route path="/raw-notes" element={<RawNotesPage api={api} />} />
     <Route path="/settings" element={<SettingsPage api={api} />} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes></Layout>;
