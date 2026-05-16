@@ -13,6 +13,10 @@ export default function SettingsPage({ api }) {
   const profile = api.data.settings.promptProfiles.find((p) => p.id === api.data.settings.activePromptProfileId) || api.data.settings.promptProfiles[0];
   const actions = profile.promptActions;
   const latestRollback = useMemo(() => api.getLatestRollback?.(), [api.data]);
+  const confirmAction = (message, action) => {
+    if (!window.confirm(message)) return;
+    action();
+  };
 
   const patchAction = (id, patch) => api.setData((prev) => {
     const next = migrateData(prev);
@@ -86,19 +90,23 @@ export default function SettingsPage({ api }) {
 
   return <div className="stack"><h2>Settings</h2>
     <section className="card stack"><h3>Import / Export</h3>
-      <button onClick={api.exportFullBackup}>Export full backup</button>
-      <button onClick={resetAppData}>Reset app data</button>
-      <button onClick={api.exportAiAnalysis}>Export for AI analysis</button>
-      <button onClick={() => fileRef.current?.click()}>Import updated JSON file</button>
+      <div className="settings-button-grid">
+        <button onClick={() => confirmAction('Export full backup now?', api.exportFullBackup)}>Export full backup</button>
+        <button onClick={() => confirmAction('Reset app data to defaults? This cannot be undone without rollback.', resetAppData)}>Reset app data</button>
+        <button onClick={() => confirmAction('Export current data for AI analysis?', api.exportAiAnalysis)}>Export for AI analysis</button>
+        <button onClick={() => confirmAction('Select and import a JSON file?', () => fileRef.current?.click())}>Import updated JSON file</button>
+      </div>
       <input ref={fileRef} type="file" accept="application/json" onChange={handleFileImport} style={{ display: 'none' }} />
       <textarea rows={4} value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste JSON or text" />
-      <button onClick={handlePastePreview}>Paste JSON/Text Import</button>
+      <button onClick={() => confirmAction('Preview this pasted JSON/Text import?', handlePastePreview)}>Paste JSON/Text Import</button>
       {importMessage && <p>{importMessage}</p>}
 
       <div className="card stack">
-        <button onClick={restoreRollback} disabled={!latestRollback}>Restore previous state</button>
-        <button onClick={() => setRollbackInfoOpen((v) => !v)}>View rollback info</button>
-        <button onClick={api.clearRollbacks} disabled={!latestRollback}>Delete rollback snapshot</button>
+        <div className="settings-button-grid">
+          <button onClick={() => confirmAction('Restore the latest rollback snapshot?', restoreRollback)} disabled={!latestRollback}>Restore previous state</button>
+          <button onClick={() => confirmAction('Toggle rollback info visibility?', () => setRollbackInfoOpen((v) => !v))}>View rollback info</button>
+          <button onClick={() => confirmAction('Delete the rollback snapshot?', api.clearRollbacks)} disabled={!latestRollback}>Delete rollback snapshot</button>
+        </div>
         {rollbackInfoOpen && (latestRollback ? <div>
           <p>createdAt: {new Date(latestRollback.createdAt).toISOString()}</p>
           <p>reason: {latestRollback.reason}</p>
@@ -111,22 +119,22 @@ export default function SettingsPage({ api }) {
       </div>
 
       {preview && <div className="card stack"><strong>Import preview</strong>
-        {preview.plainText ? <><p>Detected plain text import.</p><button onClick={importPlainText}>Create capture from pasted text</button></> : <>
+        {preview.plainText ? <><p>Detected plain text import.</p><button onClick={() => confirmAction('Create a new capture from the pasted text?', importPlainText)}>Create capture from pasted text</button></> : <>
           <p>Add: {preview.itemsToAdd} • Update: {preview.itemsToUpdate} • Skip: {preview.itemsToSkip}</p>
           <p>Conflicts: {preview.possibleConflicts} • Invalid: {preview.invalidItems}</p>
-          <button onClick={applyPreview}>Apply import</button>
+          <button onClick={() => confirmAction('Apply this import preview to your data?', applyPreview)}>Apply import</button>
         </>}
       </div>}
     </section>
 
-    <section className="stack"><h3>Prompt Actions</h3><button onClick={resetAll}>Reset all prompt actions to default</button>
+    <section className="stack"><h3>Prompt Actions</h3><button onClick={() => confirmAction('Reset all prompt actions to default values?', resetAll)}>Reset all prompt actions to default</button>
       {Object.values(actions).map((action) => <details className="card" key={action.id}><summary>{action.title}</summary><p>{action.description}</p>
         <label><input type="checkbox" checked={action.enabled} onChange={(e) => patchAction(action.id, { enabled: e.target.checked })} /> Enabled</label>
         <textarea rows={4} value={action.prompt} onChange={(e) => patchAction(action.id, { prompt: e.target.value })} />
-        <button onClick={() => resetOne(action.id)}>Reset to default</button></details>)}
+        <button onClick={() => confirmAction(`Reset "${action.title}" to default?`, () => resetOne(action.id))}>Reset to default</button></details>)}
     </section>
 
-    {isFirebaseConfigured && user && <><div><strong>Signed in:</strong><div>{user.displayName || 'No name available'}</div><div>{user.email || 'No email available'}</div></div><button onClick={api.importLocalDataToFirebase}>Import local data to Firebase</button><button onClick={signOutUser}>Sign out</button></>}
+    {isFirebaseConfigured && user && <><div><strong>Signed in:</strong><div>{user.displayName || 'No name available'}</div><div>{user.email || 'No email available'}</div></div><div className="settings-button-grid"><button onClick={() => confirmAction('Import local data to Firebase now?', api.importLocalDataToFirebase)}>Import local data to Firebase</button><button onClick={() => confirmAction('Sign out now?', signOutUser)}>Sign out</button></div></>}
     {!isFirebaseConfigured && <p>Firebase is not configured. Running in local-only mode.</p>}
   </div>;
 }
