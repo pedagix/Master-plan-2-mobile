@@ -40,12 +40,7 @@ export default function RawNotesPage({ api }) {
       <button onClick={() => openEdit(capture)}>Edit</button>
       {isArchived && <button onClick={() => sendBack(capture.id)}>Send back to unprocessed</button>}
     </div>
-  </div>;
-
-  return <div className="stack"><h2>RAW Notes</h2>
-    <section className="stack"><h3>Unprocessed RAW notes</h3>{unprocessed.map((c) => renderCard(c, false))}{!unprocessed.length && <p>No unprocessed raw notes.</p>}</section>
-    <section className="stack"><h3>Archived RAW notes</h3>{archived.map((c) => renderCard(c, true))}{!archived.length && <p>No archived raw notes.</p>}</section>
-    {editingId && <div className="card stack"><h3>Edit RAW note</h3>
+    {editingId === capture.id && <div className="card stack"><h3>Edit RAW note</h3>
       <textarea rows={6} value={draft.text} onChange={(e) => setDraft((prev) => ({ ...prev, text: e.target.value }))} />
       <select value={draft.createProject ? '__new__' : draft.projectId} onChange={(e) => { const value = e.target.value; setDraft((prev) => ({ ...prev, createProject: value === '__new__', projectId: value === '__new__' ? prev.projectId : value })); }}>
         <option value="">No project</option>{api.data.projects.filter((p) => p.status !== 'archived' && p.status !== 'hidden').map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
@@ -55,5 +50,10 @@ export default function RawNotesPage({ api }) {
       <label className="checkbox-row"><input type="checkbox" checked={draft.isNewIdea} onChange={(e) => setDraft((prev) => ({ ...prev, isNewIdea: e.target.checked }))} /><span>New project / new idea</span></label>
       <div className="actions"><button onClick={saveEdit}>Save changes</button><button onClick={() => setEditingId(null)}>Cancel</button></div>
     </div>}
+  </div>;
+
+  return <div className="stack"><h2>RAW Notes</h2>
+    <section className="stack"><h3>Unprocessed RAW notes</h3>{unprocessed.map((c) => renderCard(c, false))}{!unprocessed.length && <p>No unprocessed raw notes.</p>}</section>
+    <section className="stack"><h3>Archived RAW notes</h3>{archived.map((c) => renderCard(c, true))}{!archived.length && <p>No archived raw notes.</p>}</section>
   </div>;
 }

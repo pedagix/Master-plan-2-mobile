@@ -17,7 +17,8 @@ export default function ProjectDetailPage({ api }) {
   const upload = async (e) => { const file = e.target.files?.[0]; if (!file) return; const url = await fileToDataUrl(file); patchProject((p) => ({ ...p, gallery: [...p.gallery, { id: crypto.randomUUID(), name: file.name, createdAt: Date.now(), previewUrl: url, noteId: null }], lastInteractedAt: Date.now(), interactionCount: (p.interactionCount || 0) + 1 })); };
 
   const captures = api.data.captures.filter((c) => c.projectId === projectId);
-  const approvedSuggestions = api.data.suggestions.filter((s) => s.projectId === projectId && s.state !== 'pending' && s.state !== 'hidden-until-next-analysis');
+  const approvedSuggestionStates = new Set(['approved', 'marked-important', 'converted-to-task', 'converted-to-checklist']);
+  const approvedSuggestions = api.data.suggestions.filter((s) => s.projectId === projectId && approvedSuggestionStates.has(s.state) && s.inboxStatus === 'approved');
   const approvedTasks = (api.data.tasks || []).filter((t) => t.projectId === projectId);
   const approvedChecklists = (api.data.checklists || []).filter((c) => c.projectId === projectId);
   const approvedQuestions = (api.data.questions || []).filter((q) => q.projectId === projectId && q.state !== 'pending');
