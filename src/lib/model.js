@@ -24,7 +24,9 @@ export function normalizeProject(project = {}) {
 }
 
 export function normalizeSuggestion(s = {}) {
-  return { ...s, state: s.state || 'pending', inboxStatus: s.inboxStatus || (s.state === 'pending' ? 'pending-review' : 'processed'), selectedAction: s.selectedAction ?? null, approvedAt: s.approvedAt ?? null, dismissedAt: s.dismissedAt ?? null, hiddenAt: s.hiddenAt ?? null, hiddenUntil: s.hiddenUntil ?? null, importance: s.importance ?? null, sourceCaptureId: s.sourceCaptureId ?? null, sourceNoteId: s.sourceNoteId ?? null, sourceSuggestionId: s.sourceSuggestionId ?? null };
+  const state = s.state || 'pending';
+  const inboxStatus = s.inboxStatus || (state === 'pending' ? 'pending-review' : state === 'bad-idea' ? 'dismissed' : state === 'hidden-until-next-analysis' ? 'hidden' : 'approved');
+  return { ...s, state, inboxStatus, selectedAction: s.selectedAction ?? null, approvedAt: s.approvedAt ?? null, dismissedAt: s.dismissedAt ?? null, hiddenAt: s.hiddenAt ?? null, hiddenUntil: s.hiddenUntil ?? null, importance: s.importance ?? null, sourceCaptureId: s.sourceCaptureId ?? null, sourceNoteId: s.sourceNoteId ?? null, sourceSuggestionId: s.sourceSuggestionId ?? null, needsProjectAssignment: s.needsProjectAssignment ?? !s.projectId };
 }
 export function normalizeCapture(c = {}) {
   const hasProcessedHint = c.processedAt || c.archivedRawAt || c.analysisState === 'analyzed' || c.rawState === 'archived';

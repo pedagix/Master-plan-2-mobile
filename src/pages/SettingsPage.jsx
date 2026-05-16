@@ -57,10 +57,16 @@ export default function SettingsPage({ api }) {
     return report;
   };
 
+  const reactivateNextAnalysisInboxItems = (input) => {
+    const next = migrateData(input);
+    next.suggestions = next.suggestions.map((s) => (s.state === 'hidden-until-next-analysis' && s.hiddenUntil === 'next-analysis' ? { ...s, state: 'pending', inboxStatus: 'pending-review', selectedAction: null } : s));
+    return next;
+  };
+
   const applyPreview = () => {
     if (!preview?.data) return;
     api.createRollback?.('Before JSON import');
-    api.setData(preview.data);
+    api.setData(reactivateNextAnalysisInboxItems(preview.data));
     setImportMessage('Import completed. Previous app state saved. You can review and apply any import snapshot below.');
     setPreview(null); setPasteText('');
   };
@@ -68,7 +74,7 @@ export default function SettingsPage({ api }) {
   const applyImportSnapshot = (snapshot) => {
     if (!snapshot?.state) return;
     if (!window.confirm('This will replace your current app state with this saved import snapshot. Continue?')) return;
-    api.setData(migrateData(snapshot.state));
+    api.setData(reactivateNextAnalysisInboxItems(snapshot.state));
     setImportMessage('Selected import snapshot applied.');
   };
 
@@ -93,7 +99,8 @@ export default function SettingsPage({ api }) {
 
   const resetAppData = () => {
     api.createRollback?.('Before app data reset');
-    api.setData(buildDefaultData());
+    const defaults = buildDefaultData();
+    api.setData({ ...defaults, projects: [], suggestions: [] });
   };
 
   return <div className="stack"><h2>Settings</h2>
