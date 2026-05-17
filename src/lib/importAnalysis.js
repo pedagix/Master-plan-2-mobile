@@ -159,17 +159,6 @@ function buildAiReturnPreview(incoming, current) {
     }
   }
 
-  const analyzedCaptureIds = new Set();
-  for (const capture of asArray(incoming?.captures)) if (capture?.id) analyzedCaptureIds.add(capture.id);
-  for (const proposal of proposals) if (proposal.sourceCaptureId) analyzedCaptureIds.add(proposal.sourceCaptureId);
-
-  let capturesToArchive = 0;
-  next.captures = next.captures.map((capture) => {
-    if (!analyzedCaptureIds.has(capture.id) || (capture.rawState === 'archived' && !capture.needsReanalysis)) return capture;
-    capturesToArchive += 1;
-    return { ...capture, rawState: 'archived', analysisState: 'analyzed', processedAt: now, archivedRawAt: now, needsReanalysis: false };
-  });
-
   next.suggestions = next.suggestions.map((suggestion) => (
     suggestion.state === 'hidden-until-next-analysis' && suggestion.hiddenUntil === 'next-analysis'
       ? { ...suggestion, state: 'pending', inboxStatus: 'pending-review', selectedAction: null }
@@ -177,8 +166,8 @@ function buildAiReturnPreview(incoming, current) {
   ));
   next.suggestions = [...proposals, ...next.suggestions];
 
-  if (!proposals.length && !capturesToArchive) {
-    problems.push('No new AI proposals or source RAW notes were found to import.');
+  if (!proposals.length) {
+    problems.push('No new AI proposals were found to import.');
   }
   if (incoming?.meta?.exportType === 'ai-analysis-export' && !proposals.length) {
     problems.push('This looks like the original AI analysis export, not an analyzed return file.');
@@ -187,9 +176,9 @@ function buildAiReturnPreview(incoming, current) {
   return {
     kind: 'ai-analyzed-return',
     label: 'AI-analyzed return file',
-    canApply: proposals.length > 0 || capturesToArchive > 0,
+    canApply: proposals.length > 0,
     itemsToAdd: proposals.length,
-    itemsToUpdate: capturesToArchive,
+    itemsToUpdate: 0,
     itemsToSkip: skipped,
     possibleConflicts: conflicts.length,
     invalidItems: problems.filter((problem) => problem.startsWith('Skipped')).length,
@@ -233,7 +222,7 @@ function buildBackupPreview(incoming, current, kind, label) {
       ...next.questions,
       ...next.captures,
     ].filter((item) => item?.needsProjectAssignment || (item && 'projectId' in item && !item.projectId)).length,
-    problems: report.possibleConflicts ? ['This import can update existing local records. Review counts before applying.'] : [],
+    problems: report.possibleConflicts ? ['This import can update existing local records. Check counts before applying.'] : [],
     data: next,
   };
 }

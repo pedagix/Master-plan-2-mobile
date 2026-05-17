@@ -39,9 +39,9 @@ export default function RawNotesPage({ api }) {
     <small>Analysis: {capture.analysisState || 'not-analyzed'} {capture.isNewIdea ? '• New idea' : ''}</small>
     <div className="actions">
       <button onClick={() => openEdit(capture)}>Edit</button>
-      {isArchived && <button onClick={() => sendBack(capture.id)}>Send back to unprocessed</button>}
+      {isArchived && <button onClick={() => sendBack(capture.id)}>Send note back for processing</button>}
     </div>
-    {editingId === capture.id && <div className="card stack"><h3>Edit RAW note</h3>
+    {editingId === capture.id && <div className="card stack"><h3>Edit note</h3>
       <textarea rows={6} value={draft.text} onChange={(e) => setDraft((prev) => ({ ...prev, text: e.target.value }))} />
       <select value={draft.createProject ? '__new__' : draft.projectId} onChange={(e) => { const value = e.target.value; setDraft((prev) => ({ ...prev, createProject: value === '__new__', projectId: value === '__new__' ? prev.projectId : value })); }}>
         <option value="">No project</option>{api.data.projects.filter((p) => p.status !== 'archived' && p.status !== 'hidden').map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
@@ -53,8 +53,8 @@ export default function RawNotesPage({ api }) {
     </div>}
   </div>;
 
-  return <div className="stack"><h2>RAW Notes</h2>
-    <ContentSection title="Unprocessed RAW notes" items={unprocessed} headingLevel={3}>{unprocessed.map((c) => renderCard(c, false))}</ContentSection>
-    <ContentSection title="Archived RAW notes" items={archived} headingLevel={3}>{archived.map((c) => renderCard(c, true))}</ContentSection>
+  return <div className="stack"><h2>Ideas</h2>
+    <ContentSection title="Unprocessed notes" items={unprocessed} headingLevel={3}>{unprocessed.map((c) => renderCard(c, false))}</ContentSection>
+    <ContentSection title="Archived notes" items={archived} headingLevel={3}>{archived.map((c) => renderCard(c, true))}</ContentSection>
   </div>;
 }

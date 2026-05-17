@@ -4,9 +4,8 @@ const links = [
   ['/', 'Home'],
   ['/capture', 'Capture'],
   ['/projects', 'Projects'],
-  ['/inbox', 'Inbox'],
-  ['/raw-notes', 'RAW Notes'],
-  ['/review', 'Review'],
+  ['/notes-processor', 'Notes processor'],
+  ['/ideas', 'Ideas'],
   ['/settings', 'Settings']
 ];
 

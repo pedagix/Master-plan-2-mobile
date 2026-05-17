@@ -42,6 +42,18 @@ export default function SettingsPage({ api }) {
     });
   };
 
+  const markUnprocessedNotesAnalyzed = () => {
+    api.createRollback?.('Before marking unprocessed notes as analyzed');
+    api.setData((prev) => {
+      const now = Date.now();
+      return {
+        ...prev,
+        captures: prev.captures.map((note) => note.rawState === 'archived' && !note.needsReanalysis ? note : { ...note, rawState: 'archived', analysisState: 'analyzed', processedAt: now, archivedRawAt: now, needsReanalysis: false })
+      };
+    });
+    setImportMessage('Unprocessed notes marked as analyzed. Note text and selected processing tags were preserved.');
+  };
+
   const applyPreview = () => {
     if (!preview?.data || !preview.canApply) return;
     api.createRollback?.(`Before ${preview.label || 'JSON'} import`);
@@ -74,7 +86,7 @@ export default function SettingsPage({ api }) {
     catch { setPreview({ plainText: pasteText }); }
   };
 
-  const importPlainText = () => api.setData((prev) => ({ ...prev, captures: [{ id: crypto.randomUUID(), text: (preview?.plainText || '').trim(), projectId: null, isNewIdea: false, rawState: 'unprocessed', analysisState: 'not-analyzed', processedAt: null, archivedRawAt: null, createdAt: Date.now() }, ...prev.captures] }));
+  const importPlainText = () => api.setData((prev) => ({ ...prev, captures: [{ id: crypto.randomUUID(), text: (preview?.plainText || '').trim(), projectId: null, isNewIdea: false, rawState: 'unprocessed', analysisState: 'not-analyzed', processedAt: null, archivedRawAt: null, needsReanalysis: false, needsProjectAssignment: false, candidateProjectIds: [], processingTags: [], createdAt: Date.now() }, ...prev.captures] }));
 
   const resetAppData = () => {
     setImportMessage('Resetting app data...');
@@ -83,7 +95,7 @@ export default function SettingsPage({ api }) {
         setPreview(null);
         setPasteText('');
         setRollbackInfoOpen(false);
-        setImportMessage('App data reset. Active notes, captures, RAW notes, inbox items, suggestions, tasks, questions, logs, and rollback snapshots are empty.');
+        setImportMessage('App data reset. Notes, Notes processor items, suggestions, tasks, questions, logs, and rollback snapshots are empty.');
       })
       .catch((error) => {
         console.warn('Failed to finish app data reset.', error);
@@ -104,6 +116,7 @@ export default function SettingsPage({ api }) {
         <summary>Advanced options</summary>
         <div className="settings-button-grid">
           <button onClick={() => confirmAction('Export full backup now?', api.exportFullBackup)}>Export full backup</button>
+          <button onClick={() => confirmAction('Mark all unprocessed notes as analyzed? This preserves the notes and their selected processing tags, but tagged notes will stop appearing in AI export unless sent back for processing.', markUnprocessedNotesAnalyzed)}>Mark unprocessed notes as analyzed</button>
           <button onClick={() => confirmAction('Reset app data to defaults? This deletes active data and rollback snapshots.', resetAppData)}>Reset app data</button>
         </div>
         <textarea rows={4} value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste JSON or text" />
@@ -119,7 +132,7 @@ export default function SettingsPage({ api }) {
             <p>createdAt: {new Date(snapshot.createdAt).toISOString()}</p>
             <p>reason: {snapshot.reason}</p>
             <p>projects: {snapshot.counts.projects}</p>
-            <p>captures/notes: {snapshot.counts.captures}</p>
+            <p>notes: {snapshot.counts.captures}</p>
             <p>suggestions: {snapshot.counts.suggestions}</p>
             <p>questions: {snapshot.counts.questions}</p>
             <p>settings/prompt profiles included: {snapshot.counts.includesSettings ? 'yes' : 'no'}</p>

@@ -13,9 +13,35 @@ const DEFAULT_PROMPT_ACTIONS = {
   clarifyingQuestions: { id: 'clarifyingQuestions', title: 'Clarifying questions', description: 'Ask questions when missing information blocks progress.', enabled: true, prompt: 'Ask clarifying questions when important information is missing and the missing information blocks useful progress.' },
   followUpQuestions: { id: 'followUpQuestions', title: 'Follow-up questions', description: 'Generate useful questions from notes when there are blind spots or missing knowledge.', enabled: true, prompt: 'Generate follow-up questions based on notes when there is a useful blind spot, missing information, unclear assumption, weak plan, or knowledge gap that may block progress. Do not generate questions for every note. Prefer fewer high-quality questions over generic questions.' },
   newIdeaRouting: { id: 'newIdeaRouting', title: 'New idea routing', description: 'Connect new ideas to existing projects or ask the user to assign them.', enabled: true, prompt: 'When a capture or note has isNewIdea: true, treat it as an unprocessed idea. First check whether it clearly connects to an existing project using project title, description, notes, captures, and suggestions. If there is a clear connection, recommend connecting the idea to that project and make any generated suggestions, questions, next steps, or checklists use that projectId. If there is no clear connection, do not invent a project connection. Mark the item as needing project assignment and ask the user to choose or create the right project before generating project-specific outputs.' },
-  inboxDecisionWorkflow: { id: 'inboxDecisionWorkflow', title: 'Inbox decision workflow', description: 'New AI-generated outputs must go to the Inbox first and wait for user approval.', enabled: true, prompt: 'Treat the Inbox as the review queue for new generated outputs. New suggestions, next steps, checklists, questions, cleanup recommendations, and project routing recommendations should be created as pending Inbox items first. Do not treat them as accepted project tasks or permanent project suggestions until the user approves them. The user may mark an item as Important, convert it to a To-do list, mark it as a Bad idea, or choose Remind me later. Use badIdeaLog and inboxActionLog to learn what the user accepts, rejects, delays, or values.' }
-  ,rawNotesWorkflow: { id: 'rawNotesWorkflow', title: 'RAW notes workflow', description: 'Unprocessed raw notes are analyzed, then preserved as archived raw notes.', enabled: true, prompt: 'Treat unprocessed RAW notes as the main source material for new analysis. After analysis, RAW notes should not be deleted. They should be preserved and moved to archived RAW notes. Archived RAW notes are historical source material and should not be reprocessed unless explicitly marked for re-analysis.' }
+  inboxDecisionWorkflow: { id: 'inboxDecisionWorkflow', title: 'Notes processor decision workflow', description: 'New AI-generated outputs must go to the Notes processor first and wait for user approval.', enabled: true, prompt: 'Treat the Notes processor as the decision queue for new generated outputs. New suggestions, next steps, checklists, questions, cleanup recommendations, and project routing recommendations should be created as pending Notes processor items first. Do not treat them as accepted project tasks or permanent project suggestions until the user approves them. The user may mark an item as Important, convert it to a To-do list, mark it as a Bad idea, or choose Remind me later. Use badIdeaLog and inboxActionLog to learn what the user accepts, rejects, delays, or values.' }
+  ,rawNotesWorkflow: { id: 'rawNotesWorkflow', title: 'Notes workflow', description: 'Unprocessed notes are analyzed only after the user manually selects processing tags, then preserved as archived notes.', enabled: true, prompt: 'Treat tagged unprocessed notes as the source material for analysis. Notes without processingTags must not be analyzed. After analysis, notes should not be deleted. They should be preserved and moved to archived notes only when the user explicitly marks them as analyzed. Archived notes are historical source material and should not be reprocessed unless explicitly marked for re-analysis.' }
 };
+
+function cleanPromptActionCopy(id, action = {}) {
+  if (id === 'inboxDecisionWorkflow') {
+    return {
+      ...action,
+      title: typeof action.title === 'string' ? action.title.replaceAll('Inbox', 'Notes processor') : action.title,
+      description: typeof action.description === 'string' ? action.description.replaceAll('Inbox', 'Notes processor') : action.description,
+      prompt: typeof action.prompt === 'string' ? action.prompt.replaceAll('Inbox', 'Notes processor') : action.prompt,
+    };
+  }
+  if (id === 'rawNotesWorkflow') {
+    const clean = (value) => typeof value === 'string'
+      ? value.replaceAll('RAW notes', 'notes').replaceAll('RAW note', 'note').replaceAll('Raw Notes', 'Notes').replaceAll('raw notes', 'notes').replaceAll('raw note', 'note')
+      : value;
+    return { ...action, title: action.title === 'RAW notes workflow' ? DEFAULT_PROMPT_ACTIONS[id].title : clean(action.title), description: clean(action.description), prompt: clean(action.prompt) };
+  }
+  return action;
+}
+
+function normalizePromptActions(actions = {}) {
+  const ids = new Set([...Object.keys(DEFAULT_PROMPT_ACTIONS), ...Object.keys(actions || {})]);
+  return Object.fromEntries([...ids].map((id) => {
+    const defaults = DEFAULT_PROMPT_ACTIONS[id] || { id, title: id, description: '', enabled: true, prompt: '' };
+    return [id, cleanPromptActionCopy(id, { ...structuredClone(defaults), ...(actions?.[id] || {}) })];
+  }));
+}
 
 export function buildDefaultPromptProfile(now = Date.now()) { return { id: 'default-master-plan-v1', name: 'Default Master Plan Analysis', isDefault: true, createdAt: now, updatedAt: now, promptActions: structuredClone(DEFAULT_PROMPT_ACTIONS) }; }
 
@@ -30,12 +56,12 @@ export function normalizeSuggestion(s = {}) {
 }
 export function normalizeCapture(c = {}) {
   const hasProcessedHint = c.processedAt || c.archivedRawAt || c.analysisState === 'analyzed' || c.rawState === 'archived';
-  return { ...c, rawState: c.rawState || (hasProcessedHint ? 'archived' : 'unprocessed'), analysisState: c.analysisState || (hasProcessedHint ? 'analyzed' : 'not-analyzed'), processedAt: c.processedAt ?? null, archivedRawAt: c.archivedRawAt ?? null, needsReanalysis: c.needsReanalysis ?? false, needsProjectAssignment: c.needsProjectAssignment ?? (c.isNewIdea ? !c.projectId : false), candidateProjectIds: c.candidateProjectIds ?? [] };
+  return { ...c, rawState: c.rawState || (hasProcessedHint ? 'archived' : 'unprocessed'), analysisState: c.analysisState || (hasProcessedHint ? 'analyzed' : 'not-analyzed'), processedAt: c.processedAt ?? null, archivedRawAt: c.archivedRawAt ?? null, needsReanalysis: c.needsReanalysis ?? false, needsProjectAssignment: c.needsProjectAssignment ?? (c.isNewIdea ? !c.projectId : false), candidateProjectIds: c.candidateProjectIds ?? [], processingTags: Array.isArray(c.processingTags) ? c.processingTags : [] };
 }
 
 export function buildDefaultData() {
   const now = Date.now(); const profile = buildDefaultPromptProfile(now);
-  return { meta: { appName: 'Master Plan', schemaVersion: 2, exportType: 'full-backup', exportedAt: new Date(now).toISOString() }, settings: { activePromptProfileId: profile.id, promptProfiles: [profile] }, aiInstructions: { activePromptProfileId: profile.id, mainRole: 'You are analyzing a private mobile-first second brain system.', tone: 'Clear, direct, practical, and honest. Be brutally honest when useful, but still constructive.', goal: 'Help the user turn captured notes into useful next actions, project structure, suggestions, checklists, warnings, cleanup recommendations, and follow-up questions.', promptActions: structuredClone(DEFAULT_PROMPT_ACTIONS) }, projects: [normalizeProject({ id: 'p1', title: 'Master Plan Product', description: 'Shape v1 private system.', status: 'active' }), normalizeProject({ id: 'p2', title: 'Health Reboot', description: 'Daily routines and food plan.', status: 'active' }), normalizeProject({ id: 'p3', title: 'Backlog Ideas', description: 'Parking lot for ideas.', status: 'hidden' })], captures: [], suggestions: [], tasks: [], checklists: [], questions: [], badIdeaLog: [], inboxActionLog: [], questionFeedbackLog: [], questionLearningSettings: { enabled: true, recentQuestionLimit: 150, generationMix: { upvotedTypeRatio: 0.5, downvotedTypeRatio: 0.1, newTypeRatio: 0.4 }, avoidRecentlyDownvoted: true, preferAnsweredAndUpvoted: true } };
+  return { meta: { appName: 'Master Plan', schemaVersion: 2, exportType: 'full-backup', exportedAt: new Date(now).toISOString() }, settings: { activePromptProfileId: profile.id, promptProfiles: [profile], notesProcessorHiddenActionIds: [] }, aiInstructions: { activePromptProfileId: profile.id, mainRole: 'You are analyzing a private mobile-first second brain system.', tone: 'Clear, direct, practical, and honest. Be brutally honest when useful, but still constructive.', goal: 'Help the user turn captured notes into useful next actions, project structure, suggestions, checklists, warnings, cleanup recommendations, and follow-up questions.', promptActions: structuredClone(DEFAULT_PROMPT_ACTIONS) }, projects: [normalizeProject({ id: 'p1', title: 'Master Plan Product', description: 'Shape v1 private system.', status: 'active' }), normalizeProject({ id: 'p2', title: 'Health Reboot', description: 'Daily routines and food plan.', status: 'active' }), normalizeProject({ id: 'p3', title: 'Backlog Ideas', description: 'Parking lot for ideas.', status: 'hidden' })], captures: [], suggestions: [], tasks: [], checklists: [], questions: [], badIdeaLog: [], inboxActionLog: [], questionFeedbackLog: [], questionLearningSettings: { enabled: true, recentQuestionLimit: 150, generationMix: { upvotedTypeRatio: 0.5, downvotedTypeRatio: 0.1, newTypeRatio: 0.4 }, avoidRecentlyDownvoted: true, preferAnsweredAndUpvoted: true } };
 }
 
 export function buildResetData() {
@@ -75,9 +101,11 @@ export function migrateData(input) {
     data.settings.lastSelectedProjectId = data.projects.find((p) => p.status === 'active')?.id || null;
   }
   data.settings.promptProfiles = Array.isArray(data.settings.promptProfiles) && data.settings.promptProfiles.length ? data.settings.promptProfiles : [buildDefaultPromptProfile()];
+  data.settings.promptProfiles = data.settings.promptProfiles.map((profile) => ({ ...profile, promptActions: normalizePromptActions(profile.promptActions) }));
   data.settings.activePromptProfileId = data.settings.activePromptProfileId || data.settings.promptProfiles[0].id;
+  data.settings.notesProcessorHiddenActionIds = Array.isArray(data.settings.notesProcessorHiddenActionIds) ? data.settings.notesProcessorHiddenActionIds : [];
   const activeProfile = data.settings.promptProfiles.find((p) => p.id === data.settings.activePromptProfileId) || data.settings.promptProfiles[0];
-  data.aiInstructions = { ...base.aiInstructions, ...(input?.aiInstructions || {}), activePromptProfileId: data.settings.activePromptProfileId, promptActions: { ...structuredClone(DEFAULT_PROMPT_ACTIONS), ...(activeProfile?.promptActions || {}), ...(input?.aiInstructions?.promptActions || {}) } };
+  data.aiInstructions = { ...base.aiInstructions, ...(input?.aiInstructions || {}), activePromptProfileId: data.settings.activePromptProfileId, promptActions: normalizePromptActions({ ...(activeProfile?.promptActions || {}), ...(input?.aiInstructions?.promptActions || {}) }) };
   data.questionLearningSettings = { ...base.questionLearningSettings, ...(input?.questionLearningSettings || {}) };
   return data;
 }

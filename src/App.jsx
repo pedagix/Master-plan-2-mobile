@@ -7,8 +7,7 @@ import HomePage from './pages/HomePage';
 import CapturePage from './pages/CapturePage';
 import ProjectsPage from './pages/ProjectsPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
-import InboxPage from './pages/InboxPage';
-import ReviewPage from './pages/ReviewPage';
+import NotesProcessorPage from './pages/NotesProcessorPage';
 import SettingsPage from './pages/SettingsPage';
 import RawNotesPage from './pages/RawNotesPage';
 import { buildResetData, migrateData } from './lib/model';
@@ -83,9 +82,10 @@ export default function App() {
     <Route path="/capture" element={<CapturePage api={api} />} />
     <Route path="/projects" element={<ProjectsPage api={api} />} />
     <Route path="/projects/:projectId" element={<ProjectDetailPage api={api} />} />
-    <Route path="/inbox" element={<InboxPage api={api} />} />
-    <Route path="/review" element={<ReviewPage api={api} />} />
-    <Route path="/raw-notes" element={<RawNotesPage api={api} />} />
+    <Route path="/notes-processor" element={<NotesProcessorPage api={api} />} />
+    <Route path="/inbox" element={<Navigate to="/notes-processor" replace />} />
+    <Route path="/ideas" element={<RawNotesPage api={api} />} />
+    <Route path="/raw-notes" element={<Navigate to="/ideas" replace />} />
     <Route path="/settings" element={<SettingsPage api={api} />} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes></Layout>;

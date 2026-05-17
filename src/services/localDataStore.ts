@@ -27,11 +27,14 @@ function exportFullBackup(data) {
 
 function exportAiAnalysis(data) {
   const migrated = migrateData(data);
-  const capturesForAnalysis = migrated.captures.filter((c) => c.rawState !== 'archived' || c.needsReanalysis);
+  const capturesForAnalysis = migrated.captures.filter((c) => Array.isArray(c.processingTags) && c.processingTags.length > 0 && (c.rawState !== 'archived' || c.needsReanalysis));
+  const selectedProcessingTags = [...new Set(capturesForAnalysis.flatMap((c) => c.processingTags))];
+  const enabledPromptActions = getEnabledPromptActions(migrated.aiInstructions.promptActions);
+  const selectedPromptActions = Object.fromEntries(Object.entries(enabledPromptActions).filter(([id]) => selectedProcessingTags.includes(id)));
   const payload = {
-    meta: { appName: 'Master Plan', schemaVersion: 2, exportType: 'ai-analysis-export', exportedAt: new Date().toISOString() },
+    meta: { appName: 'Master Plan', schemaVersion: 2, exportType: 'ai-analysis-export', exportedAt: new Date().toISOString(), exportedNoteCount: capturesForAnalysis.length, selectedProcessingTags },
     settings: migrated.settings,
-    aiInstructions: { ...migrated.aiInstructions, promptActions: getEnabledPromptActions(migrated.aiInstructions.promptActions) },
+    aiInstructions: { ...migrated.aiInstructions, promptActions: selectedPromptActions },
     projects: migrated.projects, captures: capturesForAnalysis, suggestions: migrated.suggestions,
     questions: migrated.questions, tasks: migrated.tasks, checklists: migrated.checklists, badIdeaLog: migrated.badIdeaLog, inboxActionLog: migrated.inboxActionLog, questionFeedbackLog: migrated.questionFeedbackLog, questionLearningSettings: migrated.questionLearningSettings
   };
