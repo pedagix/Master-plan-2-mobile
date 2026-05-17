@@ -4,6 +4,34 @@ export const PROJECT_DESTINATION = 'project';
 export const HMM_PROJECT_ID = 'hmm';
 export const CREATE_PROJECT_VALUE = '__create_project__';
 
+const LEGACY_PROJECT_NOTE_FIELDS = [
+  'notes',
+  'rawNotes',
+  'captures',
+  'ahaNotes',
+  'hmmNotes',
+  'projectNotes',
+  'archivedNotes',
+  'importantNotes',
+  'inboxNotes',
+  'processedNotes',
+  'aiAnalysisNotes',
+  'suggestions',
+  'tasks',
+  'checklists',
+  'questions',
+  'analysisResults',
+  'analysisResultGroups',
+  'importedJsonGroups',
+  'processedNoteGroups',
+  'inboxGroups',
+  'suggestionGroups',
+  'rawNoteArchives',
+  'legacyReviewGroups',
+  'processorGroups',
+  'groupedAnalysisOutputs',
+];
+
 const DEFAULT_PROMPT_ACTIONS = {
   suggestions: { id: 'suggestions', title: 'Suggestions', description: 'Generate useful suggestions from projects, notes, captures, and current project states.', enabled: true, prompt: "Generate useful suggestions based on the user's projects, captures, notes, suggestions, and current project states. Prioritize suggestions that help the user make progress, reduce confusion, or organize important material." },
   nextSteps: { id: 'nextSteps', title: 'Next steps', description: 'Create small realistic actions.', enabled: true, prompt: 'Create realistic next steps. If a project seems inactive, overwhelming, unclear, or avoided, make the next step smaller. A next step must be something the user can actually do.' },
@@ -127,10 +155,13 @@ export function normalizeNote(note = {}, projectIds = new Set()) {
   const rawProjectId = note.projectId && note.projectId !== HMM_PROJECT_ID ? note.projectId : null;
   const projectId = rawProjectId && projectIds.has(rawProjectId) ? rawProjectId : null;
   const destination = projectId ? PROJECT_DESTINATION : HMM_DESTINATION;
+  const hasExplicitText = typeof note.text === 'string';
+  const text = hasExplicitText ? note.text.trim() : '';
+  const isLegacyShape = !hasExplicitText && Boolean(note.title || note.question || note.summary || note.description);
   return {
     ...note,
     id: note.id || `note-${now}`,
-    text: String(note.text || note.title || note.question || '').trim(),
+    text,
     createdAt: note.createdAt || now,
     updatedAt: note.updatedAt || note.createdAt || now,
     destination,
@@ -145,6 +176,7 @@ export function normalizeNote(note = {}, projectIds = new Set()) {
     sourceId: note.sourceId || null,
     sourceCaptureId: note.sourceCaptureId || null,
     sourceSuggestionId: note.sourceSuggestionId || null,
+    legacyShape: note.legacyShape ?? isLegacyShape,
   };
 }
 
@@ -302,6 +334,41 @@ export function buildResetData() {
 }
 
 export const seedData = buildDefaultData();
+
+function cleanupProjectNoteFields(project = {}, now = Date.now()) {
+  const cleaned = {
+    ...project,
+    tasksDone: 0,
+    updatedAt: now,
+  };
+  LEGACY_PROJECT_NOTE_FIELDS.forEach((field) => {
+    if (field === 'notes') {
+      cleaned.notes = [];
+      return;
+    }
+    if (field in cleaned) delete cleaned[field];
+  });
+  return cleaned;
+}
+
+export function buildGlobalNoteCleanupData(input, now = Date.now()) {
+  const migrated = migrateData(input);
+  const cleanedProjects = (migrated.projects || []).map((project) => cleanupProjectNoteFields(project, now));
+  return migrateData({
+    ...migrated,
+    projects: cleanedProjects,
+    notes: [],
+    completedTasks: [],
+    captures: [],
+    suggestions: [],
+    tasks: [],
+    checklists: [],
+    questions: [],
+    badIdeaLog: [],
+    inboxActionLog: [],
+    questionFeedbackLog: [],
+  });
+}
 
 export function migrateData(input) {
   const base = buildDefaultData(); const data = { ...base, ...(input || {}) };

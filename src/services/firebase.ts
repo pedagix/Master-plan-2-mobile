@@ -9,13 +9,14 @@ import {
 } from 'firebase/auth';
 import {
   collection,
+  collectionGroup,
+  deleteField,
   doc,
   getDocs,
   getFirestore,
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
-  setDoc,
   writeBatch
 } from 'firebase/firestore';
 
@@ -49,6 +50,151 @@ if (isFirebaseConfigured) {
 
 const provider = new GoogleAuthProvider();
 
+const NOTE_COLLECTION_GROUPS = [
+  'notes',
+  'captures',
+  'rawNotes',
+  'raw_notes',
+  'ahaNotes',
+  'hmmNotes',
+  'projectNotes',
+  'archivedNotes',
+  'importantNotes',
+  'inboxNotes',
+  'analysisNotes',
+  'processedNotes',
+  'aiAnalysisNotes',
+  'suggestions',
+  'tasks',
+  'checklists',
+  'questions',
+  'analysisResults',
+  'analysisResultGroups',
+  'aiImportBatches',
+  'aiExportBatches',
+  'importedJsonGroups',
+  'processedNoteGroups',
+  'inboxGroups',
+  'suggestionGroups',
+  'rawNoteArchives',
+  'legacyReviewGroups',
+  'processorGroups',
+  'groupedAnalysisOutputs',
+  'analysis_results',
+  'ai_import_batches',
+  'ai_export_batches',
+  'noteGroups',
+  'reviewGroups',
+];
+
+const NOTE_FIELDS_TO_DELETE = [
+  'notes',
+  'rawNotes',
+  'captures',
+  'ahaNotes',
+  'hmmNotes',
+  'projectNotes',
+  'archivedNotes',
+  'importantNotes',
+  'inboxNotes',
+  'analysisNotes',
+  'processedNotes',
+  'aiAnalysisNotes',
+  'suggestions',
+  'tasks',
+  'checklists',
+  'questions',
+  'completedTasks',
+  'analysisResults',
+  'analysisResultGroups',
+  'aiImportBatches',
+  'aiExportBatches',
+  'importedJsonGroups',
+  'processedNoteGroups',
+  'inboxGroups',
+  'suggestionGroups',
+  'rawNoteArchives',
+  'legacyReviewGroups',
+  'processorGroups',
+  'groupedAnalysisOutputs',
+  'badIdeaLog',
+  'inboxActionLog',
+  'questionFeedbackLog',
+];
+
+const PROJECT_NOTE_FIELDS_TO_DELETE = [
+  'notes',
+  'rawNotes',
+  'captures',
+  'ahaNotes',
+  'hmmNotes',
+  'projectNotes',
+  'archivedNotes',
+  'importantNotes',
+  'inboxNotes',
+  'analysisNotes',
+  'processedNotes',
+  'aiAnalysisNotes',
+  'suggestions',
+  'tasks',
+  'checklists',
+  'questions',
+  'completedTasks',
+  'analysisResults',
+  'analysisResultGroups',
+  'aiImportBatches',
+  'aiExportBatches',
+  'importedJsonGroups',
+  'processedNoteGroups',
+  'inboxGroups',
+  'suggestionGroups',
+  'rawNoteArchives',
+  'legacyReviewGroups',
+  'processorGroups',
+  'groupedAnalysisOutputs',
+];
+
+const GALLERY_NOTE_FIELDS_TO_DELETE = ['noteId', 'sourceNoteId', 'sourceCaptureId', 'sourceSuggestionId'];
+const WRITE_BATCH_LIMIT = 350;
+
+function buildDeleteFieldPatch(fields: string[], extra: Record<string, any> = {}) {
+  const patch = { ...extra };
+  fields.forEach((field) => {
+    patch[field] = deleteField();
+  });
+  return patch;
+}
+
+function getUserIdFromPath(path: string) {
+  const parts = path.split('/');
+  if (parts[0] !== 'users' || parts.length < 2) return null;
+  return parts[1];
+}
+
+function sanitizeProjectForCloud(project: any = {}) {
+  const cleaned = { ...project };
+  PROJECT_NOTE_FIELDS_TO_DELETE.forEach((field) => {
+    if (field in cleaned) delete cleaned[field];
+  });
+  return cleaned;
+}
+
+async function applyBatchWrites(
+  refs: any[],
+  applyWrite: (batch: any, ref: any) => void
+) {
+  if (!refs.length) return 0;
+  let writes = 0;
+  for (let index = 0; index < refs.length; index += WRITE_BATCH_LIMIT) {
+    const slice = refs.slice(index, index + WRITE_BATCH_LIMIT);
+    const batch = writeBatch(db);
+    slice.forEach((ref) => applyWrite(batch, ref));
+    await batch.commit();
+    writes += slice.length;
+  }
+  return writes;
+}
+
 export { auth, db };
 
 export function signInWithGoogle() {
@@ -79,7 +225,7 @@ export async function loadUserData(uid: string) {
     getDocs(collection(db, `users/${uid}/galleryImages`)),
   ]);
 
-  const projects = projectsSnap.docs.map((d) => d.data());
+  const projects = projectsSnap.docs.map((d) => sanitizeProjectForCloud(d.data()));
   const captures = notesSnap.docs.map((d) => d.data());
   const suggestions = suggestionsSnap.docs.map((d) => d.data());
   const galleryImages = gallerySnap.docs.map((d) => d.data());
@@ -95,7 +241,6 @@ export async function loadUserData(uid: string) {
   return {
     projects: projects.map((project) => ({
       ...project,
-      notes: Array.isArray(project.notes) ? project.notes : [],
       gallery: galleryByProject.get(project.id) ?? (Array.isArray(project.gallery) ? project.gallery : []),
     })),
     captures,
@@ -121,7 +266,7 @@ export async function saveUserData(uid: string, data: any) {
 
   const batch = writeBatch(db);
   for (const project of data.projects ?? []) {
-    batch.set(doc(db, `users/${uid}/projects/${project.id}`), project);
+    batch.set(doc(db, `users/${uid}/projects/${project.id}`), sanitizeProjectForCloud(project));
   }
   for (const capture of data.captures ?? []) {
     batch.set(doc(db, `users/${uid}/notes/${capture.id}`), capture);
@@ -147,4 +292,88 @@ export async function saveUserData(uid: string, data: any) {
   }
 
   await batch.commit();
+}
+
+export async function deleteAllNoteDataForAllUsers() {
+  if (!db) throw new Error('Firebase is not configured.');
+
+  const now = Date.now();
+  const touchedUserIds = new Set<string>();
+  const collectionGroupsDeleted: Record<string, number> = {};
+  const cleanupErrors: string[] = [];
+  let deletedDocs = 0;
+  let patchedUserDocs = 0;
+  let patchedProjectDocs = 0;
+  let patchedGalleryDocs = 0;
+
+  const uniqueGroups = [...new Set(NOTE_COLLECTION_GROUPS)];
+  for (const groupName of uniqueGroups) {
+    try {
+      const snap = await getDocs(collectionGroup(db, groupName));
+      collectionGroupsDeleted[groupName] = snap.size;
+      if (!snap.empty) {
+        snap.docs.forEach((docSnap) => {
+          const uid = getUserIdFromPath(docSnap.ref.path);
+          if (uid) touchedUserIds.add(uid);
+        });
+        deletedDocs += await applyBatchWrites(snap.docs.map((docSnap) => docSnap.ref), (batch, ref) => {
+          batch.delete(ref);
+        });
+      }
+    } catch (error) {
+      collectionGroupsDeleted[groupName] = -1;
+      cleanupErrors.push(`Failed to clean collection group "${groupName}": ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  try {
+    const usersSnap = await getDocs(collection(db, 'users'));
+    usersSnap.docs.forEach((docSnap) => touchedUserIds.add(docSnap.id));
+    if (!usersSnap.empty) {
+      const userPatch = buildDeleteFieldPatch(NOTE_FIELDS_TO_DELETE);
+      patchedUserDocs = await applyBatchWrites(usersSnap.docs.map((docSnap) => docSnap.ref), (batch, ref) => {
+        batch.set(ref, userPatch, { merge: true });
+      });
+    }
+  } catch (error) {
+    cleanupErrors.push(`Failed to patch "users" documents: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  try {
+    const projectsSnap = await getDocs(collectionGroup(db, 'projects'));
+    projectsSnap.docs.forEach((docSnap) => {
+      const uid = getUserIdFromPath(docSnap.ref.path);
+      if (uid) touchedUserIds.add(uid);
+    });
+    if (!projectsSnap.empty) {
+      const projectPatch = buildDeleteFieldPatch(PROJECT_NOTE_FIELDS_TO_DELETE, { tasksDone: 0, updatedAt: now });
+      patchedProjectDocs = await applyBatchWrites(projectsSnap.docs.map((docSnap) => docSnap.ref), (batch, ref) => {
+        batch.set(ref, projectPatch, { merge: true });
+      });
+    }
+  } catch (error) {
+    cleanupErrors.push(`Failed to patch "projects" documents: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  try {
+    const gallerySnap = await getDocs(collectionGroup(db, 'galleryImages'));
+    if (!gallerySnap.empty) {
+      const galleryPatch = buildDeleteFieldPatch(GALLERY_NOTE_FIELDS_TO_DELETE);
+      patchedGalleryDocs = await applyBatchWrites(gallerySnap.docs.map((docSnap) => docSnap.ref), (batch, ref) => {
+        batch.set(ref, galleryPatch, { merge: true });
+      });
+    }
+  } catch (error) {
+    cleanupErrors.push(`Failed to patch "galleryImages" note references: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  return {
+    touchedUsers: touchedUserIds.size,
+    deletedDocs,
+    patchedUserDocs,
+    patchedProjectDocs,
+    patchedGalleryDocs,
+    collectionGroupsDeleted,
+    cleanupErrors,
+  };
 }

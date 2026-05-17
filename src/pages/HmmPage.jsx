@@ -15,7 +15,7 @@ export default function HmmPage({ api }) {
   const [editingId, setEditingId] = useState(null);
 
   const hmmNotes = useMemo(() => (api.data.notes || [])
-    .filter((note) => !note.deleted && note.destination === HMM_DESTINATION)
+    .filter((note) => !note.deleted && !note.legacyShape && note.destination === HMM_DESTINATION)
     .sort(sortByPriorityThenNewest), [api.data.notes]);
 
   const editingNote = hmmNotes.find((note) => note.id === editingId) || null;

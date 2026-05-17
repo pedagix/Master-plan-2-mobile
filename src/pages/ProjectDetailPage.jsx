@@ -31,7 +31,7 @@ export default function ProjectDetailPage({ api }) {
   if (projectId === HMM_PROJECT_ID) return <Navigate to="/hmm" replace />;
   if (!project) return <div className="stack"><p>Project not found.</p><Link to="/ta-da">Back to Ta-da</Link></div>;
 
-  const projectNotes = (api.data.notes || []).filter((note) => !note.deleted && note.projectId === projectId);
+  const projectNotes = (api.data.notes || []).filter((note) => !note.deleted && !note.legacyShape && note.projectId === projectId);
   const todos = projectNotes.filter((note) => note.isTodo).sort(sortByPriorityThenNewest);
   const notes = projectNotes.filter((note) => !note.isTodo).sort(sortByPriorityThenNewest);
   const editingNote = projectNotes.find((note) => note.id === editingNoteId) || null;

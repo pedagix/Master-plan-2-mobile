@@ -9,6 +9,8 @@ export default function SettingsPage({ api }) {
   const [pasteText, setPasteText] = useState('');
   const [preview, setPreview] = useState(null);
   const [importMessage, setImportMessage] = useState('');
+  const [cleanupReport, setCleanupReport] = useState(null);
+  const [cleanupBusy, setCleanupBusy] = useState(false);
   const [rollbackInfoOpen, setRollbackInfoOpen] = useState(false);
 
   const profile = api.data.settings.promptProfiles.find((p) => p.id === api.data.settings.activePromptProfileId) || api.data.settings.promptProfiles[0];
@@ -40,18 +42,6 @@ export default function SettingsPage({ api }) {
       next.aiInstructions.promptActions = { ...defaults.promptActions };
       return next;
     });
-  };
-
-  const markUnprocessedNotesAnalyzed = () => {
-    api.createRollback?.('Before marking unprocessed notes as analyzed');
-    api.setData((prev) => {
-      const now = Date.now();
-      return {
-        ...prev,
-        captures: prev.captures.map((note) => note.rawState === 'archived' && !note.needsReanalysis ? note : { ...note, rawState: 'archived', analysisState: 'analyzed', processedAt: now, archivedRawAt: now, needsReanalysis: false })
-      };
-    });
-    setImportMessage('Unprocessed notes marked as analyzed. Note text and selected processing tags were preserved.');
   };
 
   const applyPreview = () => {
@@ -127,6 +117,34 @@ export default function SettingsPage({ api }) {
       });
   };
 
+  const deleteAllNotesEverywhere = async () => {
+    if (cleanupBusy) return;
+    const warning = 'You are about to delete all note-related data from all users. This is meant for development cleanup. Firebase Auth users will not be deleted. Projects should remain if they can be kept separate from notes. Continue?';
+    if (!window.confirm(warning)) return;
+    const typed = window.prompt('Type DELETE NOTES to confirm global note cleanup.');
+    if (typed !== 'DELETE NOTES') {
+      setImportMessage('Global note cleanup canceled: confirmation text did not match.');
+      return;
+    }
+
+    setCleanupBusy(true);
+    setCleanupReport(null);
+    setImportMessage('Deleting note-related data from Firestore and local state...');
+    try {
+      const report = await api.deleteAllNotesForAllUsers?.();
+      setCleanupReport(report || null);
+      setPreview(null);
+      setPasteText('');
+      setRollbackInfoOpen(false);
+      setImportMessage('Global note cleanup completed. Notes were removed from all users where Firestore permissions allowed.');
+    } catch (error) {
+      console.warn('Global note cleanup failed.', error);
+      setImportMessage('Global note cleanup failed. Firebase Auth users were not touched. Check Firestore permissions and try again.');
+    } finally {
+      setCleanupBusy(false);
+    }
+  };
+
   return <div className="stack"><h2>Settings</h2>
     <section className="card stack"><h3>Import / Export</h3>
       <div className="settings-button-grid">
@@ -139,10 +157,20 @@ export default function SettingsPage({ api }) {
       <details className="stack">
         <summary>Advanced options</summary>
         <div className="settings-button-grid">
-          <button onClick={() => confirmAction('Export current legacy notes for AI analysis?', api.exportAiAnalysis)}>Export for AI analysis</button>
-          <button onClick={() => confirmAction('Mark all legacy unprocessed captures as analyzed? This preserves the captures and their selected processing tags, but tagged captures will stop appearing in AI export unless sent back for processing.', markUnprocessedNotesAnalyzed)}>Mark legacy captures as analyzed</button>
+          <button className="danger-button" disabled={cleanupBusy} onClick={deleteAllNotesEverywhere}>Delete all notes</button>
           <button onClick={() => confirmAction('Reset app data to defaults? This deletes active data and rollback snapshots.', resetAppData)}>Reset app data</button>
         </div>
+        {cleanupBusy && <p>Running global cleanup...</p>}
+        {cleanupReport && <div className="card stack">
+          <strong>Cleanup report</strong>
+          <p>users touched: {cleanupReport.touchedUsers ?? 0}</p>
+          <p>documents deleted: {cleanupReport.deletedDocs ?? 0}</p>
+          <p>user docs patched: {cleanupReport.patchedUserDocs ?? 0}</p>
+          <p>project docs patched: {cleanupReport.patchedProjectDocs ?? 0}</p>
+          <p>gallery docs patched: {cleanupReport.patchedGalleryDocs ?? 0}</p>
+          <p>legacy localStorage keys removed: {(cleanupReport.localRemovedKeys || []).length}</p>
+          {!!cleanupReport.cleanupErrors?.length && <div className="card stack">{cleanupReport.cleanupErrors.map((item, index) => <small key={index}>{item}</small>)}</div>}
+        </div>}
         <textarea rows={4} value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste JSON or text" />
         <button onClick={() => confirmAction('Preview this pasted JSON/Text import?', handlePastePreview)}>Paste JSON/Text Import</button>
 

@@ -1,9 +1,25 @@
-import { buildDefaultData, getEnabledPromptActions, migrateData } from '../lib/model';
+import { buildDefaultData, buildGlobalNoteCleanupData, migrateData } from '../lib/model';
 import type { DataStore } from './dataStore';
 
 const KEY = 'master_plan_v1';
 const ROLLBACK_KEY = 'master_plan_rollbacks_v1';
 const MAX_ROLLBACKS = 3;
+const LEGACY_NOTE_LOCAL_KEYS = [
+  'master_plan_notes_v1',
+  'master_plan_raw_notes_v1',
+  'master_plan_captures_v1',
+  'master_plan_inbox_v1',
+  'master_plan_inbox_groups_v1',
+  'master_plan_note_groups_v1',
+  'master_plan_suggestions_v1',
+  'master_plan_tasks_v1',
+  'master_plan_checklists_v1',
+  'master_plan_questions_v1',
+  'master_plan_ai_analysis_v1',
+  'master_plan_ai_import_v1',
+  'master_plan_ai_export_v1',
+  'master_plan_notes_processor_v1',
+];
 
 function loadData() {
   const raw = localStorage.getItem(KEY);
@@ -23,22 +39,6 @@ function downloadJson(payload, name) {
 
 function exportFullBackup(data) {
   downloadJson({ ...migrateData(data), meta: { ...(data.meta || {}), appName: 'Master Plan', schemaVersion: 2, exportType: 'full-backup', exportedAt: new Date().toISOString() } }, 'master-plan-full-backup');
-}
-
-function exportAiAnalysis(data) {
-  const migrated = migrateData(data);
-  const capturesForAnalysis = migrated.captures.filter((c) => Array.isArray(c.processingTags) && c.processingTags.length > 0 && (c.rawState !== 'archived' || c.needsReanalysis));
-  const selectedProcessingTags = [...new Set(capturesForAnalysis.flatMap((c) => c.processingTags))];
-  const enabledPromptActions = getEnabledPromptActions(migrated.aiInstructions.promptActions);
-  const selectedPromptActions = Object.fromEntries(Object.entries(enabledPromptActions).filter(([id]) => selectedProcessingTags.includes(id)));
-  const payload = {
-    meta: { appName: 'Master Plan', schemaVersion: 2, exportType: 'ai-analysis-export', exportedAt: new Date().toISOString(), exportedNoteCount: capturesForAnalysis.length, selectedProcessingTags },
-    settings: migrated.settings,
-    aiInstructions: { ...migrated.aiInstructions, promptActions: selectedPromptActions },
-    projects: migrated.projects, captures: capturesForAnalysis, suggestions: migrated.suggestions,
-    questions: migrated.questions, tasks: migrated.tasks, checklists: migrated.checklists, badIdeaLog: migrated.badIdeaLog, inboxActionLog: migrated.inboxActionLog, questionFeedbackLog: migrated.questionFeedbackLog, questionLearningSettings: migrated.questionLearningSettings
-  };
-  downloadJson(payload, 'master-plan-ai-analysis');
 }
 
 function getRollbacks() {
@@ -74,15 +74,57 @@ function deleteRollbackById(id) {
 }
 function clearRollbacks() { localStorage.removeItem(ROLLBACK_KEY); }
 
+function clearLegacyNoteLocalKeys() {
+  const removedKeys = [];
+  const keep = new Set([KEY]);
+  for (const key of LEGACY_NOTE_LOCAL_KEYS) {
+    if (localStorage.getItem(key) !== null) {
+      localStorage.removeItem(key);
+      removedKeys.push(key);
+    }
+  }
+  for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+    const key = localStorage.key(i);
+    if (!key || keep.has(key) || removedKeys.includes(key)) continue;
+    if (!key.startsWith('master_plan_')) continue;
+    const lower = key.toLowerCase();
+    const looksLikeLegacyNoteKey = (
+      lower.includes('note')
+      || lower.includes('capture')
+      || lower.includes('inbox')
+      || lower.includes('analysis')
+      || lower.includes('suggestion')
+      || lower.includes('processor')
+      || lower.includes('review')
+      || lower.includes('import')
+      || lower.includes('export')
+      || lower.includes('raw')
+    );
+    if (!looksLikeLegacyNoteKey) continue;
+    localStorage.removeItem(key);
+    removedKeys.push(key);
+  }
+  return removedKeys;
+}
+
+function purgeLocalNoteData(data) {
+  const cleaned = buildGlobalNoteCleanupData(data);
+  saveData(cleaned);
+  clearRollbacks();
+  const removedLegacyKeys = clearLegacyNoteLocalKeys();
+  return { data: cleaned, removedLegacyKeys };
+}
+
 export const localDataStore: DataStore<any> = {
   load: loadData,
   save: saveData,
   exportJson: exportFullBackup,
   exportFullBackup,
-  exportAiAnalysis,
   saveRollbackSnapshot,
   getLatestRollback,
   getRollbacks,
   clearRollbacks,
   deleteRollbackById,
+  clearLegacyNoteLocalKeys,
+  purgeLocalNoteData,
 };

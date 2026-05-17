@@ -27,7 +27,7 @@ export default function TaDaPage({ api }) {
   const projects = useMemo(() => getRealProjects(api.data.projects)
     .sort((a, b) => (b.lastInteractedAt || b.updatedAt || b.createdAt || 0) - (a.lastInteractedAt || a.updatedAt || a.createdAt || 0)), [api.data.projects]);
   const importantNotes = useMemo(() => (api.data.notes || [])
-    .filter((note) => !note.deleted && note.important)
+    .filter((note) => !note.deleted && !note.legacyShape && note.important)
     .sort(sortByPriorityThenNewest), [api.data.notes]);
   const editingImportantNote = importantNotes.find((note) => note.id === editingImportantId) || null;
 
@@ -62,7 +62,7 @@ export default function TaDaPage({ api }) {
     setEditingImportantId(null);
   };
 
-  const projectTodoCount = (projectId) => (api.data.notes || []).filter((note) => !note.deleted && note.projectId === projectId && note.isTodo).length;
+  const projectTodoCount = (projectId) => (api.data.notes || []).filter((note) => !note.deleted && !note.legacyShape && note.projectId === projectId && note.isTodo).length;
 
   return (
     <div className="stack page-screen">
