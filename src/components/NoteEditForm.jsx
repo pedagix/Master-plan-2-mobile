@@ -129,10 +129,9 @@ export default function NoteEditForm({
       <div className="priority-picker" style={{ '--priority-color': getPriorityColor(priority) }}>
         <div className="priority-heading">
           <span>Priority</span>
-          <strong>{priority}</strong>
         </div>
         <div className="priority-slider-wrap">
-          <span className="priority-scale-label">1</span>
+          <span className="priority-scale-label">cold</span>
           <input
             className="priority-slider"
             type="range"
@@ -143,7 +142,7 @@ export default function NoteEditForm({
             aria-label="Priority level"
             onChange={(event) => setPriority(clampPriority(Number(event.target.value)))}
           />
-          <span className="priority-scale-label">10</span>
+          <span className="priority-scale-label">hot</span>
         </div>
       </div>
 
