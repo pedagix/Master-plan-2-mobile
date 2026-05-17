@@ -1,22 +1,27 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 
 const links = [
-  ['/', 'Home'],
-  ['/capture', 'Capture'],
-  ['/projects', 'Projects'],
-  ['/notes-processor', 'Notes processor'],
-  ['/ideas', 'Ideas'],
+  ['/aha', 'Aha'],
+  ['/hmm', 'Hmm'],
+  ['/ta-da', 'Ta-da'],
   ['/settings', 'Settings']
 ];
 
 export default function Layout({ children }) {
+  const location = useLocation();
   return (
     <div className="app-shell">
       <header><h1>Master Plan</h1></header>
       <main>{children}</main>
       <nav className="bottom-nav">
         {links.map(([to, label]) => (
-          <NavLink key={to} to={to} end={to === '/'}>{label}</NavLink>
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) => isActive || (to === '/ta-da' && location.pathname.startsWith('/projects/')) ? 'active' : undefined}
+          >
+            {label}
+          </NavLink>
         ))}
       </nav>
     </div>

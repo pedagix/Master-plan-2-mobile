@@ -191,7 +191,7 @@ function buildAiReturnPreview(incoming, current) {
 function buildBackupPreview(incoming, current, kind, label) {
   const next = migrateData(incoming);
   const currentData = migrateData(current);
-  const sections = ['projects', 'captures', 'suggestions', 'tasks', 'checklists', 'questions', 'badIdeaLog', 'inboxActionLog', 'questionFeedbackLog'];
+  const sections = ['projects', 'notes', 'completedTasks', 'captures', 'suggestions', 'tasks', 'checklists', 'questions', 'badIdeaLog', 'inboxActionLog', 'questionFeedbackLog'];
   const report = { itemsToAdd: 0, itemsToUpdate: 0, itemsToSkip: 0, possibleConflicts: 0, invalidItems: 0 };
 
   sections.forEach((key) => {
@@ -221,7 +221,8 @@ function buildBackupPreview(incoming, current, kind, label) {
       ...next.checklists,
       ...next.questions,
       ...next.captures,
-    ].filter((item) => item?.needsProjectAssignment || (item && 'projectId' in item && !item.projectId)).length,
+      ...next.notes,
+    ].filter((item) => item?.needsProjectAssignment || (item && 'projectId' in item && !item.projectId && item.destination !== 'hmm')).length,
     problems: report.possibleConflicts ? ['This import can update existing local records. Check counts before applying.'] : [],
     data: next,
   };
@@ -257,7 +258,7 @@ export function buildImportPreview(incoming, current) {
   }
 
   if (exportType === 'full-backup') return buildBackupPreview(incoming, currentData, 'full-backup', 'Full backup');
-  if (incoming.projects || incoming.captures || incoming.suggestions) return buildBackupPreview(incoming, currentData, 'old-app-export', 'Old app export');
+  if (incoming.projects || incoming.notes || incoming.captures || incoming.suggestions) return buildBackupPreview(incoming, currentData, 'old-app-export', 'Old app export');
 
   return { kind: 'unknown', label: 'Unknown JSON', canApply: false, problems: ['Could not recognize this JSON as an app backup or AI analysis return.'] };
 }

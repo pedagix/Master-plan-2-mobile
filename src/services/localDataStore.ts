@@ -53,9 +53,11 @@ function saveRollbackSnapshot(state, reason) {
     reason,
     counts: {
       projects: migrated.projects.length,
+      notes: migrated.notes?.length || 0,
       captures: migrated.captures.length,
       suggestions: migrated.suggestions.length,
       questions: migrated.questions.length,
+      completedTasks: migrated.completedTasks?.length || 0,
       includesSettings: !!migrated.settings,
     },
     state: migrated,

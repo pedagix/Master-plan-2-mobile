@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { isFirebaseConfigured, signOutUser } from '../services/firebase';
 import { buildImportPreview } from '../lib/importAnalysis';
-import { buildDefaultPromptProfile, migrateData } from '../lib/model';
+import { HMM_DESTINATION, buildDefaultPromptProfile, migrateData } from '../lib/model';
 
 export default function SettingsPage({ api }) {
   const user = api.user;
@@ -86,7 +86,31 @@ export default function SettingsPage({ api }) {
     catch { setPreview({ plainText: pasteText }); }
   };
 
-  const importPlainText = () => api.setData((prev) => ({ ...prev, captures: [{ id: crypto.randomUUID(), text: (preview?.plainText || '').trim(), projectId: null, isNewIdea: false, rawState: 'unprocessed', analysisState: 'not-analyzed', processedAt: null, archivedRawAt: null, needsReanalysis: false, needsProjectAssignment: false, candidateProjectIds: [], processingTags: [], createdAt: Date.now() }, ...prev.captures] }));
+  const importPlainText = () => {
+    const text = (preview?.plainText || '').trim();
+    if (!text) return;
+    const now = Date.now();
+    api.setData((prev) => ({
+      ...prev,
+      notes: [{
+        id: crypto.randomUUID(),
+        text,
+        createdAt: now,
+        updatedAt: now,
+        destination: HMM_DESTINATION,
+        projectId: null,
+        priority: 5,
+        important: false,
+        isTodo: false,
+        deleted: false,
+        sourceType: 'settings-import',
+        sourceId: null,
+      }, ...(prev.notes || [])],
+    }));
+    setPreview(null);
+    setPasteText('');
+    setImportMessage('Plain text imported into Hmm.');
+  };
 
   const resetAppData = () => {
     setImportMessage('Resetting app data...');
@@ -95,7 +119,7 @@ export default function SettingsPage({ api }) {
         setPreview(null);
         setPasteText('');
         setRollbackInfoOpen(false);
-        setImportMessage('App data reset. Notes, Notes processor items, suggestions, tasks, questions, logs, and rollback snapshots are empty.');
+        setImportMessage('App data reset. Projects, notes, completed tasks, legacy AI items, logs, and rollback snapshots are empty.');
       })
       .catch((error) => {
         console.warn('Failed to finish app data reset.', error);
@@ -106,8 +130,8 @@ export default function SettingsPage({ api }) {
   return <div className="stack"><h2>Settings</h2>
     <section className="card stack"><h3>Import / Export</h3>
       <div className="settings-button-grid">
-        <button onClick={() => confirmAction('Export current data for AI analysis?', api.exportAiAnalysis)}>Export for AI analysis</button>
-        <button onClick={() => confirmAction('Select and import a JSON file?', () => fileRef.current?.click())}>Import updated JSON file</button>
+        <button onClick={() => confirmAction('Export full backup now?', api.exportFullBackup)}>Export full backup</button>
+        <button onClick={() => confirmAction('Select and import a JSON file?', () => fileRef.current?.click())}>Import JSON file</button>
       </div>
       <input ref={fileRef} type="file" accept="application/json" onChange={handleFileImport} style={{ display: 'none' }} />
       {importMessage && <p>{importMessage}</p>}
@@ -115,8 +139,8 @@ export default function SettingsPage({ api }) {
       <details className="stack">
         <summary>Advanced options</summary>
         <div className="settings-button-grid">
-          <button onClick={() => confirmAction('Export full backup now?', api.exportFullBackup)}>Export full backup</button>
-          <button onClick={() => confirmAction('Mark all unprocessed notes as analyzed? This preserves the notes and their selected processing tags, but tagged notes will stop appearing in AI export unless sent back for processing.', markUnprocessedNotesAnalyzed)}>Mark unprocessed notes as analyzed</button>
+          <button onClick={() => confirmAction('Export current legacy notes for AI analysis?', api.exportAiAnalysis)}>Export for AI analysis</button>
+          <button onClick={() => confirmAction('Mark all legacy unprocessed captures as analyzed? This preserves the captures and their selected processing tags, but tagged captures will stop appearing in AI export unless sent back for processing.', markUnprocessedNotesAnalyzed)}>Mark legacy captures as analyzed</button>
           <button onClick={() => confirmAction('Reset app data to defaults? This deletes active data and rollback snapshots.', resetAppData)}>Reset app data</button>
         </div>
         <textarea rows={4} value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste JSON or text" />
@@ -132,7 +156,9 @@ export default function SettingsPage({ api }) {
             <p>createdAt: {new Date(snapshot.createdAt).toISOString()}</p>
             <p>reason: {snapshot.reason}</p>
             <p>projects: {snapshot.counts.projects}</p>
-            <p>notes: {snapshot.counts.captures}</p>
+            <p>notes: {snapshot.counts.notes ?? snapshot.counts.captures}</p>
+            <p>legacy captures: {snapshot.counts.captures}</p>
+            <p>completed tasks: {snapshot.counts.completedTasks ?? 0}</p>
             <p>suggestions: {snapshot.counts.suggestions}</p>
             <p>questions: {snapshot.counts.questions}</p>
             <p>settings/prompt profiles included: {snapshot.counts.includesSettings ? 'yes' : 'no'}</p>
@@ -147,8 +173,8 @@ export default function SettingsPage({ api }) {
       {preview && <div className="card stack"><strong>Import preview</strong>
         {preview.plainText ? <><p>Detected plain text import.</p><button onClick={() => confirmAction('Create a new capture from the pasted text?', importPlainText)}>Create capture from pasted text</button></> : <>
           <p>Type: {preview.label || preview.kind}</p>
-          <p>Add: {preview.itemsToAdd} • Update: {preview.itemsToUpdate} • Skip: {preview.itemsToSkip}</p>
-          <p>Conflicts: {preview.possibleConflicts} • Invalid: {preview.invalidItems}</p>
+          <p>Add: {preview.itemsToAdd} - Update: {preview.itemsToUpdate} - Skip: {preview.itemsToSkip}</p>
+          <p>Conflicts: {preview.possibleConflicts} - Invalid: {preview.invalidItems}</p>
           <p>Needs project assignment: {preview.itemsNeedingProjectAssignment}</p>
           {!!preview.problems?.length && <div className="card stack">{preview.problems.map((problem, index) => <small key={index}>{problem}</small>)}</div>}
           <button disabled={!preview.canApply} onClick={() => confirmAction('Apply this import preview to your data?', applyPreview)}>Apply import</button>
@@ -156,13 +182,13 @@ export default function SettingsPage({ api }) {
       </div>}
     </section>
 
-    <section className="stack"><h3>Prompt Actions</h3>
+    <details className="stack"><summary>Prompt/action settings</summary>
       {Object.values(actions).map((action) => <details className="card" key={action.id}><summary>{action.title}</summary><p>{action.description}</p>
         <label><input type="checkbox" checked={action.enabled} onChange={(e) => patchAction(action.id, { enabled: e.target.checked })} /> Enabled</label>
         <textarea rows={4} value={action.prompt} onChange={(e) => patchAction(action.id, { prompt: e.target.value })} />
         <button onClick={() => confirmAction(`Reset "${action.title}" to default?`, () => resetOne(action.id))}>Reset to default</button></details>)}
       <button onClick={() => confirmAction('Reset all prompt actions to default values?', resetAll)}>Reset all prompt actions to default</button>
-    </section>
+    </details>
 
     {isFirebaseConfigured && user && <><div><strong>Signed in:</strong><div>{user.displayName || 'No name available'}</div><div>{user.email || 'No email available'}</div></div><div className="settings-button-grid"><button onClick={() => confirmAction('Import local data to Firebase now?', api.importLocalDataToFirebase)}>Import local data to Firebase</button><button onClick={() => confirmAction('Sign out now?', signOutUser)}>Sign out</button></div></>}
     {!isFirebaseConfigured && <p>Firebase is not configured. Running in local-only mode.</p>}

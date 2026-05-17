@@ -1,4 +1,8 @@
 export const STATUSES = ['active', 'paused', 'hidden', 'archived'];
+export const HMM_DESTINATION = 'hmm';
+export const PROJECT_DESTINATION = 'project';
+export const HMM_PROJECT_ID = 'hmm';
+export const CREATE_PROJECT_VALUE = '__create_project__';
 
 const DEFAULT_PROMPT_ACTIONS = {
   suggestions: { id: 'suggestions', title: 'Suggestions', description: 'Generate useful suggestions from projects, notes, captures, and current project states.', enabled: true, prompt: "Generate useful suggestions based on the user's projects, captures, notes, suggestions, and current project states. Prioritize suggestions that help the user make progress, reduce confusion, or organize important material." },
@@ -13,17 +17,20 @@ const DEFAULT_PROMPT_ACTIONS = {
   clarifyingQuestions: { id: 'clarifyingQuestions', title: 'Clarifying questions', description: 'Ask questions when missing information blocks progress.', enabled: true, prompt: 'Ask clarifying questions when important information is missing and the missing information blocks useful progress.' },
   followUpQuestions: { id: 'followUpQuestions', title: 'Follow-up questions', description: 'Generate useful questions from notes when there are blind spots or missing knowledge.', enabled: true, prompt: 'Generate follow-up questions based on notes when there is a useful blind spot, missing information, unclear assumption, weak plan, or knowledge gap that may block progress. Do not generate questions for every note. Prefer fewer high-quality questions over generic questions.' },
   newIdeaRouting: { id: 'newIdeaRouting', title: 'New idea routing', description: 'Connect new ideas to existing projects or ask the user to assign them.', enabled: true, prompt: 'When a capture or note has isNewIdea: true, treat it as an unprocessed idea. First check whether it clearly connects to an existing project using project title, description, notes, captures, and suggestions. If there is a clear connection, recommend connecting the idea to that project and make any generated suggestions, questions, next steps, or checklists use that projectId. If there is no clear connection, do not invent a project connection. Mark the item as needing project assignment and ask the user to choose or create the right project before generating project-specific outputs.' },
-  inboxDecisionWorkflow: { id: 'inboxDecisionWorkflow', title: 'Notes processor decision workflow', description: 'New AI-generated outputs must go to the Notes processor first and wait for user approval.', enabled: true, prompt: 'Treat the Notes processor as the decision queue for new generated outputs. New suggestions, next steps, checklists, questions, cleanup recommendations, and project routing recommendations should be created as pending Notes processor items first. Do not treat them as accepted project tasks or permanent project suggestions until the user approves them. The user may mark an item as Important, convert it to a To-do list, mark it as a Bad idea, or choose Remind me later. Use badIdeaLog and inboxActionLog to learn what the user accepts, rejects, delays, or values.' }
+  inboxDecisionWorkflow: { id: 'inboxDecisionWorkflow', title: 'Legacy AI decision workflow', description: 'Keep imported AI-generated outputs pending until the user chooses what to do with them.', enabled: true, prompt: 'Treat new AI-generated outputs as pending legacy proposals first. New suggestions, next steps, checklists, questions, cleanup recommendations, and project routing recommendations should not become accepted project tasks or permanent project notes until the user approves them. The user may mark an item as important, convert it to a to-do, reject it, or delay it. Use badIdeaLog and inboxActionLog to learn what the user accepts, rejects, delays, or values.' }
   ,rawNotesWorkflow: { id: 'rawNotesWorkflow', title: 'Notes workflow', description: 'Unprocessed notes are analyzed only after the user manually selects processing tags, then preserved as archived notes.', enabled: true, prompt: 'Treat tagged unprocessed notes as the source material for analysis. Notes without processingTags must not be analyzed. After analysis, notes should not be deleted. They should be preserved and moved to archived notes only when the user explicitly marks them as analyzed. Archived notes are historical source material and should not be reprocessed unless explicitly marked for re-analysis.' }
 };
 
 function cleanPromptActionCopy(id, action = {}) {
   if (id === 'inboxDecisionWorkflow') {
+    const clean = (value) => typeof value === 'string'
+      ? value.replaceAll('Inbox', 'legacy proposal queue').replaceAll('Notes processor', 'legacy proposal queue')
+      : value;
     return {
       ...action,
-      title: typeof action.title === 'string' ? action.title.replaceAll('Inbox', 'Notes processor') : action.title,
-      description: typeof action.description === 'string' ? action.description.replaceAll('Inbox', 'Notes processor') : action.description,
-      prompt: typeof action.prompt === 'string' ? action.prompt.replaceAll('Inbox', 'Notes processor') : action.prompt,
+      title: action.title === 'Notes processor decision workflow' || action.title === 'Inbox decision workflow' ? DEFAULT_PROMPT_ACTIONS[id].title : clean(action.title),
+      description: clean(action.description),
+      prompt: clean(action.prompt),
     };
   }
   if (id === 'rawNotesWorkflow') {
@@ -45,8 +52,31 @@ function normalizePromptActions(actions = {}) {
 
 export function buildDefaultPromptProfile(now = Date.now()) { return { id: 'default-master-plan-v1', name: 'Default Master Plan Analysis', isDefault: true, createdAt: now, updatedAt: now, promptActions: structuredClone(DEFAULT_PROMPT_ACTIONS) }; }
 
+export function getProjectName(project = {}) {
+  return String(project.name || project.title || 'Untitled project').trim() || 'Untitled project';
+}
+
 export function normalizeProject(project = {}) {
-  return { ...project, status: project.status || 'active', lastInteractedAt: project.lastInteractedAt ?? null, interactionCount: project.interactionCount ?? 0, notes: Array.isArray(project.notes) ? project.notes : [], gallery: Array.isArray(project.gallery) ? project.gallery : [] };
+  const now = Date.now();
+  const status = project.status || (project.archived ? 'archived' : project.hidden ? 'hidden' : 'active');
+  const name = getProjectName(project);
+  return {
+    ...project,
+    id: project.id || `project-${now}`,
+    name,
+    title: project.title || name,
+    description: project.description || '',
+    status,
+    tasksDone: Number.isFinite(Number(project.tasksDone)) ? Number(project.tasksDone) : 0,
+    archived: project.archived ?? status === 'archived',
+    hidden: project.hidden ?? status === 'hidden',
+    createdAt: project.createdAt || now,
+    updatedAt: project.updatedAt || project.createdAt || now,
+    lastInteractedAt: project.lastInteractedAt ?? null,
+    interactionCount: project.interactionCount ?? 0,
+    notes: Array.isArray(project.notes) ? project.notes : [],
+    gallery: Array.isArray(project.gallery) ? project.gallery : [],
+  };
 }
 
 export function normalizeSuggestion(s = {}) {
@@ -59,9 +89,195 @@ export function normalizeCapture(c = {}) {
   return { ...c, rawState: c.rawState || (hasProcessedHint ? 'archived' : 'unprocessed'), analysisState: c.analysisState || (hasProcessedHint ? 'analyzed' : 'not-analyzed'), processedAt: c.processedAt ?? null, archivedRawAt: c.archivedRawAt ?? null, needsReanalysis: c.needsReanalysis ?? false, needsProjectAssignment: c.needsProjectAssignment ?? (c.isNewIdea ? !c.projectId : false), candidateProjectIds: c.candidateProjectIds ?? [], processingTags: Array.isArray(c.processingTags) ? c.processingTags : [] };
 }
 
+export function clampPriority(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 5;
+  return Math.max(1, Math.min(10, Math.round(parsed)));
+}
+
+export function getPriorityColor(priority) {
+  const t = (clampPriority(priority) - 1) / 9;
+  const blue = [37, 99, 235];
+  const red = [220, 38, 38];
+  const mixed = blue.map((start, index) => Math.round(start + (red[index] - start) * t));
+  return `rgb(${mixed[0]}, ${mixed[1]}, ${mixed[2]})`;
+}
+
+export function sortByPriorityThenNewest(a, b) {
+  const priorityDelta = clampPriority(b.priority) - clampPriority(a.priority);
+  if (priorityDelta) return priorityDelta;
+  return (b.createdAt || b.updatedAt || 0) - (a.createdAt || a.updatedAt || 0);
+}
+
+export function isRealProject(project) {
+  if (!project || project.id === HMM_PROJECT_ID) return false;
+  return project.status !== 'archived' && project.status !== 'hidden' && !project.archived && !project.hidden;
+}
+
+export function getRealProjects(projects = []) {
+  return projects.filter(isRealProject);
+}
+
+export function getDestinationForProjectId(projectId) {
+  return projectId && projectId !== HMM_PROJECT_ID ? PROJECT_DESTINATION : HMM_DESTINATION;
+}
+
+export function normalizeNote(note = {}, projectIds = new Set()) {
+  const now = Date.now();
+  const rawProjectId = note.projectId && note.projectId !== HMM_PROJECT_ID ? note.projectId : null;
+  const projectId = rawProjectId && projectIds.has(rawProjectId) ? rawProjectId : null;
+  const destination = projectId ? PROJECT_DESTINATION : HMM_DESTINATION;
+  return {
+    ...note,
+    id: note.id || `note-${now}`,
+    text: String(note.text || note.title || note.question || '').trim(),
+    createdAt: note.createdAt || now,
+    updatedAt: note.updatedAt || note.createdAt || now,
+    destination,
+    projectId: destination === PROJECT_DESTINATION ? projectId : null,
+    priority: clampPriority(note.priority),
+    important: Boolean(note.important || note.importance === 'important'),
+    isTodo: Boolean(note.isTodo),
+    pendingTodoIntent: Boolean(note.pendingTodoIntent),
+    deleted: Boolean(note.deleted),
+    selectedActions: Array.isArray(note.selectedActions) ? note.selectedActions : [],
+    sourceType: note.sourceType || null,
+    sourceId: note.sourceId || null,
+    sourceCaptureId: note.sourceCaptureId || null,
+    sourceSuggestionId: note.sourceSuggestionId || null,
+  };
+}
+
+function makeMigratedNote(id, patch, projectIds) {
+  return normalizeNote({ id, priority: 5, ...patch }, projectIds);
+}
+
+function addMigratedNote(map, id, patch, projectIds) {
+  const note = makeMigratedNote(id, patch, projectIds);
+  if (!note.text || map.has(note.id)) return;
+  map.set(note.id, note);
+}
+
+function migrateNotesFromLegacy(input = {}, projects = []) {
+  const projectIds = new Set(projects.map((project) => project.id));
+  const notes = new Map();
+
+  (Array.isArray(input.captures) ? input.captures : []).forEach((capture, index) => {
+    const projectId = capture.projectId && projectIds.has(capture.projectId) ? capture.projectId : null;
+    addMigratedNote(notes, `capture-${capture.id || index}`, {
+      text: capture.text,
+      createdAt: capture.createdAt,
+      updatedAt: capture.updatedAt || capture.processedAt || capture.createdAt,
+      destination: projectId ? PROJECT_DESTINATION : HMM_DESTINATION,
+      projectId,
+      priority: capture.priority,
+      important: capture.important,
+      isTodo: capture.isTodo,
+      sourceType: 'capture',
+      sourceId: capture.id || null,
+      sourceCaptureId: capture.id || null,
+    }, projectIds);
+  });
+
+  projects.forEach((project) => {
+    (Array.isArray(project.notes) ? project.notes : []).forEach((note, index) => {
+      addMigratedNote(notes, `project-note-${project.id}-${note.id || index}`, {
+        text: note.text,
+        createdAt: note.createdAt || project.createdAt,
+        updatedAt: note.updatedAt || note.createdAt || project.updatedAt,
+        destination: PROJECT_DESTINATION,
+        projectId: project.id,
+        priority: note.priority,
+        important: note.important,
+        isTodo: note.isTodo,
+        sourceType: 'project-note',
+        sourceId: note.id || null,
+      }, projectIds);
+    });
+  });
+
+  (Array.isArray(input.tasks) ? input.tasks : []).forEach((task, index) => {
+    const projectId = task.projectId && projectIds.has(task.projectId) ? task.projectId : null;
+    addMigratedNote(notes, `task-${task.id || index}`, {
+      text: task.title || task.text,
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt || task.createdAt,
+      destination: projectId ? PROJECT_DESTINATION : HMM_DESTINATION,
+      projectId,
+      priority: task.priority,
+      important: task.important,
+      isTodo: Boolean(projectId),
+      pendingTodoIntent: !projectId,
+      sourceType: 'task',
+      sourceId: task.id || null,
+    }, projectIds);
+  });
+
+  (Array.isArray(input.checklists) ? input.checklists : []).forEach((checklist, checklistIndex) => {
+    const projectId = checklist.projectId && projectIds.has(checklist.projectId) ? checklist.projectId : null;
+    const items = Array.isArray(checklist.items) && checklist.items.length ? checklist.items : [checklist];
+    items.forEach((item, itemIndex) => {
+      const itemText = typeof item === 'string' ? item : item?.text || item?.title || checklist.title;
+      addMigratedNote(notes, `checklist-${checklist.id || checklistIndex}-${item?.id || itemIndex}`, {
+        text: itemText,
+        createdAt: item?.createdAt || checklist.createdAt,
+        updatedAt: item?.updatedAt || checklist.updatedAt || checklist.createdAt,
+        destination: projectId ? PROJECT_DESTINATION : HMM_DESTINATION,
+        projectId,
+        priority: item?.priority || checklist.priority,
+        important: item?.important || checklist.important,
+        isTodo: Boolean(projectId),
+        pendingTodoIntent: !projectId,
+        sourceType: 'checklist',
+        sourceId: checklist.id || null,
+      }, projectIds);
+    });
+  });
+
+  (Array.isArray(input.suggestions) ? input.suggestions : []).forEach((suggestion, index) => {
+    const state = suggestion.state || suggestion.inboxStatus;
+    if (['bad-idea', 'dismissed', 'hidden', 'hidden-until-next-analysis'].includes(state)) return;
+    const projectId = suggestion.projectId && projectIds.has(suggestion.projectId) ? suggestion.projectId : null;
+    const important = suggestion.importance === 'important' || suggestion.state === 'marked-important';
+    const isTodo = Boolean(projectId && ['converted-to-task', 'converted-to-checklist'].includes(suggestion.state));
+    addMigratedNote(notes, `suggestion-${suggestion.id || index}`, {
+      text: suggestion.text || suggestion.title || suggestion.question,
+      createdAt: suggestion.createdAt || suggestion.importedAt,
+      updatedAt: suggestion.updatedAt || suggestion.approvedAt || suggestion.createdAt,
+      destination: projectId ? PROJECT_DESTINATION : HMM_DESTINATION,
+      projectId,
+      priority: suggestion.priority,
+      important,
+      isTodo,
+      pendingTodoIntent: !projectId && ['converted-to-task', 'converted-to-checklist'].includes(suggestion.state),
+      sourceType: 'suggestion',
+      sourceId: suggestion.id || null,
+      sourceSuggestionId: suggestion.id || null,
+    }, projectIds);
+  });
+
+  return [...notes.values()].sort(sortByPriorityThenNewest);
+}
+
 export function buildDefaultData() {
   const now = Date.now(); const profile = buildDefaultPromptProfile(now);
-  return { meta: { appName: 'Master Plan', schemaVersion: 2, exportType: 'full-backup', exportedAt: new Date(now).toISOString() }, settings: { activePromptProfileId: profile.id, promptProfiles: [profile], notesProcessorHiddenActionIds: [] }, aiInstructions: { activePromptProfileId: profile.id, mainRole: 'You are analyzing a private mobile-first second brain system.', tone: 'Clear, direct, practical, and honest. Be brutally honest when useful, but still constructive.', goal: 'Help the user turn captured notes into useful next actions, project structure, suggestions, checklists, warnings, cleanup recommendations, and follow-up questions.', promptActions: structuredClone(DEFAULT_PROMPT_ACTIONS) }, projects: [normalizeProject({ id: 'p1', title: 'Master Plan Product', description: 'Shape v1 private system.', status: 'active' }), normalizeProject({ id: 'p2', title: 'Health Reboot', description: 'Daily routines and food plan.', status: 'active' }), normalizeProject({ id: 'p3', title: 'Backlog Ideas', description: 'Parking lot for ideas.', status: 'hidden' })], captures: [], suggestions: [], tasks: [], checklists: [], questions: [], badIdeaLog: [], inboxActionLog: [], questionFeedbackLog: [], questionLearningSettings: { enabled: true, recentQuestionLimit: 150, generationMix: { upvotedTypeRatio: 0.5, downvotedTypeRatio: 0.1, newTypeRatio: 0.4 }, avoidRecentlyDownvoted: true, preferAnsweredAndUpvoted: true } };
+  return {
+    meta: { appName: 'Master Plan', schemaVersion: 3, exportType: 'full-backup', exportedAt: new Date(now).toISOString() },
+    settings: { activePromptProfileId: profile.id, promptProfiles: [profile], notesProcessorHiddenActionIds: [], lastDestination: HMM_DESTINATION, hasCompletedInitialSetup: true },
+    aiInstructions: { activePromptProfileId: profile.id, mainRole: 'You are analyzing a private mobile-first second brain system.', tone: 'Clear, direct, practical, and honest. Be brutally honest when useful, but still constructive.', goal: 'Help the user turn captured notes into useful next actions, project structure, suggestions, checklists, warnings, cleanup recommendations, and follow-up questions.', promptActions: structuredClone(DEFAULT_PROMPT_ACTIONS) },
+    projects: [],
+    notes: [],
+    completedTasks: [],
+    captures: [],
+    suggestions: [],
+    tasks: [],
+    checklists: [],
+    questions: [],
+    badIdeaLog: [],
+    inboxActionLog: [],
+    questionFeedbackLog: [],
+    questionLearningSettings: { enabled: true, recentQuestionLimit: 150, generationMix: { upvotedTypeRatio: 0.5, downvotedTypeRatio: 0.1, newTypeRatio: 0.4 }, avoidRecentlyDownvoted: true, preferAnsweredAndUpvoted: true }
+  };
 }
 
 export function buildResetData() {
@@ -72,6 +288,8 @@ export function buildResetData() {
     aiInstructions: defaults.aiInstructions,
     questionLearningSettings: defaults.questionLearningSettings,
     projects: [],
+    notes: [],
+    completedTasks: [],
     captures: [],
     suggestions: [],
     tasks: [],
@@ -87,18 +305,34 @@ export const seedData = buildDefaultData();
 
 export function migrateData(input) {
   const base = buildDefaultData(); const data = { ...base, ...(input || {}) };
-  data.projects = (Array.isArray(input?.projects) ? input.projects : base.projects).map(normalizeProject);
+  data.meta = { ...base.meta, ...(input?.meta || {}), schemaVersion: 3, appName: 'Master Plan' };
+  data.projects = (Array.isArray(input?.projects) ? input.projects : []).map(normalizeProject).filter((project) => project.id !== HMM_PROJECT_ID);
+  const projectIds = new Set(data.projects.map((project) => project.id));
   data.captures = (Array.isArray(input?.captures) ? input.captures : []).map(normalizeCapture);
   data.suggestions = (Array.isArray(input?.suggestions) ? input.suggestions : []).map(normalizeSuggestion);
   data.tasks = Array.isArray(input?.tasks) ? input.tasks : [];
   data.checklists = Array.isArray(input?.checklists) ? input.checklists : [];
   data.questions = Array.isArray(input?.questions) ? input.questions : [];
+  data.notes = Array.isArray(input?.notes)
+    ? input.notes.map((note) => normalizeNote(note, projectIds)).filter((note) => note.text)
+    : migrateNotesFromLegacy(input || {}, data.projects);
+  data.completedTasks = (Array.isArray(input?.completedTasks) ? input.completedTasks : []).map((task) => ({
+    ...task,
+    id: task.id || `completed-${task.sourceNoteId || task.completedAt || Date.now()}`,
+    projectId: task.projectId && projectIds.has(task.projectId) ? task.projectId : null,
+    text: String(task.text || task.title || '').trim(),
+    priority: clampPriority(task.priority),
+    completedAt: task.completedAt || Date.now(),
+  })).filter((task) => task.text);
   data.badIdeaLog = Array.isArray(input?.badIdeaLog) ? input.badIdeaLog : [];
   data.inboxActionLog = Array.isArray(input?.inboxActionLog) ? input.inboxActionLog : [];
   data.questionFeedbackLog = Array.isArray(input?.questionFeedbackLog) ? input.questionFeedbackLog : [];
-  data.settings = { ...base.settings, lastSelectedProjectId: null, ...(input?.settings || {}) };
+  data.settings = { ...base.settings, lastSelectedProjectId: null, lastDestination: HMM_DESTINATION, ...(input?.settings || {}) };
   if (data.settings.lastSelectedProjectId && !data.projects.some((p) => p.id === data.settings.lastSelectedProjectId && p.status !== 'archived' && p.status !== 'hidden')) {
     data.settings.lastSelectedProjectId = data.projects.find((p) => p.status === 'active')?.id || null;
+  }
+  if (!data.settings.lastDestination || (data.settings.lastDestination !== HMM_DESTINATION && !projectIds.has(data.settings.lastDestination))) {
+    data.settings.lastDestination = HMM_DESTINATION;
   }
   data.settings.promptProfiles = Array.isArray(data.settings.promptProfiles) && data.settings.promptProfiles.length ? data.settings.promptProfiles : [buildDefaultPromptProfile()];
   data.settings.promptProfiles = data.settings.promptProfiles.map((profile) => ({ ...profile, promptActions: normalizePromptActions(profile.promptActions) }));

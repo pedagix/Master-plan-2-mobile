@@ -1,39 +1,209 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import ContentSection from '../components/ContentSection';
+import { Link, Navigate, useParams } from 'react-router-dom';
+import NoteCard from '../components/NoteCard';
+import NoteEditForm from '../components/NoteEditForm';
 import { fileToDataUrl } from '../lib/storage';
+import { HMM_PROJECT_ID, PROJECT_DESTINATION, getProjectName, getPriorityColor, sortByPriorityThenNewest } from '../lib/model';
 
 export default function ProjectDetailPage({ api }) {
   const { projectId } = useParams();
-  const project = useMemo(() => api.data.projects.find((p) => p.id === projectId), [api.data.projects, projectId]);
-  const [note, setNote] = useState('');
+  const project = useMemo(() => api.data.projects.find((item) => item.id === projectId), [api.data.projects, projectId]);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsDraft, setSettingsDraft] = useState({ name: '', description: '' });
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [newFormKey, setNewFormKey] = useState(0);
+
   useEffect(() => {
-    if (!projectId) return;
-    api.setData((prev) => ({ ...prev, projects: prev.projects.map((p) => p.id === projectId ? { ...p, lastInteractedAt: Date.now(), interactionCount: (p.interactionCount || 0) + 1 } : p) }));
+    if (!project) return;
+    setSettingsDraft({ name: getProjectName(project), description: project.description || '' });
+  }, [project?.id]);
+
+  useEffect(() => {
+    if (!projectId || projectId === HMM_PROJECT_ID) return;
+    api.setData((prev) => ({
+      ...prev,
+      projects: prev.projects.map((item) => item.id === projectId
+        ? { ...item, lastInteractedAt: Date.now(), interactionCount: (item.interactionCount || 0) + 1 }
+        : item),
+    }));
   }, [projectId]);
-  if (!project) return <p>Project not found</p>;
 
-  const patchProject = (fn) => api.setData((prev) => ({ ...prev, projects: prev.projects.map((p) => p.id === projectId ? fn(p) : p) }));
-  const addNote = () => { if (!note.trim()) return; patchProject((p) => ({ ...p, notes: [...p.notes, { id: crypto.randomUUID(), text: note, createdAt: Date.now() }], lastInteractedAt: Date.now(), interactionCount: (p.interactionCount || 0) + 1 })); setNote(''); };
-  const upload = async (e) => { const file = e.target.files?.[0]; if (!file) return; const url = await fileToDataUrl(file); patchProject((p) => ({ ...p, gallery: [...p.gallery, { id: crypto.randomUUID(), name: file.name, createdAt: Date.now(), previewUrl: url, noteId: null }], lastInteractedAt: Date.now(), interactionCount: (p.interactionCount || 0) + 1 })); };
+  if (projectId === HMM_PROJECT_ID) return <Navigate to="/hmm" replace />;
+  if (!project) return <div className="stack"><p>Project not found.</p><Link to="/ta-da">Back to Ta-da</Link></div>;
 
-  const captures = api.data.captures.filter((c) => c.projectId === projectId);
-  const approvedSuggestionStates = new Set(['approved', 'marked-important', 'converted-to-task', 'converted-to-checklist']);
-  const approvedSuggestions = api.data.suggestions.filter((s) => s.projectId === projectId && approvedSuggestionStates.has(s.state) && s.inboxStatus === 'approved');
-  const approvedTasks = (api.data.tasks || []).filter((t) => t.projectId === projectId);
-  const approvedChecklists = (api.data.checklists || []).filter((c) => c.projectId === projectId);
-  const approvedQuestions = (api.data.questions || []).filter((q) => q.projectId === projectId && q.state !== 'pending');
+  const projectNotes = (api.data.notes || []).filter((note) => !note.deleted && note.projectId === projectId);
+  const todos = projectNotes.filter((note) => note.isTodo).sort(sortByPriorityThenNewest);
+  const notes = projectNotes.filter((note) => !note.isTodo).sort(sortByPriorityThenNewest);
+  const editingNote = projectNotes.find((note) => note.id === editingNoteId) || null;
 
-  return <div className="stack"><h2>{project.title}</h2><p>{project.description}</p>
-    <div className="card"><h3>Project actions</h3><button onClick={() => patchProject((p) => ({ ...p, status: 'archived' }))}>Archive project</button></div>
-    <h3>Notes</h3><textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} /><button onClick={addNote}>Add Note</button>
-    {project.notes.map((n) => <div className="card" key={n.id}>{n.text}</div>)}
-    <ContentSection title="Captures" items={captures} headingLevel={3}>{captures.map((n) => <div className="card" key={n.id}>{n.text}</div>)}</ContentSection>
-    <ContentSection title="Approved Suggestions" items={approvedSuggestions} headingLevel={3}>{approvedSuggestions.map((s) => <div className="card" key={s.id}>{s.text}</div>)}</ContentSection>
-    <ContentSection title="Approved Next steps" items={approvedTasks} headingLevel={3}>{approvedTasks.map((t) => <div className="card" key={t.id}>{t.title}</div>)}</ContentSection>
-    <ContentSection title="Approved Checklists" items={approvedChecklists} headingLevel={3}>{approvedChecklists.map((c) => <div className="card" key={c.id}>{c.title}</div>)}</ContentSection>
-    <ContentSection title="Approved Follow-up Questions" items={approvedQuestions} headingLevel={3}>{approvedQuestions.map((q) => <div className="card" key={q.id}>{q.question}</div>)}</ContentSection>
-    <h3>Gallery</h3><input type="file" accept="image/*" onChange={upload} />
-    <div className="gallery">{[...project.gallery].sort((a,b)=>a.createdAt-b.createdAt).map((img) => <div className="img-card" key={img.id}><img src={img.previewUrl} alt={img.name} /><small>{img.name}</small></div>)}</div>
-  </div>;
+  const patchProject = (patch) => api.setData((prev) => ({
+    ...prev,
+    projects: prev.projects.map((item) => item.id === projectId ? { ...item, ...patch, updatedAt: Date.now() } : item),
+  }));
+
+  const saveProjectSettings = () => {
+    const name = settingsDraft.name.trim();
+    if (!name) return;
+    patchProject({ name, title: name, description: settingsDraft.description.trim() });
+    setSettingsOpen(false);
+  };
+
+  const setProjectStatus = (status) => {
+    const label = status === 'archived' ? 'Archive' : 'Hide';
+    if (!window.confirm(`${label} this project?`)) return;
+    patchProject({ status, archived: status === 'archived', hidden: status === 'hidden' });
+  };
+
+  const addNote = (patch) => {
+    const now = Date.now();
+    const note = {
+      id: crypto.randomUUID(),
+      ...patch,
+      createdAt: now,
+      updatedAt: now,
+      deleted: false,
+      sourceType: 'project-detail',
+      sourceId: projectId,
+    };
+    api.setData((prev) => ({
+      ...prev,
+      notes: [note, ...(prev.notes || [])],
+      projects: note.destination === PROJECT_DESTINATION ? prev.projects.map((item) => item.id === note.projectId
+        ? { ...item, updatedAt: now, lastInteractedAt: now, interactionCount: (item.interactionCount || 0) + 1 }
+        : item) : prev.projects,
+    }));
+    setNewFormKey((value) => value + 1);
+  };
+
+  const saveNoteEdit = (patch) => {
+    if (!editingNoteId) return;
+    const now = Date.now();
+    api.setData((prev) => ({
+      ...prev,
+      notes: (prev.notes || []).map((note) => note.id === editingNoteId ? { ...note, ...patch, updatedAt: now } : note),
+      projects: patch.destination === PROJECT_DESTINATION
+        ? prev.projects.map((item) => item.id === patch.projectId
+          ? { ...item, updatedAt: now, lastInteractedAt: now, interactionCount: (item.interactionCount || 0) + 1 }
+          : item)
+        : prev.projects,
+    }));
+    setEditingNoteId(null);
+  };
+
+  const deleteNote = (note) => {
+    if (!window.confirm('Delete this note?')) return;
+    const now = Date.now();
+    api.setData((prev) => ({
+      ...prev,
+      notes: (prev.notes || []).map((item) => item.id === note.id ? { ...item, deleted: true, deletedAt: now, updatedAt: now } : item),
+    }));
+    if (editingNoteId === note.id) setEditingNoteId(null);
+  };
+
+  const completeTodo = (note) => {
+    if (!window.confirm('Mark this task as done?')) return;
+    const now = Date.now();
+    const completed = {
+      id: crypto.randomUUID(),
+      sourceNoteId: note.id,
+      projectId,
+      text: note.text,
+      priority: note.priority,
+      completedAt: now,
+    };
+    api.setData((prev) => ({
+      ...prev,
+      notes: (prev.notes || []).map((item) => item.id === note.id
+        ? { ...item, deleted: true, deletedAt: now, completedAt: now, updatedAt: now }
+        : item),
+      completedTasks: [completed, ...(prev.completedTasks || [])],
+      projects: prev.projects.map((item) => item.id === projectId
+        ? { ...item, tasksDone: (item.tasksDone || 0) + 1, updatedAt: now, lastInteractedAt: now }
+        : item),
+    }));
+  };
+
+  const upload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const url = await fileToDataUrl(file);
+    patchProject({
+      gallery: [...(project.gallery || []), { id: crypto.randomUUID(), name: file.name, createdAt: Date.now(), previewUrl: url, noteId: null }],
+      lastInteractedAt: Date.now(),
+    });
+  };
+
+  return (
+    <div className="stack page-screen">
+      <div className="page-title-row">
+        <div>
+          <Link to="/ta-da" className="back-link">Ta-da</Link>
+          <h2>{getProjectName(project)}</h2>
+        </div>
+        <button type="button" className="secondary-button" onClick={() => setSettingsOpen((value) => !value)}>Settings</button>
+      </div>
+      {project.description && <p className="project-description">{project.description}</p>}
+
+      {settingsOpen && (
+        <section className="edit-panel stack">
+          <input value={settingsDraft.name} onChange={(event) => setSettingsDraft((prev) => ({ ...prev, name: event.target.value }))} placeholder="Project title" />
+          <textarea rows={3} value={settingsDraft.description} onChange={(event) => setSettingsDraft((prev) => ({ ...prev, description: event.target.value }))} placeholder="Description" />
+          <div className="actions">
+            <button type="button" onClick={saveProjectSettings}>Save settings</button>
+            <button type="button" className="secondary-button" onClick={() => setSettingsOpen(false)}>Cancel</button>
+            <button type="button" className="secondary-button" onClick={() => setProjectStatus('hidden')}>Hide</button>
+            <button type="button" className="danger-button" onClick={() => setProjectStatus('archived')}>Archive</button>
+          </div>
+        </section>
+      )}
+
+      <section className="stack">
+        <div className="section-title-row">
+          <h3>Checklist</h3>
+          <span className="done-counter">{project.tasksDone || 0} done</span>
+        </div>
+        {!todos.length && <p className="empty-state">No active to-dos.</p>}
+        {todos.map((todo) => (
+          <label key={todo.id} className="todo-row" style={{ '--priority-color': getPriorityColor(todo.priority) }}>
+            <input type="checkbox" checked={false} onChange={() => completeTodo(todo)} />
+            <span>{todo.text}</span>
+            <strong>P{todo.priority}</strong>
+          </label>
+        ))}
+      </section>
+
+      <section className="stack">
+        <h3>Add note</h3>
+        <NoteEditForm
+          key={`${projectId}-${newFormKey}`}
+          api={api}
+          initialNote={{ destination: PROJECT_DESTINATION, projectId, priority: 5, important: false, isTodo: false }}
+          submitLabel="Add note"
+          onSave={addNote}
+        />
+      </section>
+
+      <section className="stack">
+        <h3>Notes</h3>
+        {!notes.length && <p className="empty-state">No project notes.</p>}
+        {notes.map((note) => (
+          <NoteCard key={note.id} note={note} projects={api.data.projects} onEdit={() => setEditingNoteId(note.id)} onDelete={deleteNote}>
+            {editingNoteId === note.id && (
+              <div className="edit-panel">
+                <NoteEditForm api={api} initialNote={editingNote} submitLabel="Save note" onSave={saveNoteEdit} onCancel={() => setEditingNoteId(null)} />
+              </div>
+            )}
+          </NoteCard>
+        ))}
+      </section>
+
+      <details className="stack">
+        <summary>Gallery</summary>
+        <input type="file" accept="image/*" onChange={upload} />
+        <div className="gallery">{[...(project.gallery || [])].sort((a, b) => a.createdAt - b.createdAt).map((img) => (
+          <div className="img-card" key={img.id}><img src={img.previewUrl} alt={img.name} /><small>{img.name}</small></div>
+        ))}</div>
+      </details>
+    </div>
+  );
 }

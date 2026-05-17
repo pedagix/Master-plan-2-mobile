@@ -3,13 +3,11 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import { localDataStore } from './services/localDataStore';
 import { isFirebaseConfigured, listenToAuthState, loadUserData, saveUserData, signInWithGoogle } from './services/firebase';
-import HomePage from './pages/HomePage';
-import CapturePage from './pages/CapturePage';
-import ProjectsPage from './pages/ProjectsPage';
+import AhaPage from './pages/AhaPage';
+import HmmPage from './pages/HmmPage';
+import TaDaPage from './pages/TaDaPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
-import NotesProcessorPage from './pages/NotesProcessorPage';
 import SettingsPage from './pages/SettingsPage';
-import RawNotesPage from './pages/RawNotesPage';
 import { buildResetData, migrateData } from './lib/model';
 
 function LoginGate() { return <div className="stack"><h2>Sign in to Master Plan</h2><p>Use Google sign-in to sync your private data with Firebase.</p><button onClick={() => signInWithGoogle()}>Sign in with Google</button></div>; }
@@ -74,19 +72,22 @@ export default function App() {
     resetAppData,
   }), [data, importLocalDataToFirebase, resetAppData, user]);
 
-  if (isFirebaseConfigured && user === undefined) return <div className="stack"><p>Checking authentication…</p></div>;
+  if (isFirebaseConfigured && user === undefined) return <div className="stack"><p>Checking authentication...</p></div>;
   if (isFirebaseConfigured && !user) return <Layout><LoginGate /></Layout>;
 
   return <Layout><Routes>
-    <Route path="/" element={<HomePage api={api} />} />
-    <Route path="/capture" element={<CapturePage api={api} />} />
-    <Route path="/projects" element={<ProjectsPage api={api} />} />
+    <Route path="/" element={<Navigate to="/aha" replace />} />
+    <Route path="/aha" element={<AhaPage api={api} />} />
+    <Route path="/hmm" element={<HmmPage api={api} />} />
+    <Route path="/ta-da" element={<TaDaPage api={api} />} />
     <Route path="/projects/:projectId" element={<ProjectDetailPage api={api} />} />
-    <Route path="/notes-processor" element={<NotesProcessorPage api={api} />} />
-    <Route path="/inbox" element={<Navigate to="/notes-processor" replace />} />
-    <Route path="/ideas" element={<RawNotesPage api={api} />} />
-    <Route path="/raw-notes" element={<Navigate to="/ideas" replace />} />
+    <Route path="/capture" element={<Navigate to="/aha" replace />} />
+    <Route path="/projects" element={<Navigate to="/ta-da" replace />} />
+    <Route path="/notes-processor" element={<Navigate to="/hmm" replace />} />
+    <Route path="/inbox" element={<Navigate to="/hmm" replace />} />
+    <Route path="/ideas" element={<Navigate to="/hmm" replace />} />
+    <Route path="/raw-notes" element={<Navigate to="/hmm" replace />} />
     <Route path="/settings" element={<SettingsPage api={api} />} />
-    <Route path="*" element={<Navigate to="/" replace />} />
+    <Route path="*" element={<Navigate to="/aha" replace />} />
   </Routes></Layout>;
 }
