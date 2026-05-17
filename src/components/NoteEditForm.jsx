@@ -131,18 +131,19 @@ export default function NoteEditForm({
           <span>Priority</span>
           <strong>{priority}</strong>
         </div>
-        <div className="priority-grid" role="group" aria-label="Priority level">
-          {Array.from({ length: 10 }, (_, index) => index + 1).map((level) => (
-            <button
-              key={level}
-              type="button"
-              className={level === priority ? 'selected' : ''}
-              style={{ '--priority-color': getPriorityColor(level) }}
-              onClick={() => setPriority(level)}
-            >
-              {level}
-            </button>
-          ))}
+        <div className="priority-slider-wrap">
+          <span className="priority-scale-label">1</span>
+          <input
+            className="priority-slider"
+            type="range"
+            min={1}
+            max={10}
+            step={1}
+            value={priority}
+            aria-label="Priority level"
+            onChange={(event) => setPriority(clampPriority(Number(event.target.value)))}
+          />
+          <span className="priority-scale-label">10</span>
         </div>
       </div>
 
