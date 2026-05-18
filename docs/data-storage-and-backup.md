@@ -10,13 +10,13 @@
 - `localDataStore.save()` writes migrated full-state JSON back to `master_plan_v1`.
 
 ### Cloud sync (optional, only when Firebase is configured + user signed in)
-- On each local state change, the app saves local first, then enqueues Firestore save in the background.
+- On each local state change, the app saves local first. Firestore save is queued **only after initial login hydration/merge completes** for the signed-in user.
 - Firestore is structured per user:
   - `users/{uid}/projects/{projectId}`
   - `users/{uid}/notes/{captureId}` (this collection stores **captures**)
   - `users/{uid}/suggestions/{suggestionId}`
   - `users/{uid}/galleryImages/{imageId}`
-- On login, cloud data is loaded and migrated into current in-memory state.
+- On login, cloud data is loaded, compared with local state, safely merged, and only then cloud writes are allowed.
 
 ## 2) Full JSON structure (schema v3)
 
@@ -170,9 +170,13 @@ Each action has configurable: `title`, `description`, `enabled`, `prompt`.
   - Canonical app-state fields are stored on `users/{uid}` (meta/settings/aiInstructions/notes/completedTasks/tasks/checklists/questions/logs/questionLearningSettings).
   - Cloud collections remain as before for operational data: `projects`, `notes` (captures), `suggestions`, and `galleryImages`.
 - On cloud load, the app now **safe-merges** remote data into current local state:
-  - `projects/captures/suggestions` always come from cloud.
-  - Canonical/root fields are only replaced if they are explicitly present on the remote payload; otherwise local values are preserved.
-- This prevents accidental loss of local-only fields when loading legacy Firestore users that do not yet have canonical root fields.
+  - Canonical/root fields are replaced only when explicitly present on remote payload; missing remote root fields keep local values.
+  - `projects/captures/suggestions` are merged by `id` (not blindly replaced).
+  - For same `id`: if both have numeric `updatedAt`, newer wins.
+  - If `updatedAt` is missing on either side, local data is preserved (remote does not delete local by omission).
+  - Remote-only ids are added; local-only ids are retained unless an explicit reset/delete flow is used.
+- If Firestore has no meaningful collection data (projects/captures/suggestions empty or non-usable) and local has data, local state is kept and uploaded to Firestore (first-login cloud seeding).
+- This prevents empty/partial/legacy Firestore reads from silently erasing unsynced local items.
 
 ## 9) Legacy compatibility and migration cleanup
 
@@ -183,8 +187,10 @@ Each action has configurable: `title`, `description`, `enabled`, `prompt`.
 ## 10) Operational summary
 
 1. App boots from local storage (`master_plan_v1`) -> migrate -> state.
-2. If Firebase user available, remote load fetches cloud data and safe-merges it with local state (preserving local-only fields when remote fields are missing).
-3. Any state change saves locally immediately; cloud sync runs queued best-effort.
-4. Exports create full JSON backup files.
-5. Risky ops can snapshot full rollback states locally.
-6. Delete/reset tools clear note data locally and optionally across Firestore according to dedicated cleanup logic.
+2. If Firebase user is available, remote load fetches cloud data and safe-merges it with local state (including id-based collection merges and local-first protection when remote is empty/partial).
+3. During that initial remote decision window, cloud saves are blocked (local saves still run).
+4. If remote is effectively empty and local has meaningful data, local data is pushed to Firestore.
+5. After hydration completes, state changes continue to save locally immediately and queue cloud sync best-effort.
+6. Exports create full JSON backup files.
+7. Risky ops can snapshot full rollback states locally.
+8. Delete/reset tools clear note data locally and optionally across Firestore according to dedicated cleanup logic.
