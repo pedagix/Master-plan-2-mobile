@@ -187,9 +187,11 @@ Each action has configurable: `title`, `description`, `enabled`, `prompt`.
   - Remote-only ids are added; local-only ids are retained unless an explicit reset/delete flow is used.
 - Intentional deletion overrides safe merge:
   - `buildResetData()` writes `meta.destructiveResetAt`.
-  - During cloud hydration, if remote has an equal/newer `destructiveResetAt` than local, remote clean state is used directly instead of id-merge protection.
-  - If local has a newer destructive reset marker, merge keeps local clean arrays (`projects`, `captures`, `suggestions`, `notes`, task/checklist/question/log arrays) and blocks remote-only project rehydration until remote is clearly newer.
-  - This prevents deleted projects from being rehydrated after reload or login.
+  - During cloud hydration, `meta.destructiveResetAt` is treated as a cutoff timestamp, not a permanent reset mode.
+  - Remote entities older than the reset cutoff are filtered out and cannot be rehydrated.
+  - If local and remote share the same reset marker and remote is still empty, local post-reset entities (newly created projects/notes/suggestions) are preserved and reseeded to Firestore.
+  - If local has a newer destructive reset marker, local post-reset data is preserved and stale remote payloads cannot wipe it.
+  - This prevents deleted pre-reset projects from returning while still allowing newly created post-reset data to survive reload/login.
 - If Firestore has no meaningful collection data (projects/captures/suggestions empty or non-usable) and local has data, local state is kept and uploaded to Firestore (first-login cloud seeding).
 - This prevents empty/partial/legacy Firestore reads from silently erasing unsynced local items.
 
@@ -209,3 +211,14 @@ Each action has configurable: `title`, `description`, `enabled`, `prompt`.
 6. Exports create full JSON backup files.
 7. Risky ops can snapshot full rollback states locally.
 8. “Delete all app data” intentionally clears local and cloud user data, and its reset marker overrides normal safe-merge preservation behavior.
+
+## 11) Manual destructive-reset regression checklist
+
+- Delete all app data from Settings (type `DELETE` to confirm).
+- Create a new project.
+- Create a new note and assign it to that project.
+- On mobile, pull-to-refresh / reload the page.
+- Confirm the new project and note still exist (Aha dropdown + Ta-da list).
+- Wait 2 minutes, then confirm the same data still exists.
+- Log out and log back in.
+- Confirm the same project and note still exist, and old pre-reset data did not return.

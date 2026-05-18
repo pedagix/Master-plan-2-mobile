@@ -47,13 +47,60 @@ function mergeEntityArrays(localItems = [], remoteItems = []) {
   return [...localById.values()];
 }
 
+function hasPostResetEntities(items = [], resetAtMs = Number.NaN) {
+  if (!Number.isFinite(resetAtMs)) return false;
+  return (Array.isArray(items) ? items : []).some((item) => {
+    const createdAt = Number(item?.createdAt);
+    const updatedAt = Number(item?.updatedAt);
+    return (Number.isFinite(createdAt) && createdAt >= resetAtMs) || (Number.isFinite(updatedAt) && updatedAt >= resetAtMs);
+  });
+}
+
+function filterPreResetEntities(items = [], resetAtMs = Number.NaN) {
+  if (!Number.isFinite(resetAtMs)) return Array.isArray(items) ? items : [];
+  return (Array.isArray(items) ? items : []).filter((item) => {
+    const createdAt = Number(item?.createdAt);
+    const updatedAt = Number(item?.updatedAt);
+    if (!Number.isFinite(createdAt) && !Number.isFinite(updatedAt)) return false;
+    return (Number.isFinite(createdAt) && createdAt >= resetAtMs) || (Number.isFinite(updatedAt) && updatedAt >= resetAtMs);
+  });
+}
+
 function mergeRemoteIntoLocal(localData, remoteData) {
   const local = migrateData(localData);
   const remote = migrateData(remoteData || {});
   const remoteResetAt = Date.parse(remote?.meta?.destructiveResetAt || '');
   const localResetAt = Date.parse(local?.meta?.destructiveResetAt || '');
-  if (Number.isFinite(remoteResetAt) && (!Number.isFinite(localResetAt) || remoteResetAt >= localResetAt)) {
-    return remote;
+  const hasLocalPostResetData = hasPostResetEntities(local.projects, localResetAt) || hasPostResetEntities(local.captures, localResetAt) || hasPostResetEntities(local.suggestions, localResetAt);
+
+  if (Number.isFinite(remoteResetAt) && (!Number.isFinite(localResetAt) || remoteResetAt > localResetAt)) {
+    return migrateData({
+      ...remote,
+      projects: filterPreResetEntities(remote.projects, remoteResetAt),
+      captures: filterPreResetEntities(remote.captures, remoteResetAt),
+      suggestions: filterPreResetEntities(remote.suggestions, remoteResetAt),
+    });
+  }
+  if (Number.isFinite(remoteResetAt) && Number.isFinite(localResetAt) && remoteResetAt === localResetAt) {
+    if (!hasMeaningfulFirestoreData(remote) && hasLocalPostResetData) return local;
+    return migrateData({
+      ...local,
+      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'meta') ? { meta: remote.meta } : {}),
+      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'settings') ? { settings: remote.settings } : {}),
+      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'aiInstructions') ? { aiInstructions: remote.aiInstructions } : {}),
+      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'notes') ? { notes: remote.notes } : {}),
+      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'completedTasks') ? { completedTasks: remote.completedTasks } : {}),
+      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'tasks') ? { tasks: remote.tasks } : {}),
+      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'checklists') ? { checklists: remote.checklists } : {}),
+      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'questions') ? { questions: remote.questions } : {}),
+      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'badIdeaLog') ? { badIdeaLog: remote.badIdeaLog } : {}),
+      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'inboxActionLog') ? { inboxActionLog: remote.inboxActionLog } : {}),
+      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'questionFeedbackLog') ? { questionFeedbackLog: remote.questionFeedbackLog } : {}),
+      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'questionLearningSettings') ? { questionLearningSettings: remote.questionLearningSettings } : {}),
+      projects: mergeEntityArrays(local.projects, filterPreResetEntities(remote.projects, remoteResetAt)),
+      captures: mergeEntityArrays(local.captures, filterPreResetEntities(remote.captures, remoteResetAt)),
+      suggestions: mergeEntityArrays(local.suggestions, filterPreResetEntities(remote.suggestions, remoteResetAt)),
+    });
   }
   if (Number.isFinite(localResetAt) && (!Number.isFinite(remoteResetAt) || remoteResetAt < localResetAt)) {
     return migrateData({
@@ -62,17 +109,17 @@ function mergeRemoteIntoLocal(localData, remoteData) {
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'settings') ? { settings: remote.settings } : {}),
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'aiInstructions') ? { aiInstructions: remote.aiInstructions } : {}),
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'questionLearningSettings') ? { questionLearningSettings: remote.questionLearningSettings } : {}),
-      projects: [],
-      captures: [],
-      suggestions: [],
-      notes: [],
-      completedTasks: [],
-      tasks: [],
-      checklists: [],
-      questions: [],
-      badIdeaLog: [],
-      inboxActionLog: [],
-      questionFeedbackLog: [],
+      projects: local.projects,
+      captures: local.captures,
+      suggestions: local.suggestions,
+      notes: local.notes,
+      completedTasks: local.completedTasks,
+      tasks: local.tasks,
+      checklists: local.checklists,
+      questions: local.questions,
+      badIdeaLog: local.badIdeaLog,
+      inboxActionLog: local.inboxActionLog,
+      questionFeedbackLog: local.questionFeedbackLog,
     });
   }
   const has = (key) => Object.prototype.hasOwnProperty.call(remoteData || {}, key);
