@@ -114,7 +114,14 @@ This means nearly any imported JSON shape is coerced into stable schema v3.
 - Settings provides one destructive clean-slate action: **“Delete all app data.”**
 - It requires explicit confirmation and typed `DELETE` before execution.
 - It creates a local rollback snapshot first (if rollback storage is available), then replaces active state with a clean migrated `buildResetData()` payload.
+- It performs an explicit signed-in Firestore purge for the current user before finalizing cloud reset state:
+  - Deletes all docs under `users/{uid}/projects/*`
+  - Deletes all docs under `users/{uid}/notes/*` (captures)
+  - Deletes all docs under `users/{uid}/suggestions/*`
+  - Deletes all docs under `users/{uid}/galleryImages/*`
+  - Overwrites canonical root app-data fields on `users/{uid}` with the clean reset payload, including `meta.destructiveResetAt`.
 - It deletes user-created data including: projects, project galleries, captures, canonical notes, suggestions, tasks, completed tasks, checklists, questions, `badIdeaLog`, `inboxActionLog`, `questionFeedbackLog`, and legacy local note keys.
+- Project selection defaults are also reset so deleted project ids are not retained in `settings.lastSelectedProjectId` or `settings.lastDestination`.
 - It also clears saved rollback snapshots after the wipe.
 - Firebase Auth users are intentionally not deleted.
 
@@ -181,6 +188,7 @@ Each action has configurable: `title`, `description`, `enabled`, `prompt`.
 - Intentional deletion overrides safe merge:
   - `buildResetData()` writes `meta.destructiveResetAt`.
   - During cloud hydration, if remote has an equal/newer `destructiveResetAt` than local, remote clean state is used directly instead of id-merge protection.
+  - If local has a newer destructive reset marker, merge keeps local clean arrays (`projects`, `captures`, `suggestions`, `notes`, task/checklist/question/log arrays) and blocks remote-only project rehydration until remote is clearly newer.
   - This prevents deleted projects from being rehydrated after reload or login.
 - If Firestore has no meaningful collection data (projects/captures/suggestions empty or non-usable) and local has data, local state is kept and uploaded to Firestore (first-login cloud seeding).
 - This prevents empty/partial/legacy Firestore reads from silently erasing unsynced local items.

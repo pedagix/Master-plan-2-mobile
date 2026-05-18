@@ -323,6 +323,40 @@ export async function saveUserData(uid: string, data: any) {
   await batch.commit();
 }
 
+export async function deleteAllAppDataForUser(uid: string, cleanResetData: any) {
+  if (!db) throw new Error('Firebase is not configured.');
+
+  const [projectsSnap, notesSnap, suggestionsSnap, gallerySnap] = await Promise.all([
+    getDocs(collection(db, `users/${uid}/projects`)),
+    getDocs(collection(db, `users/${uid}/notes`)),
+    getDocs(collection(db, `users/${uid}/suggestions`)),
+    getDocs(collection(db, `users/${uid}/galleryImages`)),
+  ]);
+
+  const refsToDelete = [
+    ...projectsSnap.docs.map((snapshot) => snapshot.ref),
+    ...notesSnap.docs.map((snapshot) => snapshot.ref),
+    ...suggestionsSnap.docs.map((snapshot) => snapshot.ref),
+    ...gallerySnap.docs.map((snapshot) => snapshot.ref),
+  ];
+
+  await applyBatchWrites(refsToDelete, (batch, ref) => {
+    batch.delete(ref);
+  });
+
+  const resetPayload = pickCanonicalUserPayload(cleanResetData);
+  const userRef = doc(db, `users/${uid}`);
+  await writeBatch(db).set(userRef, resetPayload, { merge: true }).commit();
+
+  return {
+    deletedProjects: projectsSnap.size,
+    deletedNotes: notesSnap.size,
+    deletedSuggestions: suggestionsSnap.size,
+    deletedGalleryImages: gallerySnap.size,
+    deletedDocs: refsToDelete.length,
+  };
+}
+
 export async function deleteAllNoteDataForAllUsers() {
   if (!db) throw new Error('Firebase is not configured.');
 
