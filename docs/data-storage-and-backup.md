@@ -166,13 +166,13 @@ Each action has configurable: `title`, `description`, `enabled`, `prompt`.
 ## 8) Firestore vs local schema differences (important)
 
 - Local canonical state keeps many arrays (`notes`, `captures`, `suggestions`, `questions`, etc.) in one JSON object.
-- Current Firestore sync persists only:
-  - projects
-  - captures (in `users/{uid}/notes`)
-  - suggestions
-  - gallery images
-- On cloud load, returned object contains `{ projects, captures, suggestions }` and then local `migrateData(...)` fills missing sections with defaults.
-- This means some local-only sections are not yet fully represented as first-class Firestore collections in current implementation.
+- Firestore sync persists two layers:
+  - Canonical app-state fields are stored on `users/{uid}` (meta/settings/aiInstructions/notes/completedTasks/tasks/checklists/questions/logs/questionLearningSettings).
+  - Cloud collections remain as before for operational data: `projects`, `notes` (captures), `suggestions`, and `galleryImages`.
+- On cloud load, the app now **safe-merges** remote data into current local state:
+  - `projects/captures/suggestions` always come from cloud.
+  - Canonical/root fields are only replaced if they are explicitly present on the remote payload; otherwise local values are preserved.
+- This prevents accidental loss of local-only fields when loading legacy Firestore users that do not yet have canonical root fields.
 
 ## 9) Legacy compatibility and migration cleanup
 
@@ -183,7 +183,7 @@ Each action has configurable: `title`, `description`, `enabled`, `prompt`.
 ## 10) Operational summary
 
 1. App boots from local storage (`master_plan_v1`) -> migrate -> state.
-2. If Firebase user available, remote load replaces local state with migrated cloud payload.
+2. If Firebase user available, remote load fetches cloud data and safe-merges it with local state (preserving local-only fields when remote fields are missing).
 3. Any state change saves locally immediately; cloud sync runs queued best-effort.
 4. Exports create full JSON backup files.
 5. Risky ops can snapshot full rollback states locally.
