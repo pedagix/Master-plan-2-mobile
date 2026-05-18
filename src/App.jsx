@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import { localDataStore } from './services/localDataStore';
 import {
+  deleteAllAppDataForUser,
   isFirebaseConfigured,
   listenToAuthState,
   loadUserData,
@@ -53,6 +54,26 @@ function mergeRemoteIntoLocal(localData, remoteData) {
   const localResetAt = Date.parse(local?.meta?.destructiveResetAt || '');
   if (Number.isFinite(remoteResetAt) && (!Number.isFinite(localResetAt) || remoteResetAt >= localResetAt)) {
     return remote;
+  }
+  if (Number.isFinite(localResetAt) && (!Number.isFinite(remoteResetAt) || remoteResetAt < localResetAt)) {
+    return migrateData({
+      ...local,
+      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'meta') ? { meta: { ...remote.meta, destructiveResetAt: local.meta.destructiveResetAt } } : {}),
+      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'settings') ? { settings: remote.settings } : {}),
+      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'aiInstructions') ? { aiInstructions: remote.aiInstructions } : {}),
+      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'questionLearningSettings') ? { questionLearningSettings: remote.questionLearningSettings } : {}),
+      projects: [],
+      captures: [],
+      suggestions: [],
+      notes: [],
+      completedTasks: [],
+      tasks: [],
+      checklists: [],
+      questions: [],
+      badIdeaLog: [],
+      inboxActionLog: [],
+      questionFeedbackLog: [],
+    });
   }
   const has = (key) => Object.prototype.hasOwnProperty.call(remoteData || {}, key);
   return migrateData({
@@ -134,15 +155,27 @@ export default function App() {
   }, [enqueueRemoteSave, user?.uid]);
   const deleteAllAppData = useCallback(async () => {
     remoteLoadVersionRef.current += 1;
+    setIsRemoteHydrationComplete(!isFirebaseConfigured || !user?.uid);
     const rollbackSnapshot = localDataStore.saveRollbackSnapshot?.(data, 'Before deleting all app data');
-    const cleaned = buildResetData();
+    const destructiveResetAt = new Date().toISOString();
+    const baseResetData = buildResetData();
+    const cleaned = migrateData({
+      ...baseResetData,
+      meta: {
+        ...baseResetData.meta,
+        destructiveResetAt,
+      },
+    });
     localDataStore.save(cleaned);
     localDataStore.clearRollbacks?.();
     const removedLegacyKeys = localDataStore.clearLegacyNoteLocalKeys?.() || [];
     setData(cleaned);
-    if (isFirebaseConfigured && user?.uid) await enqueueRemoteSave(user.uid, cleaned);
-    return { rollbackSnapshotId: rollbackSnapshot?.id || null, localRemovedKeys: removedLegacyKeys };
-  }, [data, enqueueRemoteSave, user?.uid]);
+    let purgeReport = null;
+    if (isFirebaseConfigured && user?.uid) {
+      purgeReport = await deleteAllAppDataForUser(user.uid, cleaned);
+    }
+    return { rollbackSnapshotId: rollbackSnapshot?.id || null, localRemovedKeys: removedLegacyKeys, purgeReport };
+  }, [data, user?.uid]);
 
   const api = useMemo(() => ({
     data, setData, user,
