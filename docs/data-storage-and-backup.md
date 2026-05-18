@@ -172,8 +172,8 @@ Each action has configurable: `title`, `description`, `enabled`, `prompt`.
 - On cloud load, the app now **safe-merges** remote data into current local state:
   - Canonical/root fields are replaced only when explicitly present on remote payload; missing remote root fields keep local values.
   - `projects/captures/suggestions` are merged by `id` (not blindly replaced).
-  - For same `id`: if both have numeric `updatedAt`, newer wins.
-  - If `updatedAt` is missing on either side, local data is preserved (remote does not delete local by omission).
+  - For same `id`: if both have valid numeric `updatedAt`, newer wins; ties keep local.
+  - If either `updatedAt` is missing, invalid, or otherwise unclear, local data is preserved (remote does not overwrite local by ambiguity/omission).
   - Remote-only ids are added; local-only ids are retained unless an explicit reset/delete flow is used.
 - If Firestore has no meaningful collection data (projects/captures/suggestions empty or non-usable) and local has data, local state is kept and uploaded to Firestore (first-login cloud seeding).
 - This prevents empty/partial/legacy Firestore reads from silently erasing unsynced local items.
