@@ -3,7 +3,6 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import { localDataStore } from './services/localDataStore';
 import {
-  deleteAllNoteDataForAllUsers,
   isFirebaseConfigured,
   listenToAuthState,
   loadUserData,
@@ -15,7 +14,7 @@ import HmmPage from './pages/HmmPage';
 import TaDaPage from './pages/TaDaPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import SettingsPage from './pages/SettingsPage';
-import { buildGlobalNoteCleanupData, buildResetData, migrateData } from './lib/model';
+import { buildResetData, migrateData } from './lib/model';
 
 function LoginGate() { return <div className="stack"><h2>Sign in to Master Plan</h2><p>Use Google sign-in to sync your private data with Firebase.</p><button onClick={() => signInWithGoogle()}>Sign in with Google</button></div>; }
 
@@ -50,6 +49,11 @@ function mergeEntityArrays(localItems = [], remoteItems = []) {
 function mergeRemoteIntoLocal(localData, remoteData) {
   const local = migrateData(localData);
   const remote = migrateData(remoteData || {});
+  const remoteResetAt = Date.parse(remote?.meta?.destructiveResetAt || '');
+  const localResetAt = Date.parse(local?.meta?.destructiveResetAt || '');
+  if (Number.isFinite(remoteResetAt) && (!Number.isFinite(localResetAt) || remoteResetAt >= localResetAt)) {
+    return remote;
+  }
   const has = (key) => Object.prototype.hasOwnProperty.call(remoteData || {}, key);
   return migrateData({
     ...local,
@@ -128,24 +132,16 @@ export default function App() {
     if (isFirebaseConfigured && user?.uid) await enqueueRemoteSave(user.uid, resetData);
     return resetData;
   }, [enqueueRemoteSave, user?.uid]);
-  const deleteAllNotesForAllUsers = useCallback(async () => {
+  const deleteAllAppData = useCallback(async () => {
     remoteLoadVersionRef.current += 1;
-    const remoteReport = isFirebaseConfigured
-      ? await deleteAllNoteDataForAllUsers()
-      : {
-        touchedUsers: 0,
-        deletedDocs: 0,
-        patchedUserDocs: 0,
-        patchedProjectDocs: 0,
-        patchedGalleryDocs: 0,
-        collectionGroupsDeleted: {},
-        cleanupErrors: [],
-      };
-    const localResult = localDataStore.purgeLocalNoteData?.(data);
-    const cleaned = localResult?.data || buildGlobalNoteCleanupData(data);
+    const rollbackSnapshot = localDataStore.saveRollbackSnapshot?.(data, 'Before deleting all app data');
+    const cleaned = buildResetData();
+    localDataStore.save(cleaned);
+    localDataStore.clearRollbacks?.();
+    const removedLegacyKeys = localDataStore.clearLegacyNoteLocalKeys?.() || [];
     setData(cleaned);
     if (isFirebaseConfigured && user?.uid) await enqueueRemoteSave(user.uid, cleaned);
-    return { ...remoteReport, localRemovedKeys: localResult?.removedLegacyKeys || [] };
+    return { rollbackSnapshotId: rollbackSnapshot?.id || null, localRemovedKeys: removedLegacyKeys };
   }, [data, enqueueRemoteSave, user?.uid]);
 
   const api = useMemo(() => ({
@@ -159,8 +155,8 @@ export default function App() {
     clearRollbacks: () => localDataStore.clearRollbacks?.(),
     deleteRollbackById: (id) => localDataStore.deleteRollbackById?.(id),
     resetAppData,
-    deleteAllNotesForAllUsers,
-  }), [data, deleteAllNotesForAllUsers, importLocalDataToFirebase, resetAppData, user]);
+    deleteAllAppData,
+  }), [data, deleteAllAppData, importLocalDataToFirebase, resetAppData, user]);
 
   if (isFirebaseConfigured && user === undefined) return <div className="stack"><p>Checking authentication...</p></div>;
   if (isFirebaseConfigured && !user) return <Layout><LoginGate /></Layout>;

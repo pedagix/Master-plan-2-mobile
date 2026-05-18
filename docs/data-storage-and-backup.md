@@ -110,18 +110,21 @@ This means nearly any imported JSON shape is coerced into stable schema v3.
 - Canonical `notes[]` deletes are usually **soft deletes** (`deleted: true`, `deletedAt`), preserving record history in same array.
 - Some destructive maintenance actions perform **hard cleanup** (array/field/document removal), described below.
 
-### Reset app data
-- “Reset app data” replaces active state with `buildResetData()` (empty projects/notes/captures/suggestions/tasks/checklists/questions/logs, default settings/AI profile), clears rollback snapshots locally, and syncs reset state to cloud if signed in.
-
-### Global note cleanup (development tool)
-- “Delete all notes” triggers both cloud and local cleanup.
-- Local cleanup uses `buildGlobalNoteCleanupData(...)`, which clears note-related arrays and strips legacy note fields from projects, resets project `tasksDone`, clears rollbacks, and removes legacy `master_plan_*` localStorage note keys.
-- Cloud cleanup:
-  1. Deletes documents from many historical note-related collection groups.
-  2. Patches top-level `users` docs to delete note-related fields.
-  3. Patches `projects` docs to delete note-related fields + reset `tasksDone` and `updatedAt`.
-  4. Patches `galleryImages` docs to remove note linkage fields (`noteId`, `sourceNoteId`, `sourceCaptureId`, `sourceSuggestionId`).
+### Delete all app data
+- Settings provides one destructive clean-slate action: **“Delete all app data.”**
+- It requires explicit confirmation and typed `DELETE` before execution.
+- It creates a local rollback snapshot first (if rollback storage is available), then replaces active state with a clean migrated `buildResetData()` payload.
+- It deletes user-created data including: projects, project galleries, captures, canonical notes, suggestions, tasks, completed tasks, checklists, questions, `badIdeaLog`, `inboxActionLog`, `questionFeedbackLog`, and legacy local note keys.
+- It also clears saved rollback snapshots after the wipe.
 - Firebase Auth users are intentionally not deleted.
+
+### What remains after deletion
+- Only minimum run-required defaults remain:
+  - schema/meta defaults,
+  - default settings and prompt profile scaffolding,
+  - default AI instruction scaffolding,
+  - default question-learning settings.
+- User-created projects/content are removed. The `hmm` flow remains a workflow destination, not a persisted normal project card.
 
 ## 7) Categories, states, and options in stored data
 
@@ -175,6 +178,10 @@ Each action has configurable: `title`, `description`, `enabled`, `prompt`.
   - For same `id`: if both have valid numeric `updatedAt`, newer wins; ties keep local.
   - If either `updatedAt` is missing, invalid, or otherwise unclear, local data is preserved (remote does not overwrite local by ambiguity/omission).
   - Remote-only ids are added; local-only ids are retained unless an explicit reset/delete flow is used.
+- Intentional deletion overrides safe merge:
+  - `buildResetData()` writes `meta.destructiveResetAt`.
+  - During cloud hydration, if remote has an equal/newer `destructiveResetAt` than local, remote clean state is used directly instead of id-merge protection.
+  - This prevents deleted projects from being rehydrated after reload or login.
 - If Firestore has no meaningful collection data (projects/captures/suggestions empty or non-usable) and local has data, local state is kept and uploaded to Firestore (first-login cloud seeding).
 - This prevents empty/partial/legacy Firestore reads from silently erasing unsynced local items.
 
@@ -193,4 +200,4 @@ Each action has configurable: `title`, `description`, `enabled`, `prompt`.
 5. After hydration completes, state changes continue to save locally immediately and queue cloud sync best-effort.
 6. Exports create full JSON backup files.
 7. Risky ops can snapshot full rollback states locally.
-8. Delete/reset tools clear note data locally and optionally across Firestore according to dedicated cleanup logic.
+8. “Delete all app data” intentionally clears local and cloud user data, and its reset marker overrides normal safe-merge preservation behavior.

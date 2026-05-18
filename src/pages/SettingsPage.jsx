@@ -102,44 +102,29 @@ export default function SettingsPage({ api }) {
     setImportMessage('Plain text imported into Hmm.');
   };
 
-  const resetAppData = () => {
-    setImportMessage('Resetting app data...');
-    api.resetAppData?.()
-      .then(() => {
-        setPreview(null);
-        setPasteText('');
-        setRollbackInfoOpen(false);
-        setImportMessage('App data reset. Projects, notes, completed tasks, legacy AI items, logs, and rollback snapshots are empty.');
-      })
-      .catch((error) => {
-        console.warn('Failed to finish app data reset.', error);
-        setImportMessage('Local app data was reset, but cloud sync may not have finished. Check your connection and try Reset app data again if old notes reappear.');
-      });
-  };
-
-  const deleteAllNotesEverywhere = async () => {
+  const deleteAllAppData = async () => {
     if (cleanupBusy) return;
-    const warning = 'You are about to delete all note-related data from all users. This is meant for development cleanup. Firebase Auth users will not be deleted. Projects should remain if they can be kept separate from notes. Continue?';
+    const warning = 'This deletes all projects, notes, tasks, galleries, suggestions, settings, and app data. This cannot be undone unless you have exported a backup.';
     if (!window.confirm(warning)) return;
-    const typed = window.prompt('Type DELETE NOTES to confirm global note cleanup.');
-    if (typed !== 'DELETE NOTES') {
-      setImportMessage('Global note cleanup canceled: confirmation text did not match.');
+    const typed = window.prompt('Type DELETE to confirm permanent deletion of all app data.');
+    if (typed !== 'DELETE') {
+      setImportMessage('Delete all app data canceled: confirmation text did not match.');
       return;
     }
 
     setCleanupBusy(true);
     setCleanupReport(null);
-    setImportMessage('Deleting note-related data from Firestore and local state...');
+    setImportMessage('Deleting all app data from local storage and Firestore...');
     try {
-      const report = await api.deleteAllNotesForAllUsers?.();
+      const report = await api.deleteAllAppData?.();
       setCleanupReport(report || null);
       setPreview(null);
       setPasteText('');
       setRollbackInfoOpen(false);
-      setImportMessage('Global note cleanup completed. Notes were removed from all users where Firestore permissions allowed.');
+      setImportMessage('Delete all app data completed. Your app now starts from a clean slate.');
     } catch (error) {
-      console.warn('Global note cleanup failed.', error);
-      setImportMessage('Global note cleanup failed. Firebase Auth users were not touched. Check Firestore permissions and try again.');
+      console.warn('Delete all app data failed.', error);
+      setImportMessage('Delete all app data failed. Check your connection and try again.');
     } finally {
       setCleanupBusy(false);
     }
@@ -157,8 +142,7 @@ export default function SettingsPage({ api }) {
       <details className="stack">
         <summary>Advanced options</summary>
         <div className="settings-button-grid">
-          <button className="danger-button" disabled={cleanupBusy} onClick={deleteAllNotesEverywhere}>Delete all notes</button>
-          <button onClick={() => confirmAction('Reset app data to defaults? This deletes active data and rollback snapshots.', resetAppData)}>Reset app data</button>
+          <button className="danger-button" disabled={cleanupBusy} onClick={deleteAllAppData}>Delete all app data</button>
         </div>
         {cleanupBusy && <p>Running global cleanup...</p>}
         {cleanupReport && <div className="card stack">
