@@ -19,6 +19,30 @@ import { buildGlobalNoteCleanupData, buildResetData, migrateData } from './lib/m
 
 function LoginGate() { return <div className="stack"><h2>Sign in to Master Plan</h2><p>Use Google sign-in to sync your private data with Firebase.</p><button onClick={() => signInWithGoogle()}>Sign in with Google</button></div>; }
 
+function mergeRemoteIntoLocal(localData, remoteData) {
+  const local = migrateData(localData);
+  const remote = migrateData(remoteData || {});
+  const has = (key) => Object.prototype.hasOwnProperty.call(remoteData || {}, key);
+  return migrateData({
+    ...local,
+    ...(has("meta") ? { meta: remote.meta } : {}),
+    ...(has("settings") ? { settings: remote.settings } : {}),
+    ...(has("aiInstructions") ? { aiInstructions: remote.aiInstructions } : {}),
+    ...(has("notes") ? { notes: remote.notes } : {}),
+    ...(has("completedTasks") ? { completedTasks: remote.completedTasks } : {}),
+    ...(has("tasks") ? { tasks: remote.tasks } : {}),
+    ...(has("checklists") ? { checklists: remote.checklists } : {}),
+    ...(has("questions") ? { questions: remote.questions } : {}),
+    ...(has("badIdeaLog") ? { badIdeaLog: remote.badIdeaLog } : {}),
+    ...(has("inboxActionLog") ? { inboxActionLog: remote.inboxActionLog } : {}),
+    ...(has("questionFeedbackLog") ? { questionFeedbackLog: remote.questionFeedbackLog } : {}),
+    ...(has("questionLearningSettings") ? { questionLearningSettings: remote.questionLearningSettings } : {}),
+    projects: remote.projects,
+    captures: remote.captures,
+    suggestions: remote.suggestions,
+  });
+}
+
 export default function App() {
   const [data, setData] = useState(() => localDataStore.load());
   const [user, setUser] = useState(undefined);
@@ -31,7 +55,9 @@ export default function App() {
     const loadVersion = ++remoteLoadVersionRef.current;
     loadUserData(user.uid)
       .then((remoteData) => {
-        if (remoteData && loadVersion === remoteLoadVersionRef.current) setData(migrateData(remoteData));
+        if (remoteData && loadVersion === remoteLoadVersionRef.current) {
+          setData((previous) => mergeRemoteIntoLocal(previous, remoteData));
+        }
       })
       .catch((error) => console.warn('Failed to load Firestore data, using local fallback.', error));
   }, [user?.uid]);

@@ -12,6 +12,7 @@ import {
   collectionGroup,
   deleteField,
   doc,
+  getDoc,
   getDocs,
   getFirestore,
   initializeFirestore,
@@ -50,6 +51,29 @@ if (isFirebaseConfigured) {
 
 const provider = new GoogleAuthProvider();
 
+
+
+const USER_CANONICAL_FIELDS = [
+  'meta',
+  'settings',
+  'aiInstructions',
+  'notes',
+  'completedTasks',
+  'tasks',
+  'checklists',
+  'questions',
+  'badIdeaLog',
+  'inboxActionLog',
+  'questionFeedbackLog',
+  'questionLearningSettings',
+];
+
+function pickCanonicalUserPayload(data: any = {}) {
+  return USER_CANONICAL_FIELDS.reduce((acc: Record<string, any>, key) => {
+    if (key in data) acc[key] = data[key];
+    return acc;
+  }, {});
+}
 const NOTE_COLLECTION_GROUPS = [
   'notes',
   'captures',
@@ -218,7 +242,8 @@ export function listenToAuthState(callback: (user: User | null) => void) {
 export async function loadUserData(uid: string) {
   if (!db) throw new Error('Firebase is not configured.');
 
-  const [projectsSnap, notesSnap, suggestionsSnap, gallerySnap] = await Promise.all([
+  const [userSnap, projectsSnap, notesSnap, suggestionsSnap, gallerySnap] = await Promise.all([
+    getDoc(doc(db, `users/${uid}`)),
     getDocs(collection(db, `users/${uid}/projects`)),
     getDocs(collection(db, `users/${uid}/notes`)),
     getDocs(collection(db, `users/${uid}/suggestions`)),
@@ -238,7 +263,10 @@ export async function loadUserData(uid: string) {
     galleryByProject.set(image.projectId, current);
   }
 
+  const userCanonical = userSnap.exists() ? pickCanonicalUserPayload(userSnap.data()) : {};
+
   return {
+    ...userCanonical,
     projects: projects.map((project) => ({
       ...project,
       gallery: galleryByProject.get(project.id) ?? (Array.isArray(project.gallery) ? project.gallery : []),
@@ -265,6 +293,7 @@ export async function saveUserData(uid: string, data: any) {
   const galleryImageIds = new Set(galleryImages.map((image) => image.id));
 
   const batch = writeBatch(db);
+  batch.set(doc(db, `users/${uid}`), pickCanonicalUserPayload(data), { merge: true });
   for (const project of data.projects ?? []) {
     batch.set(doc(db, `users/${uid}/projects/${project.id}`), sanitizeProjectForCloud(project));
   }
