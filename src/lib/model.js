@@ -314,8 +314,12 @@ export function buildDefaultData() {
 
 export function buildResetData() {
   const defaults = buildDefaultData();
+  const nowIso = new Date().toISOString();
   return migrateData({
-    meta: defaults.meta,
+    meta: {
+      ...defaults.meta,
+      destructiveResetAt: nowIso,
+    },
     settings: defaults.settings,
     aiInstructions: defaults.aiInstructions,
     questionLearningSettings: defaults.questionLearningSettings,
