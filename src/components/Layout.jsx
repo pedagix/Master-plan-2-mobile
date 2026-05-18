@@ -11,7 +11,10 @@ export default function Layout({ children }) {
   const location = useLocation();
   return (
     <div className="app-shell">
-      <header><h1>Master Plan</h1></header>
+      <header className="top-header">
+        <h1>Aha Hmm Ta-Da</h1>
+        <NavLink to="/settings" className="header-settings-link" aria-label="Settings">Settings</NavLink>
+      </header>
       <main>{children}</main>
       <nav className="bottom-nav">
         {links.map(([to, label]) => (

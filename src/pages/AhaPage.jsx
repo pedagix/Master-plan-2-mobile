@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import NoteEditForm from '../components/NoteEditForm';
 import { HMM_DESTINATION, PROJECT_DESTINATION } from '../lib/model';
 
@@ -47,7 +46,6 @@ export default function AhaPage({ api }) {
     <div className="stack page-screen">
       <div className="page-title-row">
         <h2>Aha</h2>
-        <Link to="/settings" className="icon-link" aria-label="Settings">Settings</Link>
       </div>
       <NoteEditForm
         key={formKey}

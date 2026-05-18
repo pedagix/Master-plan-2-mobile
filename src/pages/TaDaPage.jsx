@@ -68,7 +68,6 @@ export default function TaDaPage({ api }) {
     <div className="stack page-screen">
       <div className="page-title-row">
         <h2>Ta-da</h2>
-        <Link to="/settings" className="icon-link" aria-label="Settings">Settings</Link>
       </div>
 
       <section className="stack">
