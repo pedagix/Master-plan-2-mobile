@@ -19,6 +19,42 @@ import { buildGlobalNoteCleanupData, buildResetData, migrateData } from './lib/m
 
 function LoginGate() { return <div className="stack"><h2>Sign in to Master Plan</h2><p>Use Google sign-in to sync your private data with Firebase.</p><button onClick={() => signInWithGoogle()}>Sign in with Google</button></div>; }
 
+function hasMeaningfulArrayData(items = []) {
+  return Array.isArray(items) && items.some((item) => item && typeof item === 'object' && Object.keys(item).length > 0);
+}
+
+function hasMeaningfulFirestoreData(remote = {}) {
+  return hasMeaningfulArrayData(remote.projects) || hasMeaningfulArrayData(remote.captures) || hasMeaningfulArrayData(remote.suggestions);
+}
+
+function mergeEntityArrays(localItems = [], remoteItems = []) {
+  const localById = new Map((Array.isArray(localItems) ? localItems : []).map((item, index) => [item?.id ?? `local-${index}`, item]));
+  for (const [index, remoteItem] of (Array.isArray(remoteItems) ? remoteItems : []).entries()) {
+    const remoteId = remoteItem?.id ?? `remote-${index}`;
+    const localItem = localById.get(remoteId);
+    if (!localItem) {
+      localById.set(remoteId, remoteItem);
+      continue;
+    }
+    const localUpdatedAt = Number(localItem?.updatedAt);
+    const remoteUpdatedAt = Number(remoteItem?.updatedAt);
+    if (Number.isFinite(localUpdatedAt) && Number.isFinite(remoteUpdatedAt)) {
+      localById.set(remoteId, remoteUpdatedAt >= localUpdatedAt ? remoteItem : localItem);
+      continue;
+    }
+    if (Number.isFinite(remoteUpdatedAt) && !Number.isFinite(localUpdatedAt)) {
+      localById.set(remoteId, remoteItem);
+      continue;
+    }
+    if (!Number.isFinite(remoteUpdatedAt) && Number.isFinite(localUpdatedAt)) {
+      localById.set(remoteId, localItem);
+      continue;
+    }
+    localById.set(remoteId, { ...localItem, ...remoteItem });
+  }
+  return [...localById.values()];
+}
+
 function mergeRemoteIntoLocal(localData, remoteData) {
   const local = migrateData(localData);
   const remote = migrateData(remoteData || {});
@@ -37,30 +73,18 @@ function mergeRemoteIntoLocal(localData, remoteData) {
     ...(has("inboxActionLog") ? { inboxActionLog: remote.inboxActionLog } : {}),
     ...(has("questionFeedbackLog") ? { questionFeedbackLog: remote.questionFeedbackLog } : {}),
     ...(has("questionLearningSettings") ? { questionLearningSettings: remote.questionLearningSettings } : {}),
-    projects: remote.projects,
-    captures: remote.captures,
-    suggestions: remote.suggestions,
+    projects: mergeEntityArrays(local.projects, remote.projects),
+    captures: mergeEntityArrays(local.captures, remote.captures),
+    suggestions: mergeEntityArrays(local.suggestions, remote.suggestions),
   });
 }
 
 export default function App() {
   const [data, setData] = useState(() => localDataStore.load());
   const [user, setUser] = useState(undefined);
+  const [isRemoteHydrationComplete, setIsRemoteHydrationComplete] = useState(!isFirebaseConfigured);
   const remoteLoadVersionRef = useRef(0);
   const remoteSaveQueueRef = useRef(Promise.resolve());
-
-  useEffect(() => { if (!isFirebaseConfigured) { setUser(null); return; } return listenToAuthState(setUser); }, []);
-  useEffect(() => {
-    if (!isFirebaseConfigured || !user?.uid) return;
-    const loadVersion = ++remoteLoadVersionRef.current;
-    loadUserData(user.uid)
-      .then((remoteData) => {
-        if (remoteData && loadVersion === remoteLoadVersionRef.current) {
-          setData((previous) => mergeRemoteIntoLocal(previous, remoteData));
-        }
-      })
-      .catch((error) => console.warn('Failed to load Firestore data, using local fallback.', error));
-  }, [user?.uid]);
   const enqueueRemoteSave = useCallback((uid, nextData) => {
     const save = remoteSaveQueueRef.current
       .catch(() => {})
@@ -69,11 +93,33 @@ export default function App() {
     return save;
   }, []);
 
+  useEffect(() => { if (!isFirebaseConfigured) { setUser(null); return; } return listenToAuthState(setUser); }, []);
+  useEffect(() => {
+    if (!isFirebaseConfigured || !user?.uid) return;
+    setIsRemoteHydrationComplete(false);
+    const loadVersion = ++remoteLoadVersionRef.current;
+    loadUserData(user.uid)
+      .then((remoteData) => {
+        if (loadVersion !== remoteLoadVersionRef.current) return;
+        setData((previous) => {
+          const merged = mergeRemoteIntoLocal(previous, remoteData);
+          if (!hasMeaningfulFirestoreData(remoteData) && hasMeaningfulFirestoreData(previous)) {
+            enqueueRemoteSave(user.uid, merged).catch((error) => console.warn('Failed to seed Firestore from local data.', error));
+          }
+          return merged;
+        });
+        setIsRemoteHydrationComplete(true);
+      })
+      .catch((error) => {
+        console.warn('Failed to load Firestore data, using local fallback.', error);
+        if (loadVersion === remoteLoadVersionRef.current) setIsRemoteHydrationComplete(true);
+      });
+  }, [enqueueRemoteSave, user?.uid]);
   useEffect(() => {
     localDataStore.save(data);
-    if (!isFirebaseConfigured || !user?.uid) return;
+    if (!isFirebaseConfigured || !user?.uid || !isRemoteHydrationComplete) return;
     enqueueRemoteSave(user.uid, data).catch((error) => console.warn('Failed to sync to Firestore, local copy kept.', error));
-  }, [data, enqueueRemoteSave, user?.uid]);
+  }, [data, enqueueRemoteSave, isRemoteHydrationComplete, user?.uid]);
 
   const importLocalDataToFirebase = useCallback(async () => {
     if (!user?.uid) return;
