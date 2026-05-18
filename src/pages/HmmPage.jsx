@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import NoteCard from '../components/NoteCard';
 import NoteEditForm from '../components/NoteEditForm';
 import { HMM_DESTINATION, PROJECT_DESTINATION, sortByPriorityThenNewest } from '../lib/model';
@@ -89,7 +88,6 @@ export default function HmmPage({ api }) {
     <div className="stack page-screen">
       <div className="page-title-row">
         <h2>Hmm</h2>
-        <Link to="/settings" className="icon-link" aria-label="Settings">Settings</Link>
       </div>
 
       <div className="segmented-control" role="tablist" aria-label="Hmm view">
