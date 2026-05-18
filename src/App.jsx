@@ -39,18 +39,10 @@ function mergeEntityArrays(localItems = [], remoteItems = []) {
     const localUpdatedAt = Number(localItem?.updatedAt);
     const remoteUpdatedAt = Number(remoteItem?.updatedAt);
     if (Number.isFinite(localUpdatedAt) && Number.isFinite(remoteUpdatedAt)) {
-      localById.set(remoteId, remoteUpdatedAt >= localUpdatedAt ? remoteItem : localItem);
+      localById.set(remoteId, remoteUpdatedAt > localUpdatedAt ? remoteItem : localItem);
       continue;
     }
-    if (Number.isFinite(remoteUpdatedAt) && !Number.isFinite(localUpdatedAt)) {
-      localById.set(remoteId, remoteItem);
-      continue;
-    }
-    if (!Number.isFinite(remoteUpdatedAt) && Number.isFinite(localUpdatedAt)) {
-      localById.set(remoteId, localItem);
-      continue;
-    }
-    localById.set(remoteId, { ...localItem, ...remoteItem });
+    localById.set(remoteId, localItem);
   }
   return [...localById.values()];
 }
