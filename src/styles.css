@@ -245,6 +245,27 @@ main {
   align-content: start;
 }
 
+.capture-input-wrap {
+  position: relative;
+}
+
+.capture-save-pill {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  min-height: 34px;
+  border-radius: 999px;
+  padding: 6px 11px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.capture-input-wrap textarea {
+  padding-top: 52px;
+  padding-right: 110px;
+}
+
 .priority-picker {
   display: grid;
   gap: 6px;
@@ -596,6 +617,17 @@ summary {
 @media (max-width: 520px) {
   main {
     padding: 14px 12px;
+  }
+
+  .capture-save-pill {
+    min-height: 32px;
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .capture-input-wrap textarea {
+    padding-top: 50px;
+    padding-right: 96px;
   }
 
   .option-grid,
