@@ -1,7 +1,18 @@
 :root {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #18212f;
-  background: #f6f7f3;
+  color: var(--text-strong);
+  background: #f8fafc;
+  --bg-base: #f8fafc;
+  --surface-border: #cbd5e1;
+  --text-strong: #1e293b;
+  --primary-teal: #14b8a6;
+  --warm-orange: #f97316;
+  --section-aha: #f97316;
+  --section-aha-soft: #ffedd5;
+  --section-hmm: #14b8a6;
+  --section-hmm-soft: #ccfbf1;
+  --section-tada: #1e293b;
+  --section-tada-soft: #e2e8f0;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -11,7 +22,7 @@
 body {
   margin: 0;
   min-width: 320px;
-  background: #f6f7f3;
+  background: #f8fafc;
 }
 
 button,
@@ -28,7 +39,7 @@ button,
   border: 0;
   border-radius: 8px;
   padding: 11px 14px;
-  background: #0f766e;
+  background: var(--primary-teal);
   color: #fff;
   text-decoration: none;
   font-weight: 700;
@@ -55,10 +66,10 @@ select,
 input {
   width: 100%;
   min-height: 44px;
-  border: 1px solid #c8d0c3;
+  border: 1px solid var(--surface-border);
   border-radius: 8px;
   background: #fff;
-  color: #18212f;
+  color: var(--text-strong);
   padding: 11px 12px;
 }
 
@@ -91,7 +102,7 @@ h3 {
 }
 
 small {
-  color: #5f6b5b;
+  color: #64748b;
 }
 
 .app-shell {
@@ -110,8 +121,8 @@ small {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border-bottom: 1px solid #dfe5da;
-  background: rgba(246, 247, 243, 0.96);
+  border-bottom: 1px solid var(--surface-border);
+  background: rgba(248, 250, 252, 0.96);
   padding: 10px 16px;
   backdrop-filter: blur(12px);
 }
@@ -128,7 +139,7 @@ small {
   min-height: 34px;
   border-radius: 7px;
   padding: 6px 10px;
-  background: #0f766e;
+  background: var(--primary-teal);
   color: #fff;
   font-size: 13px;
   font-weight: 700;
@@ -152,7 +163,7 @@ main {
 
 .card {
   display: block;
-  border: 1px solid #dfe5da;
+  border: 1px solid var(--surface-border);
   border-radius: 8px;
   background: #fff;
   color: inherit;
@@ -169,7 +180,7 @@ main {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
-  border-top: 1px solid #dfe5da;
+  border-top: 1px solid var(--surface-border);
   background: #fff;
   padding: 8px;
 }
@@ -180,7 +191,7 @@ main {
   justify-content: center;
   min-height: 48px;
   border-radius: 8px;
-  color: #40513d;
+  color: #64748b;
   font-size: 13px;
   font-weight: 700;
   line-height: 1.1;
@@ -191,8 +202,24 @@ main {
 }
 
 .bottom-nav a.active {
-  background: #e2f4ed;
-  color: #0f766e;
+  background: #e2e8f0;
+  color: var(--text-strong);
+}
+
+.bottom-nav a.active-aha {
+  background: var(--section-aha-soft);
+  color: var(--section-aha);
+}
+
+.bottom-nav a.active-hmm,
+.bottom-nav a.active-settings {
+  background: var(--section-hmm-soft);
+  color: var(--section-hmm);
+}
+
+.bottom-nav a.active-tada {
+  background: var(--section-tada-soft);
+  color: var(--section-tada);
 }
 
 .page-title-row,
@@ -224,7 +251,7 @@ main {
 
 .secondary-button {
   background: #e5eadf;
-  color: #18212f;
+  color: var(--text-strong);
 }
 
 .danger-button {
@@ -242,7 +269,7 @@ main {
 .field-label {
   display: grid;
   gap: 6px;
-  color: #40513d;
+  color: #64748b;
   font-size: 13px;
   font-weight: 800;
 }
@@ -252,7 +279,7 @@ main {
 }
 
 .new-aha-panel {
-  border: 1px solid #dfe5da;
+  border: 1px solid var(--surface-border);
   border-radius: 8px;
   background: #fff;
   padding: 12px;
@@ -294,7 +321,7 @@ main {
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 6px;
-  border: 1px solid #dfe5da;
+  border: 1px solid var(--surface-border);
   border-left: 4px solid var(--priority-color);
   border-radius: 999px;
   background: #fff;
@@ -312,7 +339,7 @@ main {
 }
 
 .priority-scale-label {
-  color: #40513d;
+  color: #64748b;
   font-size: 11px;
   font-weight: 800;
   text-transform: lowercase;
@@ -385,11 +412,11 @@ main {
   align-items: center;
   gap: 10px;
   min-height: 48px;
-  border: 1px solid #c8d0c3;
+  border: 1px solid var(--surface-border);
   border-radius: 8px;
   background: #fff;
   padding: 10px 12px;
-  color: #18212f;
+  color: var(--text-strong);
   font-weight: 650;
 }
 
@@ -428,7 +455,7 @@ main {
 .empty-state {
   border: 1px dashed #b9c4b3;
   border-radius: 8px;
-  color: #5f6b5b;
+  color: #64748b;
   padding: 14px;
   text-align: center;
 }
@@ -437,7 +464,7 @@ main {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
-  border: 1px solid #dfe5da;
+  border: 1px solid var(--surface-border);
   border-radius: 8px;
   background: #fff;
   padding: 5px;
@@ -446,11 +473,11 @@ main {
 .segmented-control button {
   min-height: 40px;
   background: transparent;
-  color: #40513d;
+  color: #64748b;
 }
 
 .segmented-control button.active {
-  background: #24352f;
+  background: var(--section-tada);
   color: #fff;
 }
 
@@ -485,7 +512,7 @@ main {
 .note-meta span:not(.priority-badge) {
   border-radius: 999px;
   background: #eef2e9;
-  color: #40513d;
+  color: #64748b;
   font-size: 12px;
   font-weight: 750;
   padding: 5px 8px;
@@ -500,7 +527,7 @@ main {
 .edit-panel {
   display: grid;
   gap: 10px;
-  border: 1px solid #c8d0c3;
+  border: 1px solid var(--surface-border);
   border-radius: 8px;
   background: #f8faf6;
   padding: 10px;
@@ -526,19 +553,19 @@ main {
 }
 
 .project-tile span {
-  color: #5f6b5b;
+  color: #64748b;
   font-size: 13px;
   font-weight: 700;
 }
 
 .project-description {
-  color: #40513d;
+  color: #64748b;
   line-height: 1.45;
 }
 
 .done-counter {
   border-radius: 999px;
-  background: #24352f;
+  background: var(--section-tada);
   color: #fff;
   font-size: 13px;
   font-weight: 800;
@@ -551,7 +578,7 @@ main {
   gap: 10px;
   align-items: center;
   min-height: 56px;
-  border: 1px solid #dfe5da;
+  border: 1px solid var(--surface-border);
   border-left: 6px solid var(--priority-color);
   border-radius: 8px;
   background: #fff;
@@ -580,7 +607,7 @@ main {
 }
 
 .img-card {
-  border: 1px solid #dfe5da;
+  border: 1px solid var(--surface-border);
   border-radius: 8px;
   background: #fff;
   padding: 6px;
@@ -600,10 +627,10 @@ main {
 }
 
 .tag-pill {
-  border: 1px solid #c8d0c3;
+  border: 1px solid var(--surface-border);
   border-radius: 999px;
   background: #e5eadf;
-  color: #18212f;
+  color: var(--text-strong);
   font-size: 12px;
   padding: 8px 10px;
 }
@@ -615,7 +642,7 @@ main {
 }
 
 .selected-action {
-  background: #0f766e !important;
+  background: var(--section-hmm) !important;
   color: #fff !important;
 }
 
@@ -665,4 +692,44 @@ summary {
     border-right: 1px solid #dfe5da;
     border-left: 1px solid #dfe5da;
   }
+}
+
+
+.section-aha .capture-input-wrap textarea {
+  border-color: color-mix(in srgb, var(--section-aha) 35%, white);
+}
+
+.section-aha .capture-input-wrap textarea:focus {
+  border-color: var(--section-aha);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--section-aha) 20%, transparent);
+}
+
+.section-aha .capture-save-pill {
+  background: var(--section-aha);
+}
+
+.section-aha .new-aha-panel {
+  background: var(--section-aha-soft);
+  border-color: color-mix(in srgb, var(--section-aha) 30%, var(--surface-border));
+}
+
+.section-hmm .segmented-control button.active {
+  background: var(--section-hmm);
+}
+
+.section-hmm .grouped-list {
+  background: color-mix(in srgb, var(--section-hmm-soft) 35%, white);
+  border: 1px solid color-mix(in srgb, var(--section-hmm) 20%, var(--surface-border));
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.section-tada .project-tile,
+.section-tada .todo-row {
+  border-color: color-mix(in srgb, var(--section-tada) 22%, var(--surface-border));
+}
+
+.section-tada .project-tile strong,
+.section-tada .back-link {
+  color: var(--section-tada);
 }
