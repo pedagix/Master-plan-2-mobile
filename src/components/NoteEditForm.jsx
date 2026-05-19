@@ -142,27 +142,33 @@ export default function NoteEditForm({
         />
       </div>
 
-      <label className="field-label">
-        <span>Destination</span>
-        <select value={destination || HMM_DESTINATION} onChange={(event) => handleDestinationChange(event.target.value)}>
-          <option value={HMM_DESTINATION}>Hmm</option>
-          {projects.map((project) => <option key={project.id} value={project.id}>{getProjectName(project)}</option>)}
-          <option value={CREATE_PROJECT_VALUE}>+ Create new project</option>
-        </select>
-      </label>
-
-      <div className="option-grid">
-        <label className="checkbox-row">
-          <input type="checkbox" checked={important} onChange={(event) => setImportant(event.target.checked)} />
-          <span>Mark important</span>
+      <div className="capture-secondary-row">
+        <button
+          type="button"
+          className={`important-toggle ${important ? 'is-active' : ''}`}
+          onClick={() => setImportant((value) => !value)}
+          aria-pressed={important}
+        >
+          Important
+        </button>
+        <label className="destination-strip">
+          <span>To</span>
+          <select value={destination || HMM_DESTINATION} onChange={(event) => handleDestinationChange(event.target.value)}>
+            <option value={HMM_DESTINATION}>Hmm</option>
+            {projects.map((project) => <option key={project.id} value={project.id}>{getProjectName(project)}</option>)}
+            <option value={CREATE_PROJECT_VALUE}>+ Create new project</option>
+          </select>
         </label>
-        {showProjectTodoOption && (
+      </div>
+
+      {showProjectTodoOption && (
+        <div className="option-grid">
           <label className="checkbox-row">
             <input type="checkbox" checked={isTodo} onChange={(event) => setIsTodo(event.target.checked)} />
             <span>Add to project to-do list</span>
           </label>
-        )}
-      </div>
+        </div>
+      )}
 
       {error && <p className="form-error" role="alert">{error}</p>}
       {onCancel && <div className="actions"><button type="button" className="secondary-button" onClick={onCancel}>Cancel</button></div>}

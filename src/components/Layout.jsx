@@ -3,8 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 const links = [
   ['/aha', 'Aha'],
   ['/hmm', 'Hmm'],
-  ['/ta-da', 'Ta-da'],
-  ['/settings', 'Settings']
+  ['/ta-da', 'Ta-da']
 ];
 
 export default function Layout({ children }) {
@@ -34,7 +33,7 @@ export default function Layout({ children }) {
               if (to === '/aha') return 'active active-aha';
               if (to === '/hmm') return 'active active-hmm';
               if (to === '/ta-da') return 'active active-tada';
-              return 'active active-settings';
+              return 'active';
             }}
           >
             {label}

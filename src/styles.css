@@ -178,7 +178,7 @@ main {
   left: 0;
   z-index: 20;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
   border-top: 1px solid var(--surface-border);
   background: #fff;
@@ -400,6 +400,50 @@ main {
   box-shadow: 0 0 0 3px #f59e0b, 0 0 0 4px rgba(24, 33, 47, 0.26);
 }
 
+
+.capture-secondary-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.important-toggle {
+  min-height: 34px;
+  border: 1px solid var(--surface-border);
+  border-radius: 999px;
+  background: #fff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1;
+  padding: 6px 11px;
+}
+
+.important-toggle.is-active {
+  border-color: var(--section-aha);
+  background: var(--section-aha-soft);
+  color: var(--section-aha);
+}
+
+.destination-strip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+}
+
+.destination-strip span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.destination-strip select {
+  min-height: 34px;
+  padding: 6px 10px;
+}
 .option-grid,
 .settings-button-grid {
   display: grid;
@@ -682,6 +726,16 @@ summary {
   .settings-button-grid,
   .project-grid {
     grid-template-columns: 1fr;
+  }
+
+  .capture-secondary-row {
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .important-toggle,
+  .destination-strip select {
+    min-height: 32px;
   }
 }
 
