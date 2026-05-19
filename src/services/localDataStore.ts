@@ -20,14 +20,50 @@ const LEGACY_NOTE_LOCAL_KEYS = [
   'master_plan_ai_export_v1',
   'master_plan_notes_processor_v1',
 ];
+const DEBUG_DATA_FLOW = typeof window !== 'undefined' && window.localStorage?.getItem('mp_debug_data_flow') === '1';
+
+function debugDataCounts(label, data: any) {
+  if (!DEBUG_DATA_FLOW) return;
+  const migrated = migrateData(data);
+  // eslint-disable-next-line no-console
+  console.log(`[data-flow] ${label}`, {
+    projects: migrated.projects.length,
+    captures: migrated.captures.length,
+    notes: migrated.notes?.length || 0,
+    suggestions: migrated.suggestions.length,
+    tasks: migrated.tasks.length,
+    completedTasks: migrated.completedTasks?.length || 0,
+    checklists: migrated.checklists.length,
+    questions: migrated.questions.length,
+    destructiveResetAt: migrated.meta?.destructiveResetAt ?? null,
+    lastSelectedProjectId: migrated.settings?.lastSelectedProjectId ?? null,
+    lastDestination: migrated.settings?.lastDestination ?? null,
+  });
+}
 
 function loadData() {
   const raw = localStorage.getItem(KEY);
-  if (!raw) return buildDefaultData();
-  try { return migrateData(JSON.parse(raw)); } catch { return buildDefaultData(); }
+  if (!raw) {
+    const defaults = buildDefaultData();
+    debugDataCounts('localDataStore.load:default', defaults);
+    return defaults;
+  }
+  try {
+    const migrated = migrateData(JSON.parse(raw));
+    debugDataCounts('localDataStore.load:stored', migrated);
+    return migrated;
+  } catch {
+    const defaults = buildDefaultData();
+    debugDataCounts('localDataStore.load:parse-fallback', defaults);
+    return defaults;
+  }
 }
 
-function saveData(data) { localStorage.setItem(KEY, JSON.stringify(migrateData(data))); }
+function saveData(data) {
+  const migrated = migrateData(data);
+  debugDataCounts('localDataStore.save', migrated);
+  localStorage.setItem(KEY, JSON.stringify(migrated));
+}
 
 function downloadJson(payload, name) {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });

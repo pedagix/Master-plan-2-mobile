@@ -17,6 +17,27 @@ import ProjectDetailPage from './pages/ProjectDetailPage';
 import SettingsPage from './pages/SettingsPage';
 import { buildResetData, migrateData } from './lib/model';
 
+const DEBUG_DATA_FLOW = typeof window !== 'undefined' && window.localStorage?.getItem('mp_debug_data_flow') === '1';
+
+function debugDataCounts(label, data = {}) {
+  if (!DEBUG_DATA_FLOW) return;
+  const payload = migrateData(data || {});
+  // eslint-disable-next-line no-console
+  console.log(`[data-flow] ${label}`, {
+    projects: payload.projects?.length ?? 0,
+    captures: payload.captures?.length ?? 0,
+    notes: payload.notes?.length ?? 0,
+    suggestions: payload.suggestions?.length ?? 0,
+    tasks: payload.tasks?.length ?? 0,
+    completedTasks: payload.completedTasks?.length ?? 0,
+    checklists: payload.checklists?.length ?? 0,
+    questions: payload.questions?.length ?? 0,
+    destructiveResetAt: payload.meta?.destructiveResetAt ?? null,
+    lastSelectedProjectId: payload.settings?.lastSelectedProjectId ?? null,
+    lastDestination: payload.settings?.lastDestination ?? null,
+  });
+}
+
 function LoginGate() { return <div className="stack"><h2>Sign in to Master Plan</h2><p>Use Google sign-in to sync your private data with Firebase.</p><button onClick={() => signInWithGoogle()}>Sign in with Google</button></div>; }
 
 function hasMeaningfulArrayData(items = []) {
@@ -69,21 +90,25 @@ function filterPreResetEntities(items = [], resetAtMs = Number.NaN) {
 function mergeRemoteIntoLocal(localData, remoteData) {
   const local = migrateData(localData);
   const remote = migrateData(remoteData || {});
+  debugDataCounts('mergeRemoteIntoLocal:local-in', local);
+  debugDataCounts('mergeRemoteIntoLocal:remote-in', remoteData || {});
   const remoteResetAt = Date.parse(remote?.meta?.destructiveResetAt || '');
   const localResetAt = Date.parse(local?.meta?.destructiveResetAt || '');
   const hasLocalPostResetData = hasPostResetEntities(local.projects, localResetAt) || hasPostResetEntities(local.captures, localResetAt) || hasPostResetEntities(local.suggestions, localResetAt);
 
   if (Number.isFinite(remoteResetAt) && (!Number.isFinite(localResetAt) || remoteResetAt > localResetAt)) {
-    return migrateData({
+    const merged = migrateData({
       ...remote,
       projects: filterPreResetEntities(remote.projects, remoteResetAt),
       captures: filterPreResetEntities(remote.captures, remoteResetAt),
       suggestions: filterPreResetEntities(remote.suggestions, remoteResetAt),
     });
+    debugDataCounts('mergeRemoteIntoLocal:remote-reset-wins', merged);
+    return merged;
   }
   if (Number.isFinite(remoteResetAt) && Number.isFinite(localResetAt) && remoteResetAt === localResetAt) {
     if (!hasMeaningfulFirestoreData(remote) && hasLocalPostResetData) return local;
-    return migrateData({
+    const merged = migrateData({
       ...local,
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'meta') ? { meta: remote.meta } : {}),
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'settings') ? { settings: remote.settings } : {}),
@@ -101,9 +126,11 @@ function mergeRemoteIntoLocal(localData, remoteData) {
       captures: mergeEntityArrays(local.captures, filterPreResetEntities(remote.captures, remoteResetAt)),
       suggestions: mergeEntityArrays(local.suggestions, filterPreResetEntities(remote.suggestions, remoteResetAt)),
     });
+    debugDataCounts('mergeRemoteIntoLocal:equal-reset-merged', merged);
+    return merged;
   }
   if (Number.isFinite(localResetAt) && (!Number.isFinite(remoteResetAt) || remoteResetAt < localResetAt)) {
-    return migrateData({
+    const merged = migrateData({
       ...local,
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'meta') ? { meta: { ...remote.meta, destructiveResetAt: local.meta.destructiveResetAt } } : {}),
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'settings') ? { settings: remote.settings } : {}),
@@ -121,9 +148,11 @@ function mergeRemoteIntoLocal(localData, remoteData) {
       inboxActionLog: local.inboxActionLog,
       questionFeedbackLog: local.questionFeedbackLog,
     });
+    debugDataCounts('mergeRemoteIntoLocal:local-reset-wins', merged);
+    return merged;
   }
   const has = (key) => Object.prototype.hasOwnProperty.call(remoteData || {}, key);
-  return migrateData({
+  const merged = migrateData({
     ...local,
     ...(has("meta") ? { meta: remote.meta } : {}),
     ...(has("settings") ? { settings: remote.settings } : {}),
@@ -141,6 +170,8 @@ function mergeRemoteIntoLocal(localData, remoteData) {
     captures: mergeEntityArrays(local.captures, remote.captures),
     suggestions: mergeEntityArrays(local.suggestions, remote.suggestions),
   });
+  debugDataCounts('mergeRemoteIntoLocal:default-merged', merged);
+  return merged;
 }
 
 export default function App() {
@@ -164,9 +195,12 @@ export default function App() {
     const loadVersion = ++remoteLoadVersionRef.current;
     loadUserData(user.uid)
       .then((remoteData) => {
+        debugDataCounts('loadUserData:remote-result', remoteData);
         if (loadVersion !== remoteLoadVersionRef.current) return;
         setData((previous) => {
+          debugDataCounts('setData:before-remote-merge', previous);
           const merged = mergeRemoteIntoLocal(previous, remoteData);
+          debugDataCounts('setData:after-remote-merge', merged);
           if (!hasMeaningfulFirestoreData(remoteData) && hasMeaningfulFirestoreData(previous)) {
             enqueueRemoteSave(user.uid, merged).catch((error) => console.warn('Failed to seed Firestore from local data.', error));
           }
@@ -180,8 +214,10 @@ export default function App() {
       });
   }, [enqueueRemoteSave, user?.uid]);
   useEffect(() => {
+    debugDataCounts('local-save:before', data);
     localDataStore.save(data);
     if (!isFirebaseConfigured || !user?.uid || !isRemoteHydrationComplete) return;
+    debugDataCounts('saveUserData:payload', data);
     enqueueRemoteSave(user.uid, data).catch((error) => console.warn('Failed to sync to Firestore, local copy kept.', error));
   }, [data, enqueueRemoteSave, isRemoteHydrationComplete, user?.uid]);
 
@@ -201,6 +237,7 @@ export default function App() {
     return resetData;
   }, [enqueueRemoteSave, user?.uid]);
   const deleteAllAppData = useCallback(async () => {
+    if (DEBUG_DATA_FLOW) console.log('[data-flow] deleteAllAppData:start');
     remoteLoadVersionRef.current += 1;
     setIsRemoteHydrationComplete(!isFirebaseConfigured || !user?.uid);
     const rollbackSnapshot = localDataStore.saveRollbackSnapshot?.(data, 'Before deleting all app data');
@@ -221,6 +258,7 @@ export default function App() {
     if (isFirebaseConfigured && user?.uid) {
       purgeReport = await deleteAllAppDataForUser(user.uid, cleaned);
     }
+    if (DEBUG_DATA_FLOW) console.log('[data-flow] deleteAllAppData:end', purgeReport);
     return { rollbackSnapshotId: rollbackSnapshot?.id || null, localRemovedKeys: removedLegacyKeys, purgeReport };
   }, [data, user?.uid]);
 
