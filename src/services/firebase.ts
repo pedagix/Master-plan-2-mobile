@@ -31,6 +31,7 @@ const firebaseConfig = {
 };
 
 export const isFirebaseConfigured = Object.values(firebaseConfig).every(Boolean);
+const DEBUG_DATA_FLOW = typeof window !== 'undefined' && window.localStorage?.getItem('mp_debug_data_flow') === '1';
 
 let app = null;
 let auth = null;
@@ -50,6 +51,25 @@ if (isFirebaseConfigured) {
 }
 
 const provider = new GoogleAuthProvider();
+
+function debugDataCounts(label: string, data: any) {
+  if (!DEBUG_DATA_FLOW) return;
+  const payload = data || {};
+  // eslint-disable-next-line no-console
+  console.log(`[data-flow] ${label}`, {
+    projects: Array.isArray(payload.projects) ? payload.projects.length : 0,
+    captures: Array.isArray(payload.captures) ? payload.captures.length : 0,
+    notes: Array.isArray(payload.notes) ? payload.notes.length : 0,
+    suggestions: Array.isArray(payload.suggestions) ? payload.suggestions.length : 0,
+    tasks: Array.isArray(payload.tasks) ? payload.tasks.length : 0,
+    completedTasks: Array.isArray(payload.completedTasks) ? payload.completedTasks.length : 0,
+    checklists: Array.isArray(payload.checklists) ? payload.checklists.length : 0,
+    questions: Array.isArray(payload.questions) ? payload.questions.length : 0,
+    destructiveResetAt: payload.meta?.destructiveResetAt ?? null,
+    lastSelectedProjectId: payload.settings?.lastSelectedProjectId ?? null,
+    lastDestination: payload.settings?.lastDestination ?? null,
+  });
+}
 
 
 
@@ -265,7 +285,7 @@ export async function loadUserData(uid: string) {
 
   const userCanonical = userSnap.exists() ? pickCanonicalUserPayload(userSnap.data()) : {};
 
-  return {
+  const loaded = {
     ...userCanonical,
     projects: projects.map((project) => ({
       ...project,
@@ -274,10 +294,13 @@ export async function loadUserData(uid: string) {
     captures,
     suggestions,
   };
+  debugDataCounts('firebase.loadUserData:loaded', loaded);
+  return loaded;
 }
 
 export async function saveUserData(uid: string, data: any) {
   if (!db) throw new Error('Firebase is not configured.');
+  debugDataCounts('firebase.saveUserData:payload', data);
 
   const [projectsSnap, notesSnap, suggestionsSnap, gallerySnap] = await Promise.all([
     getDocs(collection(db, `users/${uid}/projects`)),
@@ -325,6 +348,7 @@ export async function saveUserData(uid: string, data: any) {
 
 export async function deleteAllAppDataForUser(uid: string, cleanResetData: any) {
   if (!db) throw new Error('Firebase is not configured.');
+  if (DEBUG_DATA_FLOW) console.log('[data-flow] deleteAllAppDataForUser:start', { uid });
 
   const [projectsSnap, notesSnap, suggestionsSnap, gallerySnap] = await Promise.all([
     getDocs(collection(db, `users/${uid}/projects`)),
@@ -347,6 +371,8 @@ export async function deleteAllAppDataForUser(uid: string, cleanResetData: any) 
   const resetPayload = pickCanonicalUserPayload(cleanResetData);
   const userRef = doc(db, `users/${uid}`);
   await writeBatch(db).set(userRef, resetPayload, { merge: true }).commit();
+  debugDataCounts('firebase.deleteAllAppDataForUser:reset-payload', resetPayload);
+  if (DEBUG_DATA_FLOW) console.log('[data-flow] deleteAllAppDataForUser:end', { uid });
 
   return {
     deletedProjects: projectsSnap.size,
