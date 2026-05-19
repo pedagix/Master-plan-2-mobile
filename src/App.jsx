@@ -48,6 +48,29 @@ function hasMeaningfulFirestoreData(remote = {}) {
   return hasMeaningfulArrayData(remote.projects) || hasMeaningfulArrayData(remote.captures) || hasMeaningfulArrayData(remote.suggestions);
 }
 
+function parseTimeMs(value) {
+  if (value == null) return Number.NaN;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : Number.NaN;
+  if (typeof value === 'string') {
+    const numericValue = Number(value);
+    if (Number.isFinite(numericValue)) return numericValue;
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : Number.NaN;
+  }
+  if (typeof value === 'object') {
+    if (typeof value.toMillis === 'function') {
+      const millis = value.toMillis();
+      return Number.isFinite(millis) ? millis : Number.NaN;
+    }
+    if (typeof value.seconds === 'number') {
+      const nanos = typeof value.nanoseconds === 'number' ? value.nanoseconds : 0;
+      const millis = (value.seconds * 1000) + Math.floor(nanos / 1e6);
+      return Number.isFinite(millis) ? millis : Number.NaN;
+    }
+  }
+  return Number.NaN;
+}
+
 function mergeEntityArrays(localItems = [], remoteItems = []) {
   const localById = new Map((Array.isArray(localItems) ? localItems : []).map((item, index) => [item?.id ?? `local-${index}`, item]));
   for (const [index, remoteItem] of (Array.isArray(remoteItems) ? remoteItems : []).entries()) {
@@ -57,8 +80,8 @@ function mergeEntityArrays(localItems = [], remoteItems = []) {
       localById.set(remoteId, remoteItem);
       continue;
     }
-    const localUpdatedAt = Number(localItem?.updatedAt);
-    const remoteUpdatedAt = Number(remoteItem?.updatedAt);
+    const localUpdatedAt = parseTimeMs(localItem?.updatedAt);
+    const remoteUpdatedAt = parseTimeMs(remoteItem?.updatedAt);
     if (Number.isFinite(localUpdatedAt) && Number.isFinite(remoteUpdatedAt)) {
       localById.set(remoteId, remoteUpdatedAt > localUpdatedAt ? remoteItem : localItem);
       continue;
@@ -71,8 +94,8 @@ function mergeEntityArrays(localItems = [], remoteItems = []) {
 function hasPostResetEntities(items = [], resetAtMs = Number.NaN) {
   if (!Number.isFinite(resetAtMs)) return false;
   return (Array.isArray(items) ? items : []).some((item) => {
-    const createdAt = Number(item?.createdAt);
-    const updatedAt = Number(item?.updatedAt);
+    const createdAt = parseTimeMs(item?.createdAt);
+    const updatedAt = parseTimeMs(item?.updatedAt);
     return (Number.isFinite(createdAt) && createdAt >= resetAtMs) || (Number.isFinite(updatedAt) && updatedAt >= resetAtMs);
   });
 }
@@ -80,8 +103,8 @@ function hasPostResetEntities(items = [], resetAtMs = Number.NaN) {
 function filterPreResetEntities(items = [], resetAtMs = Number.NaN) {
   if (!Number.isFinite(resetAtMs)) return Array.isArray(items) ? items : [];
   return (Array.isArray(items) ? items : []).filter((item) => {
-    const createdAt = Number(item?.createdAt);
-    const updatedAt = Number(item?.updatedAt);
+    const createdAt = parseTimeMs(item?.createdAt);
+    const updatedAt = parseTimeMs(item?.updatedAt);
     if (!Number.isFinite(createdAt) && !Number.isFinite(updatedAt)) return false;
     return (Number.isFinite(createdAt) && createdAt >= resetAtMs) || (Number.isFinite(updatedAt) && updatedAt >= resetAtMs);
   });
@@ -94,7 +117,7 @@ function mergeRemoteIntoLocal(localData, remoteData) {
   debugDataCounts('mergeRemoteIntoLocal:remote-in', remoteData || {});
   const remoteResetAt = Date.parse(remote?.meta?.destructiveResetAt || '');
   const localResetAt = Date.parse(local?.meta?.destructiveResetAt || '');
-  const hasLocalPostResetData = hasPostResetEntities(local.projects, localResetAt) || hasPostResetEntities(local.captures, localResetAt) || hasPostResetEntities(local.suggestions, localResetAt);
+  const hasLocalPostResetData = hasPostResetEntities(local.projects, localResetAt) || hasPostResetEntities(local.captures, localResetAt) || hasPostResetEntities(local.suggestions, localResetAt) || hasPostResetEntities(local.notes, localResetAt);
 
   if (Number.isFinite(remoteResetAt) && (!Number.isFinite(localResetAt) || remoteResetAt > localResetAt)) {
     const merged = migrateData({
@@ -102,6 +125,7 @@ function mergeRemoteIntoLocal(localData, remoteData) {
       projects: filterPreResetEntities(remote.projects, remoteResetAt),
       captures: filterPreResetEntities(remote.captures, remoteResetAt),
       suggestions: filterPreResetEntities(remote.suggestions, remoteResetAt),
+      notes: mergeEntityArrays(local.notes, filterPreResetEntities(remote.notes, remoteResetAt)),
     });
     debugDataCounts('mergeRemoteIntoLocal:remote-reset-wins', merged);
     return merged;
@@ -113,7 +137,7 @@ function mergeRemoteIntoLocal(localData, remoteData) {
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'meta') ? { meta: remote.meta } : {}),
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'settings') ? { settings: remote.settings } : {}),
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'aiInstructions') ? { aiInstructions: remote.aiInstructions } : {}),
-      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'notes') ? { notes: remote.notes } : {}),
+      notes: mergeEntityArrays(local.notes, filterPreResetEntities(remote.notes, remoteResetAt)),
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'completedTasks') ? { completedTasks: remote.completedTasks } : {}),
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'tasks') ? { tasks: remote.tasks } : {}),
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'checklists') ? { checklists: remote.checklists } : {}),
@@ -157,7 +181,7 @@ function mergeRemoteIntoLocal(localData, remoteData) {
     ...(has("meta") ? { meta: remote.meta } : {}),
     ...(has("settings") ? { settings: remote.settings } : {}),
     ...(has("aiInstructions") ? { aiInstructions: remote.aiInstructions } : {}),
-    ...(has("notes") ? { notes: remote.notes } : {}),
+    notes: mergeEntityArrays(local.notes, remote.notes),
     ...(has("completedTasks") ? { completedTasks: remote.completedTasks } : {}),
     ...(has("tasks") ? { tasks: remote.tasks } : {}),
     ...(has("checklists") ? { checklists: remote.checklists } : {}),
