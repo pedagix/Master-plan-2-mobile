@@ -109,13 +109,16 @@ export default function NoteEditForm({
 
   return (
     <form className="note-form stack" onSubmit={submit}>
-      <textarea
-        autoFocus={autoFocus}
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-        placeholder="Capture the idea quickly"
-        rows={5}
-      />
+      <div className="capture-input-wrap">
+        <button type="submit" className="capture-save-pill">{submitLabel}</button>
+        <textarea
+          autoFocus={autoFocus}
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          placeholder="Capture the idea quickly"
+          rows={5}
+        />
+      </div>
 
       <label className="field-label">
         <span>Destination</span>
@@ -158,10 +161,7 @@ export default function NoteEditForm({
       </div>
 
       {error && <p className="form-error" role="alert">{error}</p>}
-      <div className="actions">
-        <button type="submit">{submitLabel}</button>
-        {onCancel && <button type="button" className="secondary-button" onClick={onCancel}>Cancel</button>}
-      </div>
+      {onCancel && <div className="actions"><button type="button" className="secondary-button" onClick={onCancel}>Cancel</button></div>}
     </form>
   );
 }
