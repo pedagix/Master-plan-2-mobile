@@ -125,7 +125,7 @@ function mergeRemoteIntoLocal(localData, remoteData) {
       projects: filterPreResetEntities(remote.projects, remoteResetAt),
       captures: filterPreResetEntities(remote.captures, remoteResetAt),
       suggestions: filterPreResetEntities(remote.suggestions, remoteResetAt),
-      notes: mergeEntityArrays(local.notes, filterPreResetEntities(remote.notes, remoteResetAt)),
+      notes: mergeEntityArrays(filterPreResetEntities(local.notes, remoteResetAt), filterPreResetEntities(remote.notes, remoteResetAt)),
     });
     debugDataCounts('mergeRemoteIntoLocal:remote-reset-wins', merged);
     return merged;
