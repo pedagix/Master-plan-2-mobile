@@ -10,7 +10,7 @@ This document audits the current terminology and storage schema without changing
 
 ## High-risk naming collision (must keep in mind)
 There are **two different "notes" concepts** currently:
-1. Canonical root app-state `notes[]` = Aha notes (and note-like items migrated from legacy structures). 
+1. Canonical root app-state `notes[]` = Aha notes (and note-like items migrated from legacy structures), now protected by id-based safe merge during cloud hydration and reload. 
 2. Firestore collection `users/{uid}/notes/*` = **captures documents** (legacy naming at collection-path level).
 
 The code already maps Firestore `notes` docs into local `captures` in memory, but the path name remains `notes` for compatibility.
