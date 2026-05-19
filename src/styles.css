@@ -209,6 +209,12 @@ main {
   gap: 5px;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .icon-link,
 .secondary-button,
 .danger-button {
@@ -243,6 +249,13 @@ main {
 
 .note-form {
   align-content: start;
+}
+
+.new-aha-panel {
+  border: 1px solid #dfe5da;
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
 }
 
 .capture-input-wrap {
