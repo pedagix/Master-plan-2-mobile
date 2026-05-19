@@ -78,6 +78,12 @@ export default function NoteEditForm({
     setDestination(value || HMM_DESTINATION);
   };
 
+  const showProjectTodoOption = destination !== HMM_DESTINATION;
+
+  useEffect(() => {
+    if (!showProjectTodoOption && isTodo) setIsTodo(false);
+  }, [showProjectTodoOption, isTodo]);
+
   const submit = (event) => {
     event.preventDefault();
     const trimmed = text.trim();
@@ -110,7 +116,23 @@ export default function NoteEditForm({
   return (
     <form className="note-form stack" onSubmit={submit}>
       <div className="capture-input-wrap">
-        <button type="submit" className="capture-save-pill">{submitLabel}</button>
+        <div className="capture-top-controls" style={{ '--priority-color': getPriorityColor(priority) }}>
+          <div className="priority-picker priority-picker-inline">
+            <span className="priority-scale-label">cold</span>
+            <input
+              className="priority-slider"
+              type="range"
+              min={1}
+              max={10}
+              step={1}
+              value={priority}
+              aria-label="Priority level"
+              onChange={(event) => setPriority(clampPriority(Number(event.target.value)))}
+            />
+            <span className="priority-scale-label">hot</span>
+          </div>
+          <button type="submit" className="capture-save-pill">{submitLabel}</button>
+        </div>
         <textarea
           autoFocus={autoFocus}
           value={text}
@@ -129,35 +151,17 @@ export default function NoteEditForm({
         </select>
       </label>
 
-      <div className="priority-picker" style={{ '--priority-color': getPriorityColor(priority) }}>
-        <div className="priority-heading">
-          <span>Priority</span>
-        </div>
-        <div className="priority-slider-wrap">
-          <span className="priority-scale-label">cold</span>
-          <input
-            className="priority-slider"
-            type="range"
-            min={1}
-            max={10}
-            step={1}
-            value={priority}
-            aria-label="Priority level"
-            onChange={(event) => setPriority(clampPriority(Number(event.target.value)))}
-          />
-          <span className="priority-scale-label">hot</span>
-        </div>
-      </div>
-
       <div className="option-grid">
         <label className="checkbox-row">
           <input type="checkbox" checked={important} onChange={(event) => setImportant(event.target.checked)} />
           <span>Mark important</span>
         </label>
-        <label className="checkbox-row">
-          <input type="checkbox" checked={isTodo} onChange={(event) => setIsTodo(event.target.checked)} />
-          <span>Add to project to-do list</span>
-        </label>
+        {showProjectTodoOption && (
+          <label className="checkbox-row">
+            <input type="checkbox" checked={isTodo} onChange={(event) => setIsTodo(event.target.checked)} />
+            <span>Add to project to-do list</span>
+          </label>
+        )}
       </div>
 
       {error && <p className="form-error" role="alert">{error}</p>}
