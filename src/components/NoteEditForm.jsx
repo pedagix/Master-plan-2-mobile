@@ -47,6 +47,7 @@ export default function NoteEditForm({
   const [error, setError] = useState('');
 
   const [keyboardInset, setKeyboardInset] = useState(0);
+  const [availableViewportHeight, setAvailableViewportHeight] = useState(null);
   const textareaRef = useRef(null);
 
   useEffect(() => {
@@ -56,8 +57,10 @@ export default function NoteEditForm({
 
     const updateKeyboardInset = () => {
       const fullHeight = window.innerHeight || 0;
-      const keyboardHeight = Math.max(0, fullHeight - viewport.height - viewport.offsetTop);
+      const viewportHeight = Math.max(0, viewport.height || 0);
+      const keyboardHeight = Math.max(0, fullHeight - viewportHeight - viewport.offsetTop);
       const hasFocus = document.activeElement === textareaRef.current;
+      setAvailableViewportHeight(Math.round(viewportHeight));
       setKeyboardInset(hasFocus ? keyboardHeight : 0);
     };
 
@@ -143,7 +146,14 @@ export default function NoteEditForm({
   };
 
   return (
-    <form className="note-form stack" onSubmit={submit} style={{ '--keyboard-inset': `${keyboardInset}px` }}>
+    <form
+      className="note-form stack"
+      onSubmit={submit}
+      style={{
+        '--keyboard-inset': `${keyboardInset}px`,
+        '--available-vh': availableViewportHeight ? `${availableViewportHeight}px` : '100dvh',
+      }}
+    >
       <div className="capture-input-wrap">
         <div className="capture-top-controls" style={{ '--priority-color': getPriorityColor(priority) }}>
           <div className="priority-picker priority-picker-inline">
@@ -170,34 +180,33 @@ export default function NoteEditForm({
           placeholder="Capture the idea quickly"
           rows={5}
         />
+        <div className="capture-secondary-row">
+          <button
+            type="button"
+            className={`important-toggle ${important ? 'is-active' : ''}`}
+            onClick={() => setImportant((value) => !value)}
+            aria-pressed={important}
+          >
+            Important
+          </button>
+          <label className="destination-strip">
+            <span>To</span>
+            <select value={destination || HMM_DESTINATION} onChange={(event) => handleDestinationChange(event.target.value)}>
+              <option value={HMM_DESTINATION}>Hmm</option>
+              {projects.map((project) => <option key={project.id} value={project.id}>{getProjectName(project)}</option>)}
+              <option value={CREATE_PROJECT_VALUE}>+ Create new project</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       <div className="capture-bottom-toolbar">
-        <div className="capture-secondary-row">
-        <button
-          type="button"
-          className={`important-toggle ${important ? 'is-active' : ''}`}
-          onClick={() => setImportant((value) => !value)}
-          aria-pressed={important}
-        >
-          Important
-        </button>
-        <label className="destination-strip">
-          <span>To</span>
-          <select value={destination || HMM_DESTINATION} onChange={(event) => handleDestinationChange(event.target.value)}>
-            <option value={HMM_DESTINATION}>Hmm</option>
-            {projects.map((project) => <option key={project.id} value={project.id}>{getProjectName(project)}</option>)}
-            <option value={CREATE_PROJECT_VALUE}>+ Create new project</option>
-          </select>
-        </label>
-        </div>
-
         {showProjectTodoOption && (
           <div className="option-grid capture-options-grid">
-          <label className="checkbox-row">
-            <input type="checkbox" checked={isTodo} onChange={(event) => setIsTodo(event.target.checked)} />
-            <span>Add to project to-do list</span>
-          </label>
+            <label className="checkbox-row">
+              <input type="checkbox" checked={isTodo} onChange={(event) => setIsTodo(event.target.checked)} />
+              <span>Add to project to-do list</span>
+            </label>
           </div>
         )}
       </div>
