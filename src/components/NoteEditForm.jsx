@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CREATE_PROJECT_VALUE,
   HMM_DESTINATION,
@@ -45,6 +45,35 @@ export default function NoteEditForm({
   const [important, setImportant] = useState(Boolean(initialNote?.important));
   const [isTodo, setIsTodo] = useState(Boolean(initialNote?.isTodo));
   const [error, setError] = useState('');
+
+  const [keyboardInset, setKeyboardInset] = useState(0);
+  const textareaRef = useRef(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return undefined;
+
+    const viewport = window.visualViewport;
+
+    const updateKeyboardInset = () => {
+      const fullHeight = window.innerHeight || 0;
+      const keyboardHeight = Math.max(0, fullHeight - viewport.height - viewport.offsetTop);
+      const hasFocus = document.activeElement === textareaRef.current;
+      setKeyboardInset(hasFocus ? keyboardHeight : 0);
+    };
+
+    updateKeyboardInset();
+    viewport.addEventListener('resize', updateKeyboardInset);
+    viewport.addEventListener('scroll', updateKeyboardInset);
+    window.addEventListener('focusin', updateKeyboardInset);
+    window.addEventListener('focusout', updateKeyboardInset);
+
+    return () => {
+      viewport.removeEventListener('resize', updateKeyboardInset);
+      viewport.removeEventListener('scroll', updateKeyboardInset);
+      window.removeEventListener('focusin', updateKeyboardInset);
+      window.removeEventListener('focusout', updateKeyboardInset);
+    };
+  }, []);
 
   useEffect(() => {
     setText(initialNote?.text || '');
@@ -114,7 +143,7 @@ export default function NoteEditForm({
   };
 
   return (
-    <form className="note-form stack" onSubmit={submit}>
+    <form className="note-form stack" onSubmit={submit} style={{ '--keyboard-inset': `${keyboardInset}px` }}>
       <div className="capture-input-wrap">
         <div className="capture-top-controls" style={{ '--priority-color': getPriorityColor(priority) }}>
           <div className="priority-picker priority-picker-inline">
@@ -134,6 +163,7 @@ export default function NoteEditForm({
           <button type="submit" className="capture-save-pill">{submitLabel}</button>
         </div>
         <textarea
+          ref={textareaRef}
           autoFocus={autoFocus}
           value={text}
           onChange={(event) => setText(event.target.value)}
@@ -142,7 +172,8 @@ export default function NoteEditForm({
         />
       </div>
 
-      <div className="capture-secondary-row">
+      <div className="capture-bottom-toolbar">
+        <div className="capture-secondary-row">
         <button
           type="button"
           className={`important-toggle ${important ? 'is-active' : ''}`}
@@ -159,16 +190,17 @@ export default function NoteEditForm({
             <option value={CREATE_PROJECT_VALUE}>+ Create new project</option>
           </select>
         </label>
-      </div>
+        </div>
 
-      {showProjectTodoOption && (
-        <div className="option-grid">
+        {showProjectTodoOption && (
+          <div className="option-grid capture-options-grid">
           <label className="checkbox-row">
             <input type="checkbox" checked={isTodo} onChange={(event) => setIsTodo(event.target.checked)} />
             <span>Add to project to-do list</span>
           </label>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
       {error && <p className="form-error" role="alert">{error}</p>}
       {onCancel && <div className="actions"><button type="button" className="secondary-button" onClick={onCancel}>Cancel</button></div>}

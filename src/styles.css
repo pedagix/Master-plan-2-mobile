@@ -278,6 +278,34 @@ main {
   align-content: start;
 }
 
+
+.note-form {
+  --keyboard-inset: 0px;
+}
+
+.capture-bottom-toolbar {
+  position: sticky;
+  bottom: calc(var(--keyboard-inset) + env(safe-area-inset-bottom, 0px));
+  z-index: 6;
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(8px);
+  padding: 7px 8px;
+}
+
+.capture-options-grid {
+  gap: 6px;
+}
+
+.capture-input-wrap textarea {
+  min-height: clamp(190px, 36dvh, 360px);
+}
+
+
 .new-aha-panel {
   border: 1px solid var(--surface-border);
   border-radius: 8px;
@@ -304,8 +332,8 @@ main {
 .capture-save-pill {
   min-height: 34px;
   border-radius: 999px;
-  padding: 6px 11px;
-  font-size: 12px;
+  padding: 4px 9px;
+  font-size: 11px;
   line-height: 1;
   flex: 0 0 auto;
   min-width: 88px;
@@ -405,11 +433,11 @@ main {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .important-toggle {
-  min-height: 34px;
+  min-height: 30px;
   border: 1px solid var(--surface-border);
   border-radius: 999px;
   background: #fff;
@@ -417,7 +445,7 @@ main {
   font-size: 12px;
   font-weight: 750;
   line-height: 1;
-  padding: 6px 11px;
+  padding: 4px 9px;
 }
 
 .important-toggle.is-active {
@@ -441,8 +469,8 @@ main {
 }
 
 .destination-strip select {
-  min-height: 34px;
-  padding: 6px 10px;
+  min-height: 30px;
+  padding: 4px 9px;
 }
 .option-grid,
 .settings-button-grid {
@@ -455,11 +483,11 @@ main {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 48px;
+  min-height: 38px;
   border: 1px solid var(--surface-border);
   border-radius: 8px;
   background: #fff;
-  padding: 10px 12px;
+  padding: 6px 9px;
   color: var(--text-strong);
   font-weight: 650;
 }
@@ -735,7 +763,12 @@ summary {
 
   .important-toggle,
   .destination-strip select {
-    min-height: 32px;
+    min-height: 30px;
+  }
+
+  .capture-bottom-toolbar {
+    padding: 6px 7px;
+    gap: 5px;
   }
 }
 
