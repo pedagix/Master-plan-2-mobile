@@ -15,6 +15,10 @@
   --section-tada-soft: #e2e8f0;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  --keyboard-offset: 0px;
+  --bottom-nav-safe-area: env(safe-area-inset-bottom, 0px);
+  --bottom-nav-height: 74px;
+  --bottom-nav-height-compact: 58px;
 }
 
 * { box-sizing: border-box; }
@@ -110,7 +114,11 @@ small {
   max-width: 720px;
   min-height: 100vh;
   margin: 0 auto;
-  padding-bottom: 82px;
+  padding-bottom: calc(var(--bottom-nav-height) + var(--bottom-nav-safe-area) + 8px);
+}
+
+.app-shell.keyboard-open {
+  padding-bottom: calc(var(--bottom-nav-height-compact) + var(--bottom-nav-safe-area) + 8px);
 }
 
 .top-header {
@@ -174,7 +182,7 @@ main {
 .bottom-nav {
   position: fixed;
   right: 0;
-  bottom: 0;
+  bottom: calc(var(--keyboard-offset, 0px) + var(--bottom-nav-safe-area));
   left: 0;
   z-index: 20;
   display: grid;
@@ -183,6 +191,11 @@ main {
   border-top: 1px solid var(--surface-border);
   background: #fff;
   padding: 8px;
+  transition: bottom 180ms ease, padding 180ms ease;
+}
+
+.app-shell.keyboard-open .bottom-nav {
+  padding: 5px 6px;
 }
 
 .bottom-nav a {
@@ -199,6 +212,12 @@ main {
   padding: 6px;
   text-align: center;
   text-decoration: none;
+}
+
+.app-shell.keyboard-open .bottom-nav a {
+  min-height: 40px;
+  font-size: 12px;
+  padding: 4px;
 }
 
 .bottom-nav a.active {
