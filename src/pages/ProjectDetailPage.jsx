@@ -169,7 +169,7 @@ export default function ProjectDetailPage({ api }) {
         </div>
         {!todos.length && <p className="empty-state">No active to-dos.</p>}
         {todos.map((todo) => (
-          <label key={todo.id} className="todo-row" style={{ '--priority-color': getPriorityColor(todo.priority) }}>
+          <label key={todo.id} className={`todo-row ${todo.important ? 'important-note-rainbow-border' : ''}`.trim()} style={{ '--priority-color': getPriorityColor(todo.priority) }}>
             <input type="checkbox" checked={false} onChange={() => completeTodo(todo)} />
             <span>{todo.text}</span>
             <strong>P{todo.priority}</strong>

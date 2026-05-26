@@ -567,6 +567,40 @@ main {
   color: #fff;
 }
 
+
+.important-note-rainbow-border {
+  position: relative;
+  border: 3px solid hsl(0 100% 50%);
+  animation: important-note-hue-cycle 1.1s linear infinite;
+}
+
+@keyframes important-note-hue-cycle {
+  from {
+    filter: hue-rotate(0deg);
+  }
+  to {
+    filter: hue-rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .important-note-rainbow-border {
+    animation: none;
+    border-color: transparent;
+    background-image: linear-gradient(#fff, #fff),
+      linear-gradient(90deg,
+        hsl(0 100% 50%),
+        hsl(60 100% 50%),
+        hsl(120 100% 45%),
+        hsl(180 100% 45%),
+        hsl(240 100% 60%),
+        hsl(300 100% 55%),
+        hsl(360 100% 50%));
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+  }
+}
+
 .grouped-list {
   gap: 8px;
 }
