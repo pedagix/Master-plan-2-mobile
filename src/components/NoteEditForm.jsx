@@ -172,7 +172,6 @@ export default function NoteEditForm({
             <span className="priority-scale-label">hot</span>
           </div>
           <div className="capture-top-actions">
-            {onDelete && <button type="button" className="capture-delete-pill" onClick={() => onDelete(initialNote)}>Delete</button>}
             <button type="submit" className="capture-save-pill">{submitLabel}</button>
           </div>
         </div>
@@ -216,7 +215,12 @@ export default function NoteEditForm({
       </div>
 
       {error && <p className="form-error" role="alert">{error}</p>}
-      {onCancel && <div className="actions"><button type="button" className="secondary-button" onClick={onCancel}>Cancel</button></div>}
+      {(onCancel || onDelete) && (
+        <div className="actions note-edit-actions-row">
+          {onCancel ? <button type="button" className="secondary-button" onClick={onCancel}>Cancel</button> : <span />}
+          {onDelete && <button type="button" className="capture-delete-pill" onClick={() => onDelete(initialNote)}>Delete</button>}
+        </div>
+      )}
     </form>
   );
 }

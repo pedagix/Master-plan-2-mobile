@@ -538,6 +538,11 @@ main {
   gap: 8px;
 }
 
+.note-edit-actions-row {
+  justify-content: space-between;
+  align-items: center;
+}
+
 .form-error {
   border: 1px solid #fecaca;
   border-radius: 8px;
