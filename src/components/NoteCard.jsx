@@ -1,6 +1,6 @@
 import { getPriorityColor } from '../lib/model';
 
-export default function NoteCard({ note, projects: _projects = [], onEdit, onDelete, children }) {
+export default function NoteCard({ note, projects: _projects = [], onEdit, children }) {
   return (
     <article
       className={`note-card card ${note.important ? 'important-note-rainbow-border' : ''}`.trim()}
@@ -19,11 +19,6 @@ export default function NoteCard({ note, projects: _projects = [], onEdit, onDel
       <div className="note-card-main">
         <p>{note.text}</p>
       </div>
-      {onDelete && (
-        <div className="note-actions">
-          <button type="button" className="danger-button" onClick={() => onDelete(note)}>Delete</button>
-        </div>
-      )}
       {children}
     </article>
   );

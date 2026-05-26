@@ -198,10 +198,10 @@ export default function ProjectDetailPage({ api }) {
         <h3>Notes</h3>
         {!notes.length && <p className="empty-state">No project notes.</p>}
         {notes.map((note) => (
-          <NoteCard key={note.id} note={note} projects={api.data.projects} onEdit={() => setEditingNoteId(note.id)} onDelete={deleteNote}>
+          <NoteCard key={note.id} note={note} projects={api.data.projects} onEdit={() => setEditingNoteId(note.id)}>
             {editingNoteId === note.id && (
               <div className="edit-panel">
-                <NoteEditForm api={api} initialNote={editingNote} submitLabel="Save note" onSave={saveNoteEdit} onCancel={() => setEditingNoteId(null)} />
+                <NoteEditForm api={api} initialNote={editingNote} submitLabel="Save note" onSave={saveNoteEdit} onDelete={deleteNote} onCancel={() => setEditingNoteId(null)} />
               </div>
             )}
           </NoteCard>

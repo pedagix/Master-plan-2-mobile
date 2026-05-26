@@ -37,6 +37,7 @@ export default function NoteEditForm({
   submitLabel = 'Save note',
   onSave,
   onCancel,
+  onDelete,
   autoFocus = false,
 }) {
   const [text, setText] = useState(initialNote?.text || '');
@@ -170,7 +171,10 @@ export default function NoteEditForm({
             />
             <span className="priority-scale-label">hot</span>
           </div>
-          <button type="submit" className="capture-save-pill">{submitLabel}</button>
+          <div className="capture-top-actions">
+            {onDelete && <button type="button" className="capture-delete-pill" onClick={() => onDelete(initialNote)}>Delete</button>}
+            <button type="submit" className="capture-save-pill">{submitLabel}</button>
+          </div>
         </div>
         <textarea
           ref={textareaRef}
