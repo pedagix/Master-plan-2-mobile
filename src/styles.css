@@ -570,34 +570,24 @@ main {
 
 .important-note-rainbow-border {
   position: relative;
-  border: 3px solid hsl(0 100% 50%);
-  animation: important-note-hue-cycle 1.1s linear infinite;
+  border: 3px solid rgb(249 115 22 / 0);
+  animation: important-note-border-pulse 2s ease-in-out infinite;
 }
 
-@keyframes important-note-hue-cycle {
-  from {
-    filter: hue-rotate(0deg);
+@keyframes important-note-border-pulse {
+  0%,
+  100% {
+    border-color: rgb(249 115 22 / 0);
   }
-  to {
-    filter: hue-rotate(360deg);
+  50% {
+    border-color: rgb(249 115 22 / 1);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .important-note-rainbow-border {
     animation: none;
-    border-color: transparent;
-    background-image: linear-gradient(#fff, #fff),
-      linear-gradient(90deg,
-        hsl(0 100% 50%),
-        hsl(60 100% 50%),
-        hsl(120 100% 45%),
-        hsl(180 100% 45%),
-        hsl(240 100% 60%),
-        hsl(300 100% 55%),
-        hsl(360 100% 50%));
-    background-origin: border-box;
-    background-clip: padding-box, border-box;
+    border-color: var(--warm-orange);
   }
 }
 
