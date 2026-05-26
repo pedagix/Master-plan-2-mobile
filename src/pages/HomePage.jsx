@@ -10,7 +10,7 @@ export default function HomePage({ api }) {
     <div className="stack">
       <Link to="/capture" className="capture-btn">+ Fast Capture</Link>
       <ContentSection title="Active Projects" items={active}>{active.map((p) => <Link key={p.id} className="card" to={`/projects/${p.id}`}>{p.title}</Link>)}</ContentSection>
-      <ContentSection title="Important Suggestions" items={important}>{important.map((s) => <div key={s.id} className="card">{s.text}</div>)}</ContentSection>
+      <ContentSection title="Important Suggestions" items={important}>{important.map((s) => <div key={s.id} className="card important-note-rainbow-border">{s.text}</div>)}</ContentSection>
       <ContentSection title="Next steps" items={next}>{next.map((t) => <div key={t.id} className="card">{t.title}</div>)}</ContentSection>
     </div>
   );

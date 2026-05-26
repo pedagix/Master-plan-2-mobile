@@ -19,7 +19,7 @@ export default function NoteCard({ note, projects = [], onEdit, onDelete, childr
 
   return (
     <article
-      className="note-card card"
+      className={`note-card card ${note.important ? 'important-note-rainbow-border' : ''}`.trim()}
       style={{ '--priority-color': getPriorityColor(note.priority) }}
       tabIndex={onEdit ? 0 : undefined}
       onClick={openFromCard}
