@@ -606,6 +606,7 @@ main {
 }
 
 .note-card {
+  position: relative;
   display: grid;
   gap: 12px;
   border-left: 6px solid var(--priority-color);
@@ -614,6 +615,7 @@ main {
 .note-card-main {
   display: grid;
   gap: 8px;
+  padding-right: 40px;
 }
 
 .note-card-main p {
@@ -622,20 +624,21 @@ main {
   line-height: 1.42;
 }
 
-.note-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-
-.note-meta span:not(.priority-badge) {
+.note-card-cog-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-height: 36px;
+  min-width: 36px;
   border-radius: 999px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: #eef2e9;
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 750;
-  padding: 5px 8px;
+  color: #334155;
+  font-size: 16px;
+  line-height: 1;
 }
 
 .note-actions {
