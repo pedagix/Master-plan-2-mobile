@@ -480,7 +480,7 @@ main {
 
 .capture-secondary-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto auto minmax(0, 1fr);
   align-items: center;
   gap: 6px;
   margin-top: auto;
@@ -488,7 +488,7 @@ main {
 }
 
 .important-toggle {
-  min-height: 28px;
+  min-height: 32px;
   border: 1px solid var(--surface-border);
   border-radius: 999px;
   background: #fff;
@@ -505,23 +505,12 @@ main {
   color: var(--section-aha);
 }
 
-.destination-strip {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 6px;
-}
-
-.destination-strip span {
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.destination-strip select {
-  min-height: 28px;
+.capture-destination-select {
+  min-height: 32px;
+  min-width: 0;
+  width: 100%;
   padding: 2px 9px;
+  font-size: 12px;
 }
 .option-grid,
 .settings-button-grid {
@@ -861,13 +850,13 @@ summary {
   }
 
   .capture-secondary-row {
-    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    grid-template-columns: auto auto minmax(0, 1fr);
     gap: 6px;
   }
 
   .important-toggle,
-  .destination-strip select {
-    min-height: 28px;
+  .capture-destination-select {
+    min-height: 32px;
   }
 
   .capture-bottom-toolbar {
