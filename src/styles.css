@@ -479,12 +479,13 @@ main {
 
 
 .capture-secondary-row {
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr);
+  display: flex;
   align-items: center;
   gap: 6px;
   margin-top: auto;
   padding-top: 2px;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .important-toggle {
@@ -497,6 +498,8 @@ main {
   font-weight: 750;
   line-height: 1;
   padding: 2px 9px;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .important-toggle.is-active {
@@ -511,6 +514,11 @@ main {
   width: 100%;
   padding: 2px 9px;
   font-size: 12px;
+  flex: 1 1 auto;
+}
+
+.checklist-toggle {
+  max-width: 112px;
 }
 .option-grid,
 .settings-button-grid {
@@ -850,7 +858,6 @@ summary {
   }
 
   .capture-secondary-row {
-    grid-template-columns: auto auto minmax(0, 1fr);
     gap: 6px;
   }
 
