@@ -2,24 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import NoteCard from '../components/NoteCard';
 import NoteEditForm from '../components/NoteEditForm';
-import { HMM_DESTINATION, PROJECT_DESTINATION, getProjectName, getRealProjects, normalizeProject, sortByPriorityThenNewest } from '../lib/model';
-
-function buildProject(name) {
-  const now = Date.now();
-  return normalizeProject({
-    id: crypto.randomUUID(),
-    name,
-    title: name,
-    status: 'active',
-    createdAt: now,
-    updatedAt: now,
-    lastInteractedAt: now,
-    interactionCount: 1,
-    tasksDone: 0,
-    notes: [],
-    gallery: [],
-  });
-}
+import { HMM_DESTINATION, PROJECT_DESTINATION, getProjectName, getRealProjects, sortByPriorityThenNewest } from '../lib/model';
 
 export default function TaDaPage({ api }) {
   const [editingImportantId, setEditingImportantId] = useState(null);
@@ -31,17 +14,6 @@ export default function TaDaPage({ api }) {
     .filter((note) => !note.deleted && !note.legacyShape && note.important)
     .sort(sortByPriorityThenNewest), [api.data.notes]);
   const editingImportantNote = importantNotes.find((note) => note.id === editingImportantId) || null;
-
-  const createProject = () => {
-    const name = window.prompt('Project name');
-    if (!name?.trim()) return;
-    const project = buildProject(name.trim());
-    api.setData((prev) => ({
-      ...prev,
-      projects: [project, ...prev.projects],
-      settings: { ...prev.settings, lastSelectedProjectId: project.id, lastDestination: project.id },
-    }));
-  };
 
   const saveImportantEdit = (patch) => {
     if (!editingImportantId) return;
@@ -89,10 +61,6 @@ export default function TaDaPage({ api }) {
   return (
     <div className="stack page-screen">
       <section className="stack">
-        <div className="section-title-row">
-          <h3>Projects</h3>
-          <button type="button" className="secondary-button" onClick={createProject}>New</button>
-        </div>
         {!projects.length && <p className="empty-state">No projects yet.</p>}
         <div className="project-grid">
           {projects.map((project) => (
