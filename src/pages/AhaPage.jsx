@@ -44,9 +44,6 @@ export default function AhaPage({ api }) {
 
   return (
     <div className="stack page-screen">
-      <div className="page-title-row">
-        <h2>Notes</h2>
-      </div>
       <NoteEditForm
         key={formKey}
         api={api}
