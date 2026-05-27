@@ -10,6 +10,8 @@ export default function HmmPage({ api }) {
   const hmmNotes = useMemo(() => (api.data.notes || [])
     .filter((note) => !note.deleted && !note.legacyShape && note.destination === HMM_DESTINATION)
     .sort(sortByPriorityThenNewest), [api.data.notes]);
+  const todos = hmmNotes.filter((note) => note.isTodo);
+  const notes = hmmNotes.filter((note) => !note.isTodo);
 
   const editingNote = hmmNotes.find((note) => note.id === editingId) || null;
 
@@ -54,6 +56,28 @@ export default function HmmPage({ api }) {
     else setEditingId(null);
   };
 
+  const completeTodo = (note) => {
+    if (!window.confirm('Mark this checklist item as done?')) return;
+    const now = Date.now();
+    const completed = {
+      id: crypto.randomUUID(),
+      text: note.text,
+      noteId: note.id,
+      destination: HMM_DESTINATION,
+      projectId: null,
+      completedAt: now,
+      completedFrom: 'plans',
+      priority: note.priority,
+      important: note.important,
+    };
+    api.setData((prev) => ({
+      ...prev,
+      notes: (prev.notes || []).map((item) => item.id === note.id ? { ...item, deleted: true, deletedAt: now, completedAt: now, updatedAt: now } : item),
+      completedTasks: [completed, ...(prev.completedTasks || [])],
+    }));
+    if (editingId === note.id) setEditingId(null);
+  };
+
   const renderNote = (note) => (
     <NoteCard key={note.id} note={note} projects={api.data.projects} onEdit={() => toggleEdit(note.id)}>
       {editingId === note.id && (
@@ -70,8 +94,29 @@ export default function HmmPage({ api }) {
         <h2>Plans</h2>
       </div>
 
+      <section className="stack checklist-list">
+        <div className="section-title-row">
+          <h3>Plans checklist</h3>
+        </div>
+        {!todos.length && <p className="empty-state">No checklist items.</p>}
+        {todos.map((todo) => (
+          <div key={todo.id} className="stack checklist-item-stack">
+            <div className={`todo-row ${todo.important ? 'important-note-rainbow-border' : ''}`.trim()}>
+              <input type="checkbox" checked={false} onChange={() => completeTodo(todo)} />
+              <span>{todo.text}</span>
+              <button type="button" className="todo-row-cog-button" aria-label={editingId === todo.id ? 'Save and close checklist item editor' : 'Edit checklist item'} onClick={() => toggleEdit(todo.id)}>⚙️</button>
+            </div>
+            {editingId === todo.id && (
+              <div className="edit-panel">
+                <NoteEditForm api={api} initialNote={editingNote} submitLabel="Save note" onSave={saveEdit} onDelete={deleteNote} onCancel={() => setEditingId(null)} registerSubmitHandler={(submitHandler) => { if (submitHandler) submitHandlersRef.current[todo.id] = submitHandler; else delete submitHandlersRef.current[todo.id]; }} />
+              </div>
+            )}
+          </div>
+        ))}
+      </section>
+
       <div className="stack">
-        {!hmmNotes.length ? <p className="empty-state">Nothing in Plans.</p> : hmmNotes.map(renderNote)}
+        {!notes.length ? <p className="empty-state">Nothing in Plans.</p> : notes.map(renderNote)}
       </div>
     </div>
   );
