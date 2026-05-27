@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import NoteCard from '../components/NoteCard';
 import NoteEditForm from '../components/NoteEditForm';
@@ -11,6 +11,7 @@ export default function ProjectDetailPage({ api }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsDraft, setSettingsDraft] = useState({ name: '', description: '' });
   const [editingNoteId, setEditingNoteId] = useState(null);
+  const todoSubmitHandlersRef = useRef({});
   const [newFormKey, setNewFormKey] = useState(0);
   const [newAhaOpen, setNewAhaOpen] = useState(false);
 
@@ -125,6 +126,19 @@ export default function ProjectDetailPage({ api }) {
     }));
   };
 
+  const toggleTodoEdit = (todoId) => {
+    if (editingNoteId !== todoId) {
+      setEditingNoteId(todoId);
+      return;
+    }
+    const submitHandler = todoSubmitHandlersRef.current[todoId];
+    if (submitHandler) {
+      submitHandler();
+      return;
+    }
+    setEditingNoteId(null);
+  };
+
   const upload = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -169,11 +183,36 @@ export default function ProjectDetailPage({ api }) {
         </div>
         {!todos.length && <p className="empty-state">No active to-dos.</p>}
         {todos.map((todo) => (
-          <label key={todo.id} className={`todo-row ${todo.important ? 'important-note-rainbow-border' : ''}`.trim()} style={{ '--priority-color': getPriorityColor(todo.priority) }}>
-            <input type="checkbox" checked={false} onChange={() => completeTodo(todo)} />
-            <span>{todo.text}</span>
-            <strong>P{todo.priority}</strong>
-          </label>
+          <div key={todo.id} className="stack">
+            <div className={`todo-row ${todo.important ? 'important-note-rainbow-border' : ''}`.trim()} style={{ '--priority-color': getPriorityColor(todo.priority) }}>
+              <input type="checkbox" checked={false} onChange={() => completeTodo(todo)} />
+              <span>{todo.text}</span>
+              <button
+                type="button"
+                className="todo-row-cog-button"
+                aria-label={editingNoteId === todo.id ? 'Save and close checklist item editor' : 'Edit checklist item'}
+                onClick={() => toggleTodoEdit(todo.id)}
+              >
+                ⚙
+              </button>
+            </div>
+            {editingNoteId === todo.id && (
+              <div className="edit-panel">
+                <NoteEditForm
+                  api={api}
+                  initialNote={todo}
+                  submitLabel="Save"
+                  onSave={saveNoteEdit}
+                  onDelete={deleteNote}
+                  onCancel={() => setEditingNoteId(null)}
+                  registerSubmitHandler={(submitHandler) => {
+                    if (submitHandler) todoSubmitHandlersRef.current[todo.id] = submitHandler;
+                    else delete todoSubmitHandlersRef.current[todo.id];
+                  }}
+                />
+              </div>
+            )}
+          </div>
         ))}
       </section>
 

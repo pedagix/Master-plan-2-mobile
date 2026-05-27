@@ -39,6 +39,7 @@ export default function NoteEditForm({
   onCancel,
   onDelete,
   autoFocus = false,
+  registerSubmitHandler,
 }) {
   const [text, setText] = useState(initialNote?.text || '');
   const [destination, setDestination] = useState(destinationFromNote(initialNote));
@@ -50,6 +51,13 @@ export default function NoteEditForm({
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [availableViewportHeight, setAvailableViewportHeight] = useState(null);
   const textareaRef = useRef(null);
+  const formRef = useRef(null);
+
+  useEffect(() => {
+    if (!registerSubmitHandler) return undefined;
+    registerSubmitHandler(() => formRef.current?.requestSubmit());
+    return () => registerSubmitHandler(null);
+  }, [registerSubmitHandler]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.visualViewport) return undefined;
@@ -148,6 +156,7 @@ export default function NoteEditForm({
 
   return (
     <form
+      ref={formRef}
       className="note-form stack"
       onSubmit={submit}
       style={{
