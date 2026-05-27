@@ -12,6 +12,7 @@ export default function ProjectDetailPage({ api }) {
   const [settingsDraft, setSettingsDraft] = useState({ name: '', description: '' });
   const [editingNoteId, setEditingNoteId] = useState(null);
   const todoSubmitHandlersRef = useRef({});
+  const noteSubmitHandlersRef = useRef({});
   const [newFormKey, setNewFormKey] = useState(0);
   const [newAhaOpen, setNewAhaOpen] = useState(false);
 
@@ -131,7 +132,7 @@ export default function ProjectDetailPage({ api }) {
       setEditingNoteId(todoId);
       return;
     }
-    const submitHandler = todoSubmitHandlersRef.current[todoId];
+    const submitHandler = todoSubmitHandlersRef.current[todoId] || noteSubmitHandlersRef.current[todoId];
     if (submitHandler) {
       submitHandler();
       return;
@@ -237,10 +238,10 @@ export default function ProjectDetailPage({ api }) {
         <h3>Notes</h3>
         {!notes.length && <p className="empty-state">No project notes.</p>}
         {notes.map((note) => (
-          <NoteCard key={note.id} note={note} projects={api.data.projects} onEdit={() => setEditingNoteId(note.id)}>
+          <NoteCard key={note.id} note={note} projects={api.data.projects} onEdit={() => toggleTodoEdit(note.id)}>
             {editingNoteId === note.id && (
               <div className="edit-panel">
-                <NoteEditForm api={api} initialNote={editingNote} submitLabel="Save note" onSave={saveNoteEdit} onDelete={deleteNote} onCancel={() => setEditingNoteId(null)} />
+                <NoteEditForm api={api} initialNote={editingNote} submitLabel="Save note" onSave={saveNoteEdit} onDelete={deleteNote} onCancel={() => setEditingNoteId(null)} registerSubmitHandler={(submitHandler) => { if (submitHandler) noteSubmitHandlersRef.current[note.id] = submitHandler; else delete noteSubmitHandlersRef.current[note.id]; }} />
               </div>
             )}
           </NoteCard>

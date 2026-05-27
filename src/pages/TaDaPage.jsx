@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import NoteCard from '../components/NoteCard';
 import NoteEditForm from '../components/NoteEditForm';
@@ -23,6 +23,7 @@ function buildProject(name) {
 
 export default function TaDaPage({ api }) {
   const [editingImportantId, setEditingImportantId] = useState(null);
+  const submitHandlersRef = useRef({});
 
   const projects = useMemo(() => getRealProjects(api.data.projects)
     .sort((a, b) => (b.lastInteractedAt || b.updatedAt || b.createdAt || 0) - (a.lastInteractedAt || a.updatedAt || a.createdAt || 0)), [api.data.projects]);
@@ -62,6 +63,27 @@ export default function TaDaPage({ api }) {
     setEditingImportantId(null);
   };
 
+
+  const deleteImportantNote = (note) => {
+    if (!window.confirm('Delete this note?')) return;
+    const now = Date.now();
+    api.setData((prev) => ({
+      ...prev,
+      notes: (prev.notes || []).map((item) => item.id === note.id ? { ...item, deleted: true, deletedAt: now, updatedAt: now } : item),
+    }));
+    if (editingImportantId === note.id) setEditingImportantId(null);
+  };
+
+  const toggleImportantEdit = (noteId) => {
+    if (editingImportantId !== noteId) {
+      setEditingImportantId(noteId);
+      return;
+    }
+    const submitHandler = submitHandlersRef.current[noteId];
+    if (submitHandler) submitHandler();
+    else setEditingImportantId(null);
+  };
+
   const projectTodoCount = (projectId) => (api.data.notes || []).filter((note) => !note.deleted && !note.legacyShape && note.projectId === projectId && note.isTodo).length;
 
   return (
@@ -91,10 +113,10 @@ export default function TaDaPage({ api }) {
         <h3>Important</h3>
         {!importantNotes.length && <p className="empty-state">No important notes.</p>}
         {importantNotes.map((note) => (
-          <NoteCard key={note.id} note={note} projects={api.data.projects} onEdit={() => setEditingImportantId(note.id)}>
+          <NoteCard key={note.id} note={note} projects={api.data.projects} onEdit={() => toggleImportantEdit(note.id)}>
             {editingImportantId === note.id && (
               <div className="edit-panel">
-                <NoteEditForm api={api} initialNote={editingImportantNote} submitLabel="Save note" onSave={saveImportantEdit} onCancel={() => setEditingImportantId(null)} />
+                <NoteEditForm api={api} initialNote={editingImportantNote} submitLabel="Save note" onSave={saveImportantEdit} onDelete={deleteImportantNote} onCancel={() => setEditingImportantId(null)} registerSubmitHandler={(submitHandler) => { if (submitHandler) submitHandlersRef.current[note.id] = submitHandler; else delete submitHandlersRef.current[note.id]; }} />
               </div>
             )}
           </NoteCard>

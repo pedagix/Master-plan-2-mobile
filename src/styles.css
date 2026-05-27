@@ -637,22 +637,29 @@ main {
   line-height: 1.42;
 }
 
+
+.cog-icon-button {
+  width: 32px;
+  min-height: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid #d7dfd0;
+  background: #eef2e9;
+  color: #334155;
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.cog-icon-button:active { transform: translateY(1px); }
 .note-card-cog-button {
   position: absolute;
   top: 8px;
   right: 8px;
-  min-height: 36px;
-  min-width: 36px;
-  border-radius: 999px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #eef2e9;
-  color: #334155;
-  font-size: 16px;
-  line-height: 1;
-  line-height: 1;
 }
 
 
@@ -735,26 +742,7 @@ main {
   overflow-wrap: anywhere;
 }
 
-.todo-row-cog-button {
-  width: 32px;
-  min-height: 32px;
-  height: 32px;
-  border-radius: 999px;
-  border: 1px solid var(--surface-border);
-  background: #fff;
-  color: #334155;
-  font-size: 16px;
-  line-height: 1;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
-.todo-row-cog-button:active {
-  transform: translateY(1px);
-}
+.todo-row-cog-button {}
 
 .gallery {
   display: grid;
@@ -934,3 +922,7 @@ summary {
 .section-tada .back-link {
   color: var(--section-tada);
 }
+
+.note-card-cog-button, .todo-row-cog-button {
+  width: 32px; min-height: 32px; height: 32px; border-radius: 999px; border: 1px solid #d7dfd0; background: #eef2e9; color: #334155; font-size: 14px; line-height: 1; font-weight: 700; display:inline-flex; align-items:center; justify-content:center; padding:0; }
+.note-card-cog-button:active, .todo-row-cog-button:active { transform: translateY(1px); }

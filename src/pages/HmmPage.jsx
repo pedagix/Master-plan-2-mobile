@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import NoteCard from '../components/NoteCard';
 import NoteEditForm from '../components/NoteEditForm';
 import { HMM_DESTINATION, PROJECT_DESTINATION, sortByPriorityThenNewest } from '../lib/model';
 
 export default function HmmPage({ api }) {
   const [editingId, setEditingId] = useState(null);
+  const submitHandlersRef = useRef({});
 
   const hmmNotes = useMemo(() => (api.data.notes || [])
     .filter((note) => !note.deleted && !note.legacyShape && note.destination === HMM_DESTINATION)
@@ -32,11 +33,32 @@ export default function HmmPage({ api }) {
     setEditingId(null);
   };
 
+
+  const deleteNote = (note) => {
+    if (!window.confirm('Delete this note?')) return;
+    const now = Date.now();
+    api.setData((prev) => ({
+      ...prev,
+      notes: (prev.notes || []).map((item) => item.id === note.id ? { ...item, deleted: true, deletedAt: now, updatedAt: now } : item),
+    }));
+    if (editingId === note.id) setEditingId(null);
+  };
+
+  const toggleEdit = (noteId) => {
+    if (editingId !== noteId) {
+      setEditingId(noteId);
+      return;
+    }
+    const submitHandler = submitHandlersRef.current[noteId];
+    if (submitHandler) submitHandler();
+    else setEditingId(null);
+  };
+
   const renderNote = (note) => (
-    <NoteCard key={note.id} note={note} projects={api.data.projects} onEdit={() => setEditingId(note.id)}>
+    <NoteCard key={note.id} note={note} projects={api.data.projects} onEdit={() => toggleEdit(note.id)}>
       {editingId === note.id && (
         <div className="edit-panel">
-          <NoteEditForm api={api} initialNote={editingNote} submitLabel="Save note" onSave={saveEdit} onCancel={() => setEditingId(null)} />
+          <NoteEditForm api={api} initialNote={editingNote} submitLabel="Save note" onSave={saveEdit} onDelete={deleteNote} onCancel={() => setEditingId(null)} registerSubmitHandler={(submitHandler) => { if (submitHandler) submitHandlersRef.current[note.id] = submitHandler; else delete submitHandlersRef.current[note.id]; }} />
         </div>
       )}
     </NoteCard>
