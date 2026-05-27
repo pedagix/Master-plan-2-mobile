@@ -176,14 +176,14 @@ export default function ProjectDetailPage({ api }) {
         </section>
       )}
 
-      <section className="stack">
+      <section className="stack checklist-list">
         <div className="section-title-row">
           <h3>Checklist</h3>
           <span className="done-counter">{project.tasksDone || 0} done</span>
         </div>
         {!todos.length && <p className="empty-state">No active to-dos.</p>}
         {todos.map((todo) => (
-          <div key={todo.id} className="stack">
+          <div key={todo.id} className="stack checklist-item-stack">
             <div className={`todo-row ${todo.important ? 'important-note-rainbow-border' : ''}`.trim()} style={{ '--priority-color': getPriorityColor(todo.priority) }}>
               <input type="checkbox" checked={false} onChange={() => completeTodo(todo)} />
               <span>{todo.text}</span>

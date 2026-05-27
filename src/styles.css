@@ -652,6 +652,7 @@ main {
   color: #334155;
   font-size: 16px;
   line-height: 1;
+  line-height: 1;
 }
 
 
@@ -703,17 +704,24 @@ main {
   padding: 6px 10px;
 }
 
+.checklist-list {
+  gap: 1px;
+}
+
+.checklist-item-stack {
+  gap: 1px;
+}
+
 .todo-row {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
-  min-height: 56px;
   border: 1px solid var(--surface-border);
   border-left: 6px solid var(--priority-color);
   border-radius: 8px;
   background: #fff;
-  padding: 11px 12px;
+  padding: 2px 12px;
 }
 
 .todo-row input {
@@ -728,14 +736,15 @@ main {
 }
 
 .todo-row-cog-button {
-  width: 34px;
-  min-height: 34px;
-  height: 34px;
+  width: 32px;
+  min-height: 32px;
+  height: 32px;
   border-radius: 999px;
   border: 1px solid var(--surface-border);
   background: #fff;
   color: #334155;
   font-size: 16px;
+  line-height: 1;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
