@@ -193,9 +193,10 @@ export default function NoteEditForm({
           </button>
           <button
             type="button"
-            className={`important-toggle ${isTodo ? 'is-active' : ''}`}
+            className={`important-toggle checklist-toggle ${isTodo ? 'is-active' : ''}`}
             onClick={() => setIsTodo((value) => !value)}
             aria-pressed={isTodo}
+            aria-label={destination === HMM_DESTINATION ? 'Add this note to the Plans checklist' : 'Add this note to the selected project list'}
           >
             Add to list
           </button>
