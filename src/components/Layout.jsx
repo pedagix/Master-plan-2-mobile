@@ -10,6 +10,13 @@ const links = [
 export default function Layout({ children }) {
   const location = useLocation();
   const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const activeHeaderTitle = location.pathname.startsWith('/hmm')
+    ? 'Plans'
+    : location.pathname.startsWith('/ta-da') || location.pathname.startsWith('/projects/')
+      ? 'Projects'
+      : location.pathname.startsWith('/aha')
+        ? 'Notes'
+        : 'Master Plan';
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -71,7 +78,7 @@ export default function Layout({ children }) {
   return (
     <div className={`app-shell ${sectionClass} ${keyboardOpen ? 'keyboard-open' : ''}`}>
       <header className="top-header">
-        <h1>Notes Plans Projects</h1>
+        <h1>{activeHeaderTitle}</h1>
         <NavLink to="/settings" className="header-settings-link" aria-label="Settings">Settings</NavLink>
       </header>
       <main>{children}</main>

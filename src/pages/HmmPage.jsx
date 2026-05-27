@@ -90,10 +90,6 @@ export default function HmmPage({ api }) {
 
   return (
     <div className="stack page-screen">
-      <div className="page-title-row">
-        <h2>Plans</h2>
-      </div>
-
       <section className="stack checklist-list">
         <div className="section-title-row">
           <h3>Plans checklist</h3>
