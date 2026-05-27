@@ -119,21 +119,13 @@ export default function NoteEditForm({
     setDestination(value || HMM_DESTINATION);
   };
 
-  const showProjectTodoOption = destination !== HMM_DESTINATION;
-
-  useEffect(() => {
-    if (!showProjectTodoOption && isTodo) setIsTodo(false);
-  }, [showProjectTodoOption, isTodo]);
+  const todoLabel = destination === HMM_DESTINATION ? 'Add to Plans checklist' : 'Add to project to-do list';
 
   const submit = (event) => {
     event.preventDefault();
     const trimmed = text.trim();
     if (!trimmed) {
       setError('Write the note first.');
-      return;
-    }
-    if (isTodo && destination === HMM_DESTINATION) {
-      setError('Choose or create a real project before adding this to a to-do list.');
       return;
     }
     const destinationType = destination === HMM_DESTINATION ? HMM_DESTINATION : PROJECT_DESTINATION;
@@ -213,14 +205,12 @@ export default function NoteEditForm({
       </div>
 
       <div className="capture-bottom-toolbar">
-        {showProjectTodoOption && (
-          <div className="option-grid capture-options-grid">
-            <label className="checkbox-row">
-              <input type="checkbox" checked={isTodo} onChange={(event) => setIsTodo(event.target.checked)} />
-              <span>Add to project to-do list</span>
-            </label>
-          </div>
-        )}
+        <div className="option-grid capture-options-grid">
+          <label className="checkbox-row">
+            <input type="checkbox" checked={isTodo} onChange={(event) => setIsTodo(event.target.checked)} />
+            <span>{todoLabel}</span>
+          </label>
+        </div>
       </div>
 
       {error && <p className="form-error" role="alert">{error}</p>}
