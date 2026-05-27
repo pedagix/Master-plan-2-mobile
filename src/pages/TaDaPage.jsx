@@ -89,7 +89,7 @@ export default function TaDaPage({ api }) {
   return (
     <div className="stack page-screen">
       <div className="page-title-row">
-        <h2>Ta-da</h2>
+        <h2>Projects</h2>
       </div>
 
       <section className="stack">

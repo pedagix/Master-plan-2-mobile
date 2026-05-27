@@ -14,7 +14,7 @@ export default function ProjectDetailPage({ api }) {
   const todoSubmitHandlersRef = useRef({});
   const noteSubmitHandlersRef = useRef({});
   const [newFormKey, setNewFormKey] = useState(0);
-  const [newAhaOpen, setNewAhaOpen] = useState(false);
+  const [newNoteOpen, setNewNoteOpen] = useState(false);
 
   useEffect(() => {
     if (!project) return;
@@ -32,7 +32,7 @@ export default function ProjectDetailPage({ api }) {
   }, [projectId]);
 
   if (projectId === HMM_PROJECT_ID) return <Navigate to="/hmm" replace />;
-  if (!project) return <div className="stack"><p>Project not found.</p><Link to="/ta-da">Back to Ta-da</Link></div>;
+  if (!project) return <div className="stack"><p>Project not found.</p><Link to="/ta-da">Back to Projects</Link></div>;
 
   const projectNotes = (api.data.notes || []).filter((note) => !note.deleted && !note.legacyShape && note.projectId === projectId);
   const todos = projectNotes.filter((note) => note.isTodo).sort(sortByPriorityThenNewest);
@@ -76,7 +76,7 @@ export default function ProjectDetailPage({ api }) {
         : item) : prev.projects,
     }));
     setNewFormKey((value) => value + 1);
-    setNewAhaOpen(false);
+    setNewNoteOpen(false);
   };
 
   const saveNoteEdit = (patch) => {
@@ -154,11 +154,11 @@ export default function ProjectDetailPage({ api }) {
     <div className="stack page-screen">
       <div className="page-title-row">
         <div>
-          <Link to="/ta-da" className="back-link">Ta-da</Link>
+          <Link to="/ta-da" className="back-link">Projects</Link>
           <h2>{getProjectName(project)}</h2>
         </div>
         <div className="header-actions">
-          <button type="button" className="secondary-button" onClick={() => setNewAhaOpen(true)}>New Aha</button>
+          <button type="button" className="secondary-button" onClick={() => setNewNoteOpen(true)}>New Note</button>
           <button type="button" className="secondary-button" onClick={() => setSettingsOpen((value) => !value)}>Settings</button>
         </div>
       </div>
@@ -217,18 +217,18 @@ export default function ProjectDetailPage({ api }) {
         ))}
       </section>
 
-      {newAhaOpen && (
+      {newNoteOpen && (
         <section className="stack edit-panel new-aha-panel">
           <div className="section-title-row">
-            <h3>New Aha</h3>
+            <h3>New Note</h3>
           </div>
           <NoteEditForm
             key={`${projectId}-${newFormKey}`}
             api={api}
             initialNote={{ destination: PROJECT_DESTINATION, projectId, priority: 5, important: false, isTodo: false }}
-            submitLabel="Save Aha"
+            submitLabel="Save Note"
             onSave={addNote}
-            onCancel={() => setNewAhaOpen(false)}
+            onCancel={() => setNewNoteOpen(false)}
             autoFocus
           />
         </section>

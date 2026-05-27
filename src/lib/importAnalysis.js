@@ -70,7 +70,7 @@ export function buildImportPreview(incoming, current) {
       possibleConflicts: 0,
       invalidItems: 0,
       itemsNeedingProjectAssignment: 0,
-      problems: ['Legacy AI analysis export/import files are no longer supported in the current Aha/Hmm/Ta-da workflow.'],
+      problems: ['Legacy AI analysis export/import files are no longer supported in the current Notes/Plans/Projects workflow.'],
     };
   }
 

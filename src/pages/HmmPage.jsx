@@ -67,11 +67,11 @@ export default function HmmPage({ api }) {
   return (
     <div className="stack page-screen">
       <div className="page-title-row">
-        <h2>Hmm</h2>
+        <h2>Plans</h2>
       </div>
 
       <div className="stack">
-        {!hmmNotes.length ? <p className="empty-state">Nothing in Hmm.</p> : hmmNotes.map(renderNote)}
+        {!hmmNotes.length ? <p className="empty-state">Nothing in Plans.</p> : hmmNotes.map(renderNote)}
       </div>
     </div>
   );
