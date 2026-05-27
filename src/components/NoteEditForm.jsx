@@ -119,8 +119,6 @@ export default function NoteEditForm({
     setDestination(value || HMM_DESTINATION);
   };
 
-  const todoLabel = destination === HMM_DESTINATION ? 'Add to Plans checklist' : 'Add to project to-do list';
-
   const submit = (event) => {
     event.preventDefault();
     const trimmed = text.trim();
@@ -193,23 +191,19 @@ export default function NoteEditForm({
           >
             Important
           </button>
-          <label className="destination-strip">
-            <span>To</span>
-            <select value={destination || HMM_DESTINATION} onChange={(event) => handleDestinationChange(event.target.value)}>
-              <option value={HMM_DESTINATION}>Plans</option>
-              {projects.map((project) => <option key={project.id} value={project.id}>{getProjectName(project)}</option>)}
-              <option value={CREATE_PROJECT_VALUE}>+ Create new project</option>
-            </select>
-          </label>
-        </div>
-      </div>
-
-      <div className="capture-bottom-toolbar">
-        <div className="option-grid capture-options-grid">
-          <label className="checkbox-row">
-            <input type="checkbox" checked={isTodo} onChange={(event) => setIsTodo(event.target.checked)} />
-            <span>{todoLabel}</span>
-          </label>
+          <button
+            type="button"
+            className={`important-toggle ${isTodo ? 'is-active' : ''}`}
+            onClick={() => setIsTodo((value) => !value)}
+            aria-pressed={isTodo}
+          >
+            Add to list
+          </button>
+          <select className="capture-destination-select" value={destination || HMM_DESTINATION} onChange={(event) => handleDestinationChange(event.target.value)}>
+            <option value={HMM_DESTINATION}>Plans</option>
+            {projects.map((project) => <option key={project.id} value={project.id}>{getProjectName(project)}</option>)}
+            <option value={CREATE_PROJECT_VALUE}>+ Create new project</option>
+          </select>
         </div>
       </div>
 
