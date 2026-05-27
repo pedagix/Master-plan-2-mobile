@@ -13,7 +13,7 @@ export default function NoteCard({ note, projects: _projects = [], onEdit, child
           aria-label="Edit note"
           onClick={() => onEdit(note)}
         >
-          ⚙️
+          ⚙
         </button>
       )}
       <div className="note-card-main">
