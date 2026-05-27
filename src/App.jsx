@@ -305,6 +305,9 @@ export default function App() {
 
   return <Layout><Routes>
     <Route path="/" element={<Navigate to="/aha" replace />} />
+    <Route path="/notes" element={<Navigate to="/aha" replace />} />
+    <Route path="/plans" element={<Navigate to="/hmm" replace />} />
+    <Route path="/projects" element={<Navigate to="/ta-da" replace />} />
     <Route path="/aha" element={<AhaPage api={api} />} />
     <Route path="/hmm" element={<HmmPage api={api} />} />
     <Route path="/ta-da" element={<TaDaPage api={api} />} />

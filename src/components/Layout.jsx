@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 
 const links = [
-  ['/aha', 'Aha'],
-  ['/hmm', 'Hmm'],
-  ['/ta-da', 'Ta-da']
+  ['/aha', 'Notes'],
+  ['/hmm', 'Plans'],
+  ['/ta-da', 'Projects']
 ];
 
 export default function Layout({ children }) {
@@ -71,7 +71,7 @@ export default function Layout({ children }) {
   return (
     <div className={`app-shell ${sectionClass} ${keyboardOpen ? 'keyboard-open' : ''}`}>
       <header className="top-header">
-        <h1>Aha Hmm Ta-Da</h1>
+        <h1>Notes Plans Projects</h1>
         <NavLink to="/settings" className="header-settings-link" aria-label="Settings">Settings</NavLink>
       </header>
       <main>{children}</main>

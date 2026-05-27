@@ -138,7 +138,7 @@ export default function NoteEditForm({
     }
     const destinationType = destination === HMM_DESTINATION ? HMM_DESTINATION : PROJECT_DESTINATION;
     const selectedActions = [
-      destinationType === HMM_DESTINATION ? 'save-to-hmm' : 'add-to-project',
+      destinationType === HMM_DESTINATION ? 'save-to-plans' : 'add-to-project',
       isTodo ? 'add-to-do-list' : null,
       important ? 'mark-important' : null,
     ].filter(Boolean);
@@ -204,7 +204,7 @@ export default function NoteEditForm({
           <label className="destination-strip">
             <span>To</span>
             <select value={destination || HMM_DESTINATION} onChange={(event) => handleDestinationChange(event.target.value)}>
-              <option value={HMM_DESTINATION}>Hmm</option>
+              <option value={HMM_DESTINATION}>Plans</option>
               {projects.map((project) => <option key={project.id} value={project.id}>{getProjectName(project)}</option>)}
               <option value={CREATE_PROJECT_VALUE}>+ Create new project</option>
             </select>

@@ -99,7 +99,7 @@ export default function SettingsPage({ api }) {
     }));
     setPreview(null);
     setPasteText('');
-    setImportMessage('Plain text imported into Hmm.');
+    setImportMessage('Plain text imported into Plans.');
   };
 
   const deleteAllAppData = async () => {

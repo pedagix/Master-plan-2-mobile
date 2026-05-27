@@ -45,13 +45,13 @@ export default function AhaPage({ api }) {
   return (
     <div className="stack page-screen">
       <div className="page-title-row">
-        <h2>Aha</h2>
+        <h2>Notes</h2>
       </div>
       <NoteEditForm
         key={formKey}
         api={api}
         initialNote={{ destination: HMM_DESTINATION, priority: 5, important: false, isTodo: false }}
-        submitLabel="Save Aha"
+        submitLabel="Save Note"
         onSave={saveNote}
         autoFocus
       />

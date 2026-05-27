@@ -203,6 +203,7 @@ main {
   align-items: center;
   justify-content: center;
   min-height: 48px;
+  border: 1.5px solid transparent;
   border-radius: 8px;
   color: #64748b;
   font-size: 13px;
@@ -212,6 +213,21 @@ main {
   padding: 6px;
   text-align: center;
   text-decoration: none;
+}
+
+.bottom-nav a:not(.active):nth-child(1) {
+  border-color: var(--section-aha);
+  color: var(--section-aha);
+}
+
+.bottom-nav a:not(.active):nth-child(2) {
+  border-color: var(--section-hmm);
+  color: var(--section-hmm);
+}
+
+.bottom-nav a:not(.active):nth-child(3) {
+  border-color: var(--section-tada);
+  color: var(--section-tada);
 }
 
 .app-shell.keyboard-open .bottom-nav a {
@@ -226,19 +242,22 @@ main {
 }
 
 .bottom-nav a.active-aha {
-  background: var(--section-aha-soft);
-  color: var(--section-aha);
+  background: var(--section-aha);
+  border-color: var(--section-aha);
+  color: #111827;
 }
 
 .bottom-nav a.active-hmm,
 .bottom-nav a.active-settings {
-  background: var(--section-hmm-soft);
-  color: var(--section-hmm);
+  background: var(--section-hmm);
+  border-color: var(--section-hmm);
+  color: #042f2e;
 }
 
 .bottom-nav a.active-tada {
-  background: var(--section-tada-soft);
-  color: var(--section-tada);
+  background: var(--section-tada);
+  border-color: var(--section-tada);
+  color: #f8fafc;
 }
 
 .page-title-row,
