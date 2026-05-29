@@ -218,7 +218,7 @@ export default function NotesProcessorPage({ api }) {
       <div className="visibility-list">{promptActions.map((action) => <label className="checkbox-row" key={action.id}><input type="checkbox" checked={!hiddenActionIds.includes(action.id)} onChange={() => toggleActionVisibility(action.id)} /><span>{action.title}</span></label>)}</div>
     </section>}
 
-    <section className="stack"><h3>Notes</h3>
+    <section className="stack card-list"><h3>Notes</h3>
       {!notes.length && <p>No notes yet.</p>}
       {notes.map((note) => {
         const selectedTags = Array.isArray(note.processingTags) ? note.processingTags : [];

@@ -90,28 +90,29 @@ export default function HmmPage({ api }) {
 
   return (
     <div className="stack page-screen">
-      <section className="stack checklist-list">
-        <div className="section-title-row">
-          <h3>Plans checklist</h3>
-        </div>
-        {!todos.length && <p className="empty-state">No checklist items.</p>}
-        {todos.map((todo) => (
-          <div key={todo.id} className="stack checklist-item-stack">
-            <div className={`todo-row ${todo.important ? 'important-note-rainbow-border' : ''}`.trim()}>
-              <input type="checkbox" checked={false} onChange={() => completeTodo(todo)} />
-              <span>{todo.text}</span>
-              <button type="button" className="todo-row-cog-button" aria-label={editingId === todo.id ? 'Save and close checklist item editor' : 'Edit checklist item'} onClick={() => toggleEdit(todo.id)}>⚙️</button>
-            </div>
-            {editingId === todo.id && (
-              <div className="edit-panel">
-                <NoteEditForm api={api} initialNote={editingNote} submitLabel="Save note" onSave={saveEdit} onDelete={deleteNote} onCancel={() => setEditingId(null)} registerSubmitHandler={(submitHandler) => { if (submitHandler) submitHandlersRef.current[todo.id] = submitHandler; else delete submitHandlersRef.current[todo.id]; }} />
-              </div>
-            )}
+      {!!todos.length && (
+        <section className="stack checklist-list">
+          <div className="section-title-row">
+            <h3>Plans checklist</h3>
           </div>
-        ))}
-      </section>
+          {todos.map((todo) => (
+            <div key={todo.id} className="stack checklist-item-stack">
+              <div className={`todo-row ${todo.important ? 'important-note-rainbow-border' : ''}`.trim()}>
+                <input type="checkbox" checked={false} onChange={() => completeTodo(todo)} />
+                <span>{todo.text}</span>
+                <button type="button" className="todo-row-cog-button" aria-label={editingId === todo.id ? 'Save and close checklist item editor' : 'Edit checklist item'} onClick={() => toggleEdit(todo.id)}>⚙️</button>
+              </div>
+              {editingId === todo.id && (
+                <div className="edit-panel">
+                  <NoteEditForm api={api} initialNote={editingNote} submitLabel="Save note" onSave={saveEdit} onDelete={deleteNote} onCancel={() => setEditingId(null)} registerSubmitHandler={(submitHandler) => { if (submitHandler) submitHandlersRef.current[todo.id] = submitHandler; else delete submitHandlersRef.current[todo.id]; }} />
+                </div>
+              )}
+            </div>
+          ))}
+        </section>
+      )}
 
-      <div className="stack">
+      <div className="stack note-card-list">
         {!notes.length ? <p className="empty-state">Nothing in Plans.</p> : notes.map(renderNote)}
       </div>
     </div>

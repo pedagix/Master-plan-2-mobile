@@ -177,45 +177,46 @@ export default function ProjectDetailPage({ api }) {
         </section>
       )}
 
-      <section className="stack checklist-list">
-        <div className="section-title-row">
-          <h3>Checklist</h3>
-          <span className="done-counter">{project.tasksDone || 0} done</span>
-        </div>
-        {!todos.length && <p className="empty-state">No active to-dos.</p>}
-        {todos.map((todo) => (
-          <div key={todo.id} className="stack checklist-item-stack">
-            <div className={`todo-row ${todo.important ? 'important-note-rainbow-border' : ''}`.trim()} style={{ '--priority-color': getPriorityColor(todo.priority) }}>
-              <input type="checkbox" checked={false} onChange={() => completeTodo(todo)} />
-              <span>{todo.text}</span>
-              <button
-                type="button"
-                className="todo-row-cog-button"
-                aria-label={editingNoteId === todo.id ? 'Save and close checklist item editor' : 'Edit checklist item'}
-                onClick={() => toggleTodoEdit(todo.id)}
-              >
-                ⚙
-              </button>
-            </div>
-            {editingNoteId === todo.id && (
-              <div className="edit-panel">
-                <NoteEditForm
-                  api={api}
-                  initialNote={todo}
-                  submitLabel="Save"
-                  onSave={saveNoteEdit}
-                  onDelete={deleteNote}
-                  onCancel={() => setEditingNoteId(null)}
-                  registerSubmitHandler={(submitHandler) => {
-                    if (submitHandler) todoSubmitHandlersRef.current[todo.id] = submitHandler;
-                    else delete todoSubmitHandlersRef.current[todo.id];
-                  }}
-                />
-              </div>
-            )}
+      {!!todos.length && (
+        <section className="stack checklist-list">
+          <div className="section-title-row">
+            <h3>Checklist</h3>
+            <span className="done-counter">{project.tasksDone || 0} done</span>
           </div>
-        ))}
-      </section>
+          {todos.map((todo) => (
+            <div key={todo.id} className="stack checklist-item-stack">
+              <div className={`todo-row ${todo.important ? 'important-note-rainbow-border' : ''}`.trim()} style={{ '--priority-color': getPriorityColor(todo.priority) }}>
+                <input type="checkbox" checked={false} onChange={() => completeTodo(todo)} />
+                <span>{todo.text}</span>
+                <button
+                  type="button"
+                  className="todo-row-cog-button"
+                  aria-label={editingNoteId === todo.id ? 'Save and close checklist item editor' : 'Edit checklist item'}
+                  onClick={() => toggleTodoEdit(todo.id)}
+                >
+                  ⚙
+                </button>
+              </div>
+              {editingNoteId === todo.id && (
+                <div className="edit-panel">
+                  <NoteEditForm
+                    api={api}
+                    initialNote={todo}
+                    submitLabel="Save"
+                    onSave={saveNoteEdit}
+                    onDelete={deleteNote}
+                    onCancel={() => setEditingNoteId(null)}
+                    registerSubmitHandler={(submitHandler) => {
+                      if (submitHandler) todoSubmitHandlersRef.current[todo.id] = submitHandler;
+                      else delete todoSubmitHandlersRef.current[todo.id];
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+        </section>
+      )}
 
       {newNoteOpen && (
         <section className="stack edit-panel new-aha-panel">
@@ -234,7 +235,7 @@ export default function ProjectDetailPage({ api }) {
         </section>
       )}
 
-      <section className="stack">
+      <section className="stack note-card-list">
         <h3>Notes</h3>
         {!notes.length && <p className="empty-state">No project notes.</p>}
         {notes.map((note) => (
