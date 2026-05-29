@@ -691,7 +691,7 @@ main {
 .project-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 3px;
 }
 
 .project-tile {
@@ -727,12 +727,11 @@ main {
   padding: 6px 10px;
 }
 
-.checklist-list {
-  gap: 1px;
-}
-
+.card-list,
+.note-card-list,
+.checklist-list,
 .checklist-item-stack {
-  gap: 1px;
+  gap: 3px;
 }
 
 .todo-row {

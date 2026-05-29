@@ -4,7 +4,7 @@ export function hasContent(items) {
   return Boolean(items);
 }
 
-export default function ContentSection({ title, items, children, headingLevel = 2, className = 'stack' }) {
+export default function ContentSection({ title, items, children, headingLevel = 2, className = 'stack card-list' }) {
   if (!hasContent(items)) return null;
   const Heading = headingLevel === 3 ? 'h3' : 'h2';
 
