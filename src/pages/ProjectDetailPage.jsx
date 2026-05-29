@@ -77,6 +77,7 @@ export default function ProjectDetailPage({ api }) {
     }));
     setNewFormKey((value) => value + 1);
     setNewNoteOpen(false);
+    api.showNoteSavedConfirmation?.();
   };
 
   const saveNoteEdit = (patch) => {
@@ -92,6 +93,7 @@ export default function ProjectDetailPage({ api }) {
         : prev.projects,
     }));
     setEditingNoteId(null);
+    api.showNoteSavedConfirmation?.();
   };
 
   const deleteNote = (note) => {

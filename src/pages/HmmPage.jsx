@@ -33,6 +33,7 @@ export default function HmmPage({ api }) {
       },
     }));
     setEditingId(null);
+    api.showNoteSavedConfirmation?.();
   };
 
 

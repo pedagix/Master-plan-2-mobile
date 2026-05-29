@@ -140,6 +140,53 @@ small {
   line-height: 1.2;
 }
 
+.header-save-confirmation {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  border: 1px solid #16a34a;
+  border-radius: 999px;
+  background: #16a34a;
+  box-shadow: 0 8px 20px rgba(22, 163, 74, 0.28);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 7px 13px;
+  pointer-events: none;
+  text-align: center;
+  white-space: nowrap;
+  animation: header-save-confirmation-flash 1000ms ease-out both;
+}
+
+@keyframes header-save-confirmation-flash {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.92);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+  28% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  72% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.98);
+  }
+}
+
 .header-settings-link {
   display: inline-flex;
   align-items: center;

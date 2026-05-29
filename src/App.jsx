@@ -202,6 +202,8 @@ export default function App() {
   const [data, setData] = useState(() => localDataStore.load());
   const [user, setUser] = useState(undefined);
   const [isRemoteHydrationComplete, setIsRemoteHydrationComplete] = useState(!isFirebaseConfigured);
+  const [noteSaveConfirmation, setNoteSaveConfirmation] = useState({ visible: false, id: 0 });
+  const noteSaveConfirmationTimerRef = useRef(null);
   const remoteLoadVersionRef = useRef(0);
   const remoteSaveQueueRef = useRef(Promise.resolve());
   const enqueueRemoteSave = useCallback((uid, nextData) => {
@@ -211,6 +213,16 @@ export default function App() {
     remoteSaveQueueRef.current = save.catch(() => {});
     return save;
   }, []);
+
+  const showNoteSavedConfirmation = useCallback(() => {
+    setNoteSaveConfirmation((current) => ({ visible: true, id: current.id + 1 }));
+    window.clearTimeout(noteSaveConfirmationTimerRef.current);
+    noteSaveConfirmationTimerRef.current = window.setTimeout(() => {
+      setNoteSaveConfirmation((current) => ({ ...current, visible: false }));
+    }, 1000);
+  }, []);
+
+  useEffect(() => () => window.clearTimeout(noteSaveConfirmationTimerRef.current), []);
 
   useEffect(() => { if (!isFirebaseConfigured) { setUser(null); return; } return listenToAuthState(setUser); }, []);
   useEffect(() => {
@@ -288,6 +300,7 @@ export default function App() {
 
   const api = useMemo(() => ({
     data, setData, user,
+    showNoteSavedConfirmation,
     exportJson: () => localDataStore.exportFullBackup?.(data),
     exportFullBackup: () => localDataStore.exportFullBackup?.(data),
     importLocalDataToFirebase,
@@ -298,12 +311,12 @@ export default function App() {
     deleteRollbackById: (id) => localDataStore.deleteRollbackById?.(id),
     resetAppData,
     deleteAllAppData,
-  }), [data, deleteAllAppData, importLocalDataToFirebase, resetAppData, user]);
+  }), [data, deleteAllAppData, importLocalDataToFirebase, resetAppData, showNoteSavedConfirmation, user]);
 
   if (isFirebaseConfigured && user === undefined) return <div className="stack"><p>Checking authentication...</p></div>;
   if (isFirebaseConfigured && !user) return <Layout><LoginGate /></Layout>;
 
-  return <Layout><Routes>
+  return <Layout noteSaveConfirmation={noteSaveConfirmation}><Routes>
     <Route path="/" element={<Navigate to="/aha" replace />} />
     <Route path="/notes" element={<Navigate to="/aha" replace />} />
     <Route path="/plans" element={<Navigate to="/hmm" replace />} />
