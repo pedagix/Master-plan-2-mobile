@@ -1,14 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import NoteEditForm from '../components/NoteEditForm';
 import { HMM_DESTINATION, PROJECT_DESTINATION } from '../lib/model';
 
 export default function AhaPage({ api }) {
   const [formKey, setFormKey] = useState(0);
-  const [savedMessageVisible, setSavedMessageVisible] = useState(false);
-  const savedMessageTimerRef = useRef(null);
-
-  useEffect(() => () => window.clearTimeout(savedMessageTimerRef.current), []);
-
   const saveNote = (patch) => {
     const now = Date.now();
     const note = {
@@ -37,9 +32,7 @@ export default function AhaPage({ api }) {
     }));
 
     setFormKey((value) => value + 1);
-    setSavedMessageVisible(true);
-    window.clearTimeout(savedMessageTimerRef.current);
-    savedMessageTimerRef.current = window.setTimeout(() => setSavedMessageVisible(false), 1100);
+    api.showNoteSavedConfirmation?.();
   };
 
   return (
@@ -52,7 +45,6 @@ export default function AhaPage({ api }) {
         onSave={saveNote}
         autoFocus
       />
-      {savedMessageVisible && <p className="success-message" role="status" aria-live="polite">Saved</p>}
     </div>
   );
 }

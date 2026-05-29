@@ -7,7 +7,7 @@ const links = [
   ['/ta-da', 'Projects']
 ];
 
-export default function Layout({ children }) {
+export default function Layout({ children, noteSaveConfirmation = { visible: false, id: 0 } }) {
   const location = useLocation();
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const activeHeaderTitle = location.pathname.startsWith('/hmm')
@@ -79,6 +79,16 @@ export default function Layout({ children }) {
     <div className={`app-shell ${sectionClass} ${keyboardOpen ? 'keyboard-open' : ''}`}>
       <header className="top-header">
         <h1>{activeHeaderTitle}</h1>
+        {noteSaveConfirmation.visible && (
+          <div
+            key={noteSaveConfirmation.id}
+            className="header-save-confirmation"
+            role="status"
+            aria-live="polite"
+          >
+            Note saved
+          </div>
+        )}
         <NavLink to="/settings" className="header-settings-link" aria-label="Settings">Settings</NavLink>
       </header>
       <main>{children}</main>
