@@ -400,8 +400,9 @@ main {
   border-radius: 10px;
   background: #fff;
   padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px));
-  min-height: clamp(280px, calc(var(--available-vh) - 260px), 520px);
-  max-height: calc(var(--available-vh) - 210px - var(--keyboard-inset));
+  min-height: clamp(190px, calc(var(--available-vh) - 260px), 520px);
+  max-height: clamp(190px, calc(var(--available-vh) - var(--bottom-nav-height-compact) - 120px), 520px);
+  scroll-margin-bottom: calc(var(--bottom-nav-height) + var(--bottom-nav-safe-area) + var(--keyboard-inset) + 24px);
 }
 
 .capture-top-controls {
@@ -728,7 +729,7 @@ main {
 
 .edit-panel {
   scroll-margin-top: calc(var(--sticky-header-height, 56px) + 12px);
-  scroll-margin-bottom: calc(var(--bottom-nav-height) + var(--bottom-nav-safe-area) + 16px);
+  scroll-margin-bottom: calc(var(--bottom-nav-height) + var(--bottom-nav-safe-area) + var(--keyboard-inset, 0px) + 24px);
   display: grid;
   gap: 10px;
   border: 1px solid var(--surface-border);
@@ -989,3 +990,9 @@ summary {
 .note-card-cog-button, .todo-row-cog-button {
   width: 32px; min-height: 32px; height: 32px; border-radius: 999px; border: 1px solid #d7dfd0; background: #eef2e9; color: #334155; font-size: 14px; line-height: 1; font-weight: 700; display:inline-flex; align-items:center; justify-content:center; padding:0; }
 .note-card-cog-button:active, .todo-row-cog-button:active { transform: translateY(1px); }
+.note-card-main-editable, .todo-row span[role="button"] { cursor: pointer; }
+.note-card-main-editable:focus-visible, .todo-row span[role="button"]:focus-visible { outline: 3px solid #f59e0b; outline-offset: 2px; border-radius: 6px; }
+
+.mobile-focused-textarea-wrap {
+  scroll-margin-bottom: calc(var(--bottom-nav-height) + var(--bottom-nav-safe-area) + var(--keyboard-inset, 0px) + 24px);
+}

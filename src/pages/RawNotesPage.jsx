@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import ContentSection from '../components/ContentSection';
+import MobileFocusedTextarea from '../components/MobileFocusedTextarea';
 import { normalizeProject } from '../lib/model';
 
 function projectLabel(projects, id) {
@@ -42,7 +43,7 @@ export default function RawNotesPage({ api }) {
       {isArchived && <button onClick={() => sendBack(capture.id)}>Send note back for processing</button>}
     </div>
     {editingId === capture.id && <div className="card stack"><h3>Edit note</h3>
-      <textarea rows={6} value={draft.text} onChange={(e) => setDraft((prev) => ({ ...prev, text: e.target.value }))} />
+      <MobileFocusedTextarea storageId={capture.id} rows={6} value={draft.text} onChange={(e) => setDraft((prev) => ({ ...prev, text: e.target.value }))} />
       <select value={draft.createProject ? '__new__' : draft.projectId} onChange={(e) => { const value = e.target.value; setDraft((prev) => ({ ...prev, createProject: value === '__new__', projectId: value === '__new__' ? prev.projectId : value })); }}>
         <option value="">No project</option>{api.data.projects.filter((p) => p.status !== 'archived' && p.status !== 'hidden').map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
         <option value="__new__">+ Create new project</option>
