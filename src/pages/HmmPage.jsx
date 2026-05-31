@@ -83,7 +83,7 @@ export default function HmmPage({ api }) {
     <NoteCard key={note.id} note={note} projects={api.data.projects} onEdit={() => toggleEdit(note.id)}>
       {editingId === note.id && (
         <div className="edit-panel">
-          <NoteEditForm api={api} initialNote={editingNote} submitLabel="Save note" onSave={saveEdit} onDelete={deleteNote} onCancel={() => setEditingId(null)} registerSubmitHandler={(submitHandler) => { if (submitHandler) submitHandlersRef.current[note.id] = submitHandler; else delete submitHandlersRef.current[note.id]; }} />
+          <NoteEditForm api={api} initialNote={editingNote} submitLabel="Save note" onSave={saveEdit} onDelete={deleteNote} onCancel={() => setEditingId(null)} autoScrollOnMount registerSubmitHandler={(submitHandler) => { if (submitHandler) submitHandlersRef.current[note.id] = submitHandler; else delete submitHandlersRef.current[note.id]; }} />
         </div>
       )}
     </NoteCard>
@@ -105,7 +105,7 @@ export default function HmmPage({ api }) {
               </div>
               {editingId === todo.id && (
                 <div className="edit-panel">
-                  <NoteEditForm api={api} initialNote={editingNote} submitLabel="Save note" onSave={saveEdit} onDelete={deleteNote} onCancel={() => setEditingId(null)} registerSubmitHandler={(submitHandler) => { if (submitHandler) submitHandlersRef.current[todo.id] = submitHandler; else delete submitHandlersRef.current[todo.id]; }} />
+                  <NoteEditForm api={api} initialNote={editingNote} submitLabel="Save note" onSave={saveEdit} onDelete={deleteNote} onCancel={() => setEditingId(null)} autoScrollOnMount registerSubmitHandler={(submitHandler) => { if (submitHandler) submitHandlersRef.current[todo.id] = submitHandler; else delete submitHandlersRef.current[todo.id]; }} />
                 </div>
               )}
             </div>
