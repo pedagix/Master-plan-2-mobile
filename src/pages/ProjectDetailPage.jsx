@@ -208,6 +208,7 @@ export default function ProjectDetailPage({ api }) {
                     onSave={saveNoteEdit}
                     onDelete={deleteNote}
                     onCancel={() => setEditingNoteId(null)}
+                    autoScrollOnMount
                     registerSubmitHandler={(submitHandler) => {
                       if (submitHandler) todoSubmitHandlersRef.current[todo.id] = submitHandler;
                       else delete todoSubmitHandlersRef.current[todo.id];
@@ -244,7 +245,7 @@ export default function ProjectDetailPage({ api }) {
           <NoteCard key={note.id} note={note} projects={api.data.projects} onEdit={() => toggleTodoEdit(note.id)}>
             {editingNoteId === note.id && (
               <div className="edit-panel">
-                <NoteEditForm api={api} initialNote={editingNote} submitLabel="Save note" onSave={saveNoteEdit} onDelete={deleteNote} onCancel={() => setEditingNoteId(null)} registerSubmitHandler={(submitHandler) => { if (submitHandler) noteSubmitHandlersRef.current[note.id] = submitHandler; else delete noteSubmitHandlersRef.current[note.id]; }} />
+                <NoteEditForm api={api} initialNote={editingNote} submitLabel="Save note" onSave={saveNoteEdit} onDelete={deleteNote} onCancel={() => setEditingNoteId(null)} autoScrollOnMount registerSubmitHandler={(submitHandler) => { if (submitHandler) noteSubmitHandlersRef.current[note.id] = submitHandler; else delete noteSubmitHandlersRef.current[note.id]; }} />
               </div>
             )}
           </NoteCard>

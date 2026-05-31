@@ -727,6 +727,8 @@ main {
 
 
 .edit-panel {
+  scroll-margin-top: calc(var(--sticky-header-height, 56px) + 12px);
+  scroll-margin-bottom: calc(var(--bottom-nav-height) + var(--bottom-nav-safe-area) + 16px);
   display: grid;
   gap: 10px;
   border: 1px solid var(--surface-border);

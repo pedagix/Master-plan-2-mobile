@@ -14,6 +14,45 @@ function destinationFromNote(note) {
   return note?.destination === PROJECT_DESTINATION && note.projectId ? note.projectId : HMM_DESTINATION;
 }
 
+function getVisibleElementHeight(selector) {
+  if (typeof document === 'undefined') return 0;
+  const element = document.querySelector(selector);
+  if (!element) return 0;
+  const style = window.getComputedStyle(element);
+  if (style.display === 'none' || style.visibility === 'hidden') return 0;
+  return element.getBoundingClientRect().height;
+}
+
+function scrollEditPanelIntoView(formElement) {
+  if (typeof window === 'undefined' || !formElement) return;
+
+  const panel = formElement.closest('.edit-panel') || formElement;
+  const panelRect = panel.getBoundingClientRect();
+  const visualViewport = window.visualViewport;
+  const viewportHeight = visualViewport?.height || window.innerHeight || document.documentElement.clientHeight || 0;
+  const headerHeight = getVisibleElementHeight('.top-header');
+  const bottomNavHeight = getVisibleElementHeight('.bottom-nav');
+  const topOffset = Math.ceil(headerHeight + 12);
+  const bottomOffset = Math.ceil(bottomNavHeight + 16);
+  const availableHeight = Math.max(0, viewportHeight - topOffset - bottomOffset);
+  const currentScrollY = window.scrollY || window.pageYOffset || 0;
+  const targetTop = Math.max(0, currentScrollY + panelRect.top - topOffset);
+  const panelFits = panelRect.height <= availableHeight;
+  const visibleBottom = viewportHeight - bottomOffset;
+  const alreadyComfortablyVisible = panelFits
+    && panelRect.top >= topOffset
+    && panelRect.bottom <= visibleBottom;
+
+  if (alreadyComfortablyVisible && Math.abs(panelRect.top - topOffset) <= 24) return;
+
+  const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+  window.scrollTo({
+    top: targetTop,
+    behavior: prefersReducedMotion ? 'auto' : 'smooth',
+  });
+}
+
 function buildProject(name) {
   const now = Date.now();
   return normalizeProject({
@@ -39,6 +78,7 @@ export default function NoteEditForm({
   onCancel,
   onDelete,
   autoFocus = false,
+  autoScrollOnMount = false,
   registerSubmitHandler,
 }) {
   const [text, setText] = useState(initialNote?.text || '');
@@ -52,6 +92,27 @@ export default function NoteEditForm({
   const [availableViewportHeight, setAvailableViewportHeight] = useState(null);
   const textareaRef = useRef(null);
   const formRef = useRef(null);
+
+  useEffect(() => {
+    if (!autoScrollOnMount || typeof window === 'undefined') return undefined;
+
+    let firstFrame = 0;
+    let secondFrame = 0;
+    let fallbackTimer = 0;
+
+    firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        scrollEditPanelIntoView(formRef.current);
+      });
+    });
+    fallbackTimer = window.setTimeout(() => scrollEditPanelIntoView(formRef.current), 180);
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      window.cancelAnimationFrame(secondFrame);
+      window.clearTimeout(fallbackTimer);
+    };
+  }, [autoScrollOnMount, initialNote?.id]);
 
   useEffect(() => {
     if (!registerSubmitHandler) return undefined;
