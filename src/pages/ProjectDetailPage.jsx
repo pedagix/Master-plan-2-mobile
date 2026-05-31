@@ -189,7 +189,7 @@ export default function ProjectDetailPage({ api }) {
             <div key={todo.id} className="stack checklist-item-stack">
               <div className={`todo-row ${todo.important ? 'important-note-rainbow-border' : ''}`.trim()} style={{ '--priority-color': getPriorityColor(todo.priority) }}>
                 <input type="checkbox" checked={false} onChange={() => completeTodo(todo)} />
-                <span>{todo.text}</span>
+                <span role="button" tabIndex={0} onClick={() => toggleTodoEdit(todo.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTodoEdit(todo.id); } }}>{todo.text}</span>
                 <button
                   type="button"
                   className="todo-row-cog-button"
