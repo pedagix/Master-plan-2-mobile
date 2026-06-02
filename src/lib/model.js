@@ -1,3 +1,10 @@
+import {
+  DEFAULT_THEME_PALETTE,
+  DEFAULT_THEME_STYLE,
+  normalizeThemePaletteId,
+  normalizeThemeStyleId,
+} from './theme';
+
 export const STATUSES = ['active', 'paused', 'hidden', 'archived'];
 export const HMM_DESTINATION = 'hmm';
 export const PROJECT_DESTINATION = 'project';
@@ -125,10 +132,7 @@ export function clampPriority(value) {
 
 export function getPriorityColor(priority) {
   const t = (clampPriority(priority) - 1) / 9;
-  const blue = [37, 99, 235];
-  const red = [220, 38, 38];
-  const mixed = blue.map((start, index) => Math.round(start + (red[index] - start) * t));
-  return `rgb(${mixed[0]}, ${mixed[1]}, ${mixed[2]})`;
+  return `color-mix(in srgb, var(--priority-hot) ${Math.round(t * 100)}%, var(--priority-cold) ${Math.round((1 - t) * 100)}%)`;
 }
 
 export function sortByPriorityThenNewest(a, b) {
@@ -295,7 +299,7 @@ export function buildDefaultData() {
   const now = Date.now(); const profile = buildDefaultPromptProfile(now);
   return {
     meta: { appName: 'Master Plan', schemaVersion: 3, exportType: 'full-backup', exportedAt: new Date(now).toISOString() },
-    settings: { activePromptProfileId: profile.id, promptProfiles: [profile], notesProcessorHiddenActionIds: [], lastDestination: HMM_DESTINATION, hasCompletedInitialSetup: true },
+    settings: { activePromptProfileId: profile.id, promptProfiles: [profile], notesProcessorHiddenActionIds: [], lastDestination: HMM_DESTINATION, hasCompletedInitialSetup: true, themePalette: DEFAULT_THEME_PALETTE, themeStyle: DEFAULT_THEME_STYLE },
     aiInstructions: { activePromptProfileId: profile.id, mainRole: 'You are analyzing a private mobile-first second brain system.', tone: 'Clear, direct, practical, and honest. Be brutally honest when useful, but still constructive.', goal: 'Help the user turn captured notes into useful next actions, project structure, suggestions, checklists, warnings, cleanup recommendations, and follow-up questions.', promptActions: structuredClone(DEFAULT_PROMPT_ACTIONS) },
     projects: [],
     notes: [],
@@ -399,6 +403,8 @@ export function migrateData(input) {
   data.inboxActionLog = Array.isArray(input?.inboxActionLog) ? input.inboxActionLog : [];
   data.questionFeedbackLog = Array.isArray(input?.questionFeedbackLog) ? input.questionFeedbackLog : [];
   data.settings = { ...base.settings, lastSelectedProjectId: null, lastDestination: HMM_DESTINATION, ...(input?.settings || {}) };
+  data.settings.themePalette = normalizeThemePaletteId(data.settings.themePalette);
+  data.settings.themeStyle = normalizeThemeStyleId(data.settings.themeStyle);
   if (data.settings.lastSelectedProjectId && !data.projects.some((p) => p.id === data.settings.lastSelectedProjectId && p.status !== 'archived' && p.status !== 'hidden')) {
     data.settings.lastSelectedProjectId = data.projects.find((p) => p.status === 'active')?.id || null;
   }

@@ -2,6 +2,12 @@ import { useMemo, useRef, useState } from 'react';
 import { isFirebaseConfigured, signOutUser } from '../services/firebase';
 import { buildImportPreview } from '../lib/importAnalysis';
 import { HMM_DESTINATION, buildDefaultPromptProfile, migrateData } from '../lib/model';
+import {
+  THEME_PALETTES,
+  THEME_STYLES,
+  normalizeThemePaletteId,
+  normalizeThemeStyleId,
+} from '../lib/theme';
 
 export default function SettingsPage({ api }) {
   const user = api.user;
@@ -12,15 +18,26 @@ export default function SettingsPage({ api }) {
   const [cleanupReport, setCleanupReport] = useState(null);
   const [cleanupBusy, setCleanupBusy] = useState(false);
   const [rollbackInfoOpen, setRollbackInfoOpen] = useState(false);
+  const [themePanelOpen, setThemePanelOpen] = useState(false);
 
   const profile = api.data.settings.promptProfiles.find((p) => p.id === api.data.settings.activePromptProfileId) || api.data.settings.promptProfiles[0];
   const actions = profile.promptActions;
   const rollbackSnapshots = useMemo(() => api.getRollbacks?.() || [], [api.data]);
   const latestRollback = rollbackSnapshots[0] || null;
+  const selectedPalette = normalizeThemePaletteId(api.data.settings.themePalette);
+  const selectedStyle = normalizeThemeStyleId(api.data.settings.themeStyle);
   const confirmAction = (message, action) => {
     if (!window.confirm(message)) return;
     action();
   };
+
+  const patchThemeSettings = (patch) => api.setData((prev) => migrateData({
+    ...prev,
+    settings: {
+      ...prev.settings,
+      ...patch,
+    },
+  }));
 
   const patchAction = (id, patch) => api.setData((prev) => {
     const next = migrateData(prev);
@@ -130,7 +147,79 @@ export default function SettingsPage({ api }) {
     }
   };
 
+  if (themePanelOpen) {
+    return <div className="stack settings-theme-screen">
+      <div className="page-title-row">
+        <div>
+          <button type="button" className="secondary-button settings-back-button" onClick={() => setThemePanelOpen(false)}>Back</button>
+          <h2>Colors and styles</h2>
+        </div>
+      </div>
+
+      <section className="stack theme-choice-section">
+        <h3>Color palette</h3>
+        <div className="theme-option-list">
+          {THEME_PALETTES.map((palette) => {
+            const selected = palette.id === selectedPalette;
+            return (
+              <button
+                key={palette.id}
+                type="button"
+                className={`theme-option palette-option ${selected ? 'selected' : ''}`}
+                aria-pressed={selected}
+                onClick={() => patchThemeSettings({ themePalette: palette.id })}
+              >
+                <span className="theme-option-main">
+                  <span className="theme-option-copy">
+                    <strong>{palette.name}</strong>
+                    <small>{palette.description}</small>
+                  </span>
+                  <span className="theme-selected-label">{selected ? 'Selected' : 'Select'}</span>
+                </span>
+                <span className="palette-swatches" aria-hidden="true">
+                  <span style={{ background: palette.colors.background, borderColor: palette.colors.border }} />
+                  <span style={{ background: palette.colors.surface, borderColor: palette.colors.border }} />
+                  <span style={{ background: palette.colors.notes }} />
+                  <span style={{ background: palette.colors.plans }} />
+                  <span style={{ background: palette.colors.projects }} />
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="stack theme-choice-section">
+        <h3>Style</h3>
+        <div className="theme-option-list">
+          {THEME_STYLES.map((style) => {
+            const selected = style.id === selectedStyle;
+            return (
+              <button
+                key={style.id}
+                type="button"
+                className={`theme-option style-option ${selected ? 'selected' : ''}`}
+                aria-pressed={selected}
+                onClick={() => patchThemeSettings({ themeStyle: style.id })}
+              >
+                <span className="theme-option-main">
+                  <span className="theme-option-copy">
+                    <strong>{style.name}</strong>
+                    <small>{style.description}</small>
+                  </span>
+                  <span className="theme-selected-label">{selected ? 'Selected' : 'Select'}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+    </div>;
+  }
+
   return <div className="stack"><h2>Settings</h2>
+    <button type="button" className="settings-nav-button" onClick={() => setThemePanelOpen(true)}>Colors and styles</button>
+
     <section className="card stack"><h3>Import / Export</h3>
       <div className="settings-button-grid">
         <button onClick={() => confirmAction('Export full backup now?', api.exportFullBackup)}>Export full backup</button>

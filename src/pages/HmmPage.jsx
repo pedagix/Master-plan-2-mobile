@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import NoteCard from '../components/NoteCard';
 import NoteEditForm from '../components/NoteEditForm';
-import { HMM_DESTINATION, PROJECT_DESTINATION, sortByPriorityThenNewest } from '../lib/model';
+import { HMM_DESTINATION, PROJECT_DESTINATION, getPriorityColor, sortByPriorityThenNewest } from '../lib/model';
 
 export default function HmmPage({ api }) {
   const [editingId, setEditingId] = useState(null);
@@ -98,7 +98,7 @@ export default function HmmPage({ api }) {
           </div>
           {todos.map((todo) => (
             <div key={todo.id} className="stack checklist-item-stack">
-              <div className={`todo-row ${todo.important ? 'important-note-rainbow-border' : ''}`.trim()}>
+              <div className={`todo-row ${todo.important ? 'important-note-rainbow-border' : ''}`.trim()} style={{ '--priority-color': getPriorityColor(todo.priority) }}>
                 <input type="checkbox" checked={false} onChange={() => completeTodo(todo)} />
                 <span role="button" tabIndex={0} onClick={() => toggleEdit(todo.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleEdit(todo.id); } }}>{todo.text}</span>
                 <button type="button" className="todo-row-cog-button" aria-label={editingId === todo.id ? 'Save and close checklist item editor' : 'Edit checklist item'} onClick={() => toggleEdit(todo.id)}>⚙️</button>

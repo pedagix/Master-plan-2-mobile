@@ -16,6 +16,7 @@ import TaDaPage from './pages/TaDaPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import SettingsPage from './pages/SettingsPage';
 import { buildResetData, migrateData } from './lib/model';
+import { applyThemeToRoot, normalizeThemePaletteId, normalizeThemeStyleId } from './lib/theme';
 
 const DEBUG_DATA_FLOW = typeof window !== 'undefined' && window.localStorage?.getItem('mp_debug_data_flow') === '1';
 
@@ -206,6 +207,8 @@ export default function App() {
   const noteSaveConfirmationTimerRef = useRef(null);
   const remoteLoadVersionRef = useRef(0);
   const remoteSaveQueueRef = useRef(Promise.resolve());
+  const themePalette = normalizeThemePaletteId(data?.settings?.themePalette);
+  const themeStyle = normalizeThemeStyleId(data?.settings?.themeStyle);
   const enqueueRemoteSave = useCallback((uid, nextData) => {
     const save = remoteSaveQueueRef.current
       .catch(() => {})
@@ -223,6 +226,7 @@ export default function App() {
   }, []);
 
   useEffect(() => () => window.clearTimeout(noteSaveConfirmationTimerRef.current), []);
+  useEffect(() => applyThemeToRoot(themePalette, themeStyle), [themePalette, themeStyle]);
 
   useEffect(() => { if (!isFirebaseConfigured) { setUser(null); return; } return listenToAuthState(setUser); }, []);
   useEffect(() => {
@@ -314,9 +318,9 @@ export default function App() {
   }), [data, deleteAllAppData, importLocalDataToFirebase, resetAppData, showNoteSavedConfirmation, user]);
 
   if (isFirebaseConfigured && user === undefined) return <div className="stack"><p>Checking authentication...</p></div>;
-  if (isFirebaseConfigured && !user) return <Layout><LoginGate /></Layout>;
+  if (isFirebaseConfigured && !user) return <Layout themePalette={themePalette} themeStyle={themeStyle}><LoginGate /></Layout>;
 
-  return <Layout noteSaveConfirmation={noteSaveConfirmation}><Routes>
+  return <Layout themePalette={themePalette} themeStyle={themeStyle} noteSaveConfirmation={noteSaveConfirmation}><Routes>
     <Route path="/" element={<Navigate to="/aha" replace />} />
     <Route path="/notes" element={<Navigate to="/aha" replace />} />
     <Route path="/plans" element={<Navigate to="/hmm" replace />} />

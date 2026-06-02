@@ -7,7 +7,12 @@ const links = [
   ['/ta-da', 'Projects']
 ];
 
-export default function Layout({ children, noteSaveConfirmation = { visible: false, id: 0 } }) {
+export default function Layout({
+  children,
+  noteSaveConfirmation = { visible: false, id: 0 },
+  themePalette,
+  themeStyle,
+}) {
   const location = useLocation();
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const activeHeaderTitle = location.pathname.startsWith('/hmm')
@@ -76,7 +81,11 @@ export default function Layout({ children, noteSaveConfirmation = { visible: fal
         ? 'section-aha'
         : 'section-neutral';
   return (
-    <div className={`app-shell ${sectionClass} ${keyboardOpen ? 'keyboard-open' : ''}`}>
+    <div
+      className={`app-shell ${sectionClass} ${keyboardOpen ? 'keyboard-open' : ''}`}
+      data-theme-palette={themePalette}
+      data-theme-style={themeStyle}
+    >
       <header className="top-header">
         <h1>{activeHeaderTitle}</h1>
         {noteSaveConfirmation.visible && (
