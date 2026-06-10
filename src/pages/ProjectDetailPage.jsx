@@ -258,7 +258,10 @@ export default function ProjectDetailPage({ api }) {
 
       <details className="stack">
         <summary>Gallery</summary>
-        <input type="file" accept="image/*" onChange={upload} />
+        <label className="gallery-upload-button">
+          <span>Upload picture</span>
+          <input className="gallery-upload-input" type="file" accept="image/*" onChange={upload} />
+        </label>
         <div className="gallery">{[...(project.gallery || [])].sort((a, b) => a.createdAt - b.createdAt).map((img) => (
           <button type="button" className="img-card" key={img.id} onClick={() => setSelectedGalleryImage(img)} aria-label={`Open ${img.name || 'project photo'} in full-resolution viewer`}>
             <img src={img.previewUrl} alt={img.name || 'Project gallery photo'} />
