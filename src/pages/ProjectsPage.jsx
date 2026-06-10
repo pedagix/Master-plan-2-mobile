@@ -1,12 +1,11 @@
 import { Link } from 'react-router-dom';
 import ContentSection from '../components/ContentSection';
-
-const byInteraction = (a, b) => (b.lastInteractedAt || b.createdAt || 0) - (a.lastInteractedAt || a.createdAt || 0);
+import { compareProjectsByLastOpened } from '../lib/model';
 
 export default function ProjectsPage({ api }) {
-  const active = api.data.projects.filter((p) => p.status === 'active' || p.status === 'paused').sort(byInteraction);
-  const hidden = api.data.projects.filter((p) => p.status === 'hidden');
-  const archived = api.data.projects.filter((p) => p.status === 'archived');
+  const active = api.data.projects.filter((p) => p.status === 'active' || p.status === 'paused').sort(compareProjectsByLastOpened);
+  const hidden = api.data.projects.filter((p) => p.status === 'hidden').sort(compareProjectsByLastOpened);
+  const archived = api.data.projects.filter((p) => p.status === 'archived').sort(compareProjectsByLastOpened);
 
   return <div className="stack"><h2>Projects</h2>
     <ContentSection title="Active" items={active} headingLevel={3}>{active.map((p) => <Link key={p.id} className="card" to={`/projects/${p.id}`}>{p.title}</Link>)}</ContentSection>
