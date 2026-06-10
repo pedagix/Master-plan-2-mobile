@@ -69,17 +69,30 @@
   --bottom-nav-safe-area: env(safe-area-inset-bottom, 0px);
   --bottom-nav-height: 74px;
   --bottom-nav-height-compact: 58px;
+  --page-inline-padding: clamp(12px, 4vw, 16px);
+  --page-block-padding: 16px;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
   margin: 0;
-  min-width: 320px;
   background: var(--app-bg);
   color: var(--app-text);
 }
@@ -166,6 +179,8 @@ h1 {
 }
 
 h2 {
+  max-width: 100%;
+  overflow-wrap: anywhere;
   font-size: 34px;
   line-height: 1;
   letter-spacing: 0;
@@ -180,10 +195,27 @@ small {
   color: var(--app-muted);
 }
 
+img,
+svg,
+canvas,
+video {
+  max-width: 100%;
+}
+
+section,
+details,
+form {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .app-shell {
   width: 100%;
-  max-width: 720px;
+  max-width: min(720px, 100%);
   min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-x: clip;
   margin: 0 auto;
   background: var(--app-bg);
   padding-bottom: calc(var(--bottom-nav-height) + var(--bottom-nav-safe-area) + 8px);
@@ -194,6 +226,8 @@ small {
 }
 
 .top-header {
+  width: 100%;
+  max-width: 100%;
   position: sticky;
   top: 0;
   z-index: 10;
@@ -204,11 +238,13 @@ small {
   border-bottom: var(--border-width-card) solid var(--app-border);
   background: var(--header-bg);
   color: var(--app-text);
-  padding: 10px 16px;
+  padding: 10px var(--page-inline-padding);
   backdrop-filter: blur(12px);
 }
 
 .top-header h1 {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: 17px;
   line-height: 1.2;
 }
@@ -258,6 +294,7 @@ small {
 }
 
 .header-settings-link {
+  flex: 0 1 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -276,20 +313,30 @@ small {
 }
 
 main {
-  padding: 16px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+  padding: var(--page-block-padding) var(--page-inline-padding);
 }
 
 .stack {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   gap: 12px;
 }
 
 .page-screen {
+  width: 100%;
   gap: 18px;
 }
 
 .card {
   display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   border: var(--border-width-card) solid var(--app-border);
   border-radius: var(--radius-card);
   background: color-mix(in srgb, var(--app-surface) var(--surface-coverage), transparent);
@@ -304,6 +351,9 @@ main {
   right: 0;
   bottom: calc(var(--keyboard-offset, 0px) + var(--bottom-nav-safe-area));
   left: 0;
+  width: 100%;
+  max-width: min(720px, 100%);
+  margin: 0 auto;
   z-index: 20;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -386,6 +436,8 @@ main {
 .section-title-row,
 .priority-heading {
   display: flex;
+  min-width: 0;
+  max-width: 100%;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -393,11 +445,15 @@ main {
 
 .page-title-row > div {
   display: grid;
+  min-width: 0;
   gap: 5px;
 }
 
 .header-actions {
   display: flex;
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
@@ -431,6 +487,7 @@ main {
 
 .field-label {
   display: grid;
+  min-width: 0;
   gap: 6px;
   color: var(--app-muted);
   font-size: 13px;
@@ -439,6 +496,7 @@ main {
 
 .note-form {
   align-content: start;
+  width: 100%;
   --keyboard-inset: 0px;
   --available-vh: 100dvh;
 }
@@ -452,6 +510,8 @@ main {
 .capture-input-wrap {
   position: relative;
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   grid-template-rows: auto minmax(96px, 1fr) auto;
   gap: 6px;
   min-height: clamp(190px, calc(var(--available-vh) - 260px), 520px);
@@ -480,13 +540,17 @@ main {
 
 .capture-top-controls {
   display: flex;
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
 
 .capture-top-actions {
   display: inline-flex;
-  flex: 0 0 auto;
+  min-width: 0;
+  flex: 0 1 auto;
   gap: 6px;
 }
 
@@ -592,7 +656,7 @@ main {
   display: flex;
   align-items: center;
   min-width: 0;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 6px;
   margin-top: auto;
   padding-top: 2px;
@@ -600,7 +664,7 @@ main {
 
 .important-toggle {
   min-height: 32px;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   border: var(--border-width-button) solid var(--app-border);
   border-radius: 999px;
   background: color-mix(in srgb, var(--app-surface) var(--surface-coverage), transparent);
@@ -622,7 +686,7 @@ main {
   width: 100%;
   min-width: 0;
   min-height: 32px;
-  flex: 1 1 auto;
+  flex: 1 1 140px;
   font-size: 12px;
   padding: 2px 9px;
 }
@@ -661,6 +725,8 @@ main {
 
 .actions {
   display: flex;
+  min-width: 0;
+  max-width: 100%;
   flex-wrap: wrap;
   gap: 8px;
 }
@@ -748,6 +814,8 @@ main {
 .note-card {
   position: relative;
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   gap: var(--card-gap);
   border-left: var(--border-width-accent) solid var(--priority-color);
 }
@@ -804,6 +872,8 @@ main {
 
 .edit-panel {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   gap: 10px;
   border: var(--border-width-card) solid var(--app-border);
   border-radius: var(--radius-card);
@@ -866,6 +936,8 @@ main {
 
 .todo-row {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
@@ -890,11 +962,13 @@ main {
 
 .gallery {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
 .img-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
   border: var(--border-width-card) solid var(--app-border);
   border-radius: var(--radius-card);
   background: color-mix(in srgb, var(--app-surface) var(--surface-coverage), transparent);
@@ -1108,8 +1182,8 @@ summary {
 }
 
 @media (max-width: 520px) {
-  main {
-    padding: 14px 12px;
+  :root {
+    --page-block-padding: 14px;
   }
 
   .capture-top-controls {
@@ -1117,7 +1191,7 @@ summary {
   }
 
   .capture-save-pill {
-    min-width: 80px;
+    min-width: 0;
     font-size: 11px;
     padding: 2px 8px;
   }
@@ -1135,6 +1209,23 @@ summary {
 
   .capture-secondary-row {
     gap: 6px;
+  }
+
+  .page-title-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .page-title-row .header-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .page-title-row .header-actions > * {
+    width: 100%;
+    padding-right: 8px;
+    padding-left: 8px;
   }
 
   .important-toggle,
@@ -1158,8 +1249,6 @@ summary {
 
 @media (min-width: 800px) {
   .bottom-nav {
-    right: calc((100% - 720px) / 2);
-    left: calc((100% - 720px) / 2);
     border-right: var(--border-width-card) solid var(--app-border);
     border-left: var(--border-width-card) solid var(--app-border);
   }
