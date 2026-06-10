@@ -25,9 +25,11 @@ export default function ProjectDetailPage({ api }) {
     if (!projectId || projectId === HMM_PROJECT_ID) return;
     api.setData((prev) => ({
       ...prev,
-      projects: prev.projects.map((item) => item.id === projectId
-        ? { ...item, lastInteractedAt: Date.now(), interactionCount: (item.interactionCount || 0) + 1 }
-        : item),
+      projects: prev.projects.map((item) => {
+        if (item.id !== projectId) return item;
+        const now = Date.now();
+        return { ...item, lastOpenedAt: now, lastInteractedAt: now, interactionCount: (item.interactionCount || 0) + 1 };
+      }),
     }));
   }, [projectId]);
 

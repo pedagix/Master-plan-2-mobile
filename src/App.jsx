@@ -72,6 +72,30 @@ function parseTimeMs(value) {
   return Number.NaN;
 }
 
+function getNewestTimestampValue(...values) {
+  let newestMs = Number.NaN;
+  let newestValue = null;
+  for (const value of values) {
+    const timeMs = parseTimeMs(value);
+    if (!Number.isFinite(timeMs)) continue;
+    if (!Number.isFinite(newestMs) || timeMs > newestMs) {
+      newestMs = timeMs;
+      newestValue = value;
+    }
+  }
+  return newestValue;
+}
+
+function mergeEntityTimestamps(baseItem = {}, localItem = {}, remoteItem = {}) {
+  const timestampFields = ['lastOpenedAt'];
+  const merged = { ...baseItem };
+  for (const field of timestampFields) {
+    const newestValue = getNewestTimestampValue(localItem?.[field], remoteItem?.[field]);
+    if (newestValue !== null) merged[field] = newestValue;
+  }
+  return merged;
+}
+
 function mergeEntityArrays(localItems = [], remoteItems = []) {
   const localById = new Map((Array.isArray(localItems) ? localItems : []).map((item, index) => [item?.id ?? `local-${index}`, item]));
   for (const [index, remoteItem] of (Array.isArray(remoteItems) ? remoteItems : []).entries()) {
@@ -84,10 +108,11 @@ function mergeEntityArrays(localItems = [], remoteItems = []) {
     const localUpdatedAt = parseTimeMs(localItem?.updatedAt);
     const remoteUpdatedAt = parseTimeMs(remoteItem?.updatedAt);
     if (Number.isFinite(localUpdatedAt) && Number.isFinite(remoteUpdatedAt)) {
-      localById.set(remoteId, remoteUpdatedAt > localUpdatedAt ? remoteItem : localItem);
+      const baseItem = remoteUpdatedAt > localUpdatedAt ? remoteItem : localItem;
+      localById.set(remoteId, mergeEntityTimestamps(baseItem, localItem, remoteItem));
       continue;
     }
-    localById.set(remoteId, localItem);
+    localById.set(remoteId, mergeEntityTimestamps(localItem, localItem, remoteItem));
   }
   return [...localById.values()];
 }

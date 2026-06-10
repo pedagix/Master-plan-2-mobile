@@ -108,10 +108,60 @@ export function normalizeProject(project = {}) {
     createdAt: project.createdAt || now,
     updatedAt: project.updatedAt || project.createdAt || now,
     lastInteractedAt: project.lastInteractedAt ?? null,
+    lastOpenedAt: project.lastOpenedAt ?? null,
     interactionCount: project.interactionCount ?? 0,
     notes: Array.isArray(project.notes) ? project.notes : [],
     gallery: Array.isArray(project.gallery) ? project.gallery : [],
   };
+}
+
+
+function getProjectSortTime(value) {
+  if (value == null) return null;
+  if (typeof value === 'number') return Number.isFinite(value) && value > 0 ? value : null;
+  if (typeof value === 'string') {
+    const numericValue = Number(value);
+    if (Number.isFinite(numericValue) && numericValue > 0) return numericValue;
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }
+  if (typeof value === 'object') {
+    if (typeof value.toMillis === 'function') {
+      const millis = value.toMillis();
+      return Number.isFinite(millis) && millis > 0 ? millis : null;
+    }
+    if (typeof value.seconds === 'number') {
+      const nanos = typeof value.nanoseconds === 'number' ? value.nanoseconds : 0;
+      const millis = (value.seconds * 1000) + Math.floor(nanos / 1e6);
+      return Number.isFinite(millis) && millis > 0 ? millis : null;
+    }
+  }
+  return null;
+}
+
+function getProjectOpenedSortTime(project = {}) {
+  return getProjectSortTime(project.lastOpenedAt);
+}
+
+function getProjectFallbackSortTime(project = {}) {
+  return getProjectSortTime(project.lastInteractedAt)
+    ?? getProjectSortTime(project.updatedAt)
+    ?? getProjectSortTime(project.createdAt)
+    ?? 0;
+}
+
+export function compareProjectsByLastOpened(a, b) {
+  const aLastOpenedAt = getProjectOpenedSortTime(a);
+  const bLastOpenedAt = getProjectOpenedSortTime(b);
+  if (aLastOpenedAt !== null || bLastOpenedAt !== null) {
+    if (aLastOpenedAt === null) return 1;
+    if (bLastOpenedAt === null) return -1;
+    const lastOpenedDelta = bLastOpenedAt - aLastOpenedAt;
+    if (lastOpenedDelta) return lastOpenedDelta;
+  }
+  const fallbackDelta = getProjectFallbackSortTime(b) - getProjectFallbackSortTime(a);
+  if (fallbackDelta) return fallbackDelta;
+  return getProjectName(a).localeCompare(getProjectName(b));
 }
 
 export function normalizeSuggestion(s = {}) {

@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { getProjectName, getRealProjects } from '../lib/model';
+import { compareProjectsByLastOpened, getProjectName, getRealProjects } from '../lib/model';
 
 export default function TaDaPage({ api }) {
   const projects = useMemo(() => getRealProjects(api.data.projects)
-    .sort((a, b) => (b.lastInteractedAt || b.updatedAt || b.createdAt || 0) - (a.lastInteractedAt || a.updatedAt || a.createdAt || 0)), [api.data.projects]);
+    .sort(compareProjectsByLastOpened), [api.data.projects]);
 
   const projectTodoCount = (projectId) => (api.data.notes || []).filter((note) => !note.deleted && !note.legacyShape && note.projectId === projectId && note.isTodo).length;
 
