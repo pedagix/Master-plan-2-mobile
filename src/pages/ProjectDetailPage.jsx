@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import NoteCard from '../components/NoteCard';
 import NoteEditForm from '../components/NoteEditForm';
+import ImageViewer from '../components/ImageViewer';
 import { fileToDataUrl } from '../lib/storage';
 import { HMM_PROJECT_ID, PROJECT_DESTINATION, getProjectName, getPriorityColor, sortByPriorityThenNewest } from '../lib/model';
 
@@ -15,6 +16,7 @@ export default function ProjectDetailPage({ api }) {
   const noteSubmitHandlersRef = useRef({});
   const [newFormKey, setNewFormKey] = useState(0);
   const [newNoteOpen, setNewNoteOpen] = useState(false);
+  const [selectedGalleryImage, setSelectedGalleryImage] = useState(null);
 
   useEffect(() => {
     if (!project) return;
@@ -258,9 +260,16 @@ export default function ProjectDetailPage({ api }) {
         <summary>Gallery</summary>
         <input type="file" accept="image/*" onChange={upload} />
         <div className="gallery">{[...(project.gallery || [])].sort((a, b) => a.createdAt - b.createdAt).map((img) => (
-          <div className="img-card" key={img.id}><img src={img.previewUrl} alt={img.name} /><small>{img.name}</small></div>
+          <button type="button" className="img-card" key={img.id} onClick={() => setSelectedGalleryImage(img)} aria-label={`Open ${img.name || 'project photo'} in full-resolution viewer`}>
+            <img src={img.previewUrl} alt={img.name || 'Project gallery photo'} />
+            <small>{img.name || 'Project photo'}</small>
+          </button>
         ))}</div>
       </details>
+
+      {selectedGalleryImage && (
+        <ImageViewer image={selectedGalleryImage} onClose={() => setSelectedGalleryImage(null)} />
+      )}
     </div>
   );
 }
