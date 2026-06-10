@@ -1253,3 +1253,125 @@ summary {
     border-left: var(--border-width-card) solid var(--app-border);
   }
 }
+
+.image-viewer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: 100vw;
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  background: color-mix(in srgb, #000 88%, var(--app-bg));
+  padding: max(10px, env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-right, 0px)) max(10px, env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px));
+  overscroll-behavior: contain;
+}
+
+.image-viewer-topbar,
+.image-viewer-controls {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.image-viewer-topbar {
+  padding-bottom: 8px;
+}
+
+.image-viewer-close,
+.image-viewer-download,
+.image-viewer-controls button {
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.image-viewer-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--border-width-button) solid color-mix(in srgb, var(--button-bg) 78%, var(--app-border));
+  border-radius: var(--radius-button);
+  background: var(--button-bg);
+  box-shadow: var(--button-shadow);
+  color: var(--button-text);
+  font-weight: var(--font-weight-button);
+  line-height: 1.15;
+  padding: var(--button-padding-y) var(--button-padding-x);
+  text-align: center;
+  text-decoration: none;
+}
+
+.image-viewer-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.image-viewer-stage:active {
+  cursor: grabbing;
+}
+
+.image-viewer-image {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  transform-origin: center center;
+  will-change: transform;
+  touch-action: none;
+  user-select: none;
+}
+
+.image-viewer-controls {
+  justify-content: center;
+  padding-top: 8px;
+  padding-bottom: max(0px, calc(var(--bottom-nav-safe-area) - 8px));
+}
+
+.img-card {
+  appearance: none;
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  color: var(--app-text);
+  font: inherit;
+  text-align: left;
+}
+
+.img-card:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-color);
+  outline-offset: 2px;
+}
+
+@media (max-width: 520px) {
+  .image-viewer-overlay {
+    padding-inline: max(8px, env(safe-area-inset-left, 0px)) max(8px, env(safe-area-inset-right, 0px));
+  }
+
+  .image-viewer-topbar {
+    gap: 8px;
+  }
+
+  .image-viewer-download,
+  .image-viewer-close {
+    flex: 1 1 0;
+  }
+}
