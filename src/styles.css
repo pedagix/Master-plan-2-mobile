@@ -966,10 +966,18 @@ main {
 
 .gallery-upload-button {
   position: relative;
+  justify-self: end;
   width: fit-content;
   max-width: 100%;
   min-width: 0;
+  min-height: 40px;
+  margin: 2px 0 4px auto;
   overflow: hidden;
+  border-color: var(--app-border);
+  background: var(--secondary-button-bg);
+  color: var(--app-text);
+  font-size: 13px;
+  padding: 7px 10px;
   white-space: nowrap;
 }
 
@@ -1177,6 +1185,11 @@ summary {
 :root[data-theme-style="hollow"] button:not(.theme-option):not(.capture-save-pill):not(.capture-delete-pill):not(.danger-button):not(.active):not(.is-active),
 :root[data-theme-style="hollow"] .header-settings-link,
 :root[data-theme-style="hollow"] .secondary-button {
+  background: transparent;
+  color: var(--button-bg);
+}
+
+:root[data-theme-style="hollow"] .gallery-upload-button {
   background: transparent;
   color: var(--button-bg);
 }
