@@ -3,8 +3,10 @@ import { Link, Navigate, useParams } from 'react-router-dom';
 import NoteCard from '../components/NoteCard';
 import NoteEditForm from '../components/NoteEditForm';
 import ImageViewer from '../components/ImageViewer';
+import TaskActionSheet from '../components/TaskActionSheet';
 import { fileToDataUrl } from '../lib/storage';
 import { HMM_PROJECT_ID, PROJECT_DESTINATION, getProjectName, getPriorityColor, sortByPriorityThenNewest } from '../lib/model';
+import { completeTaskData } from '../lib/taskTracking';
 
 export default function ProjectDetailPage({ api }) {
   const { projectId } = useParams();
@@ -12,6 +14,7 @@ export default function ProjectDetailPage({ api }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsDraft, setSettingsDraft] = useState({ name: '', description: '' });
   const [editingNoteId, setEditingNoteId] = useState(null);
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
   const todoSubmitHandlersRef = useRef({});
   const noteSubmitHandlersRef = useRef({});
   const [newFormKey, setNewFormKey] = useState(0);
@@ -42,6 +45,7 @@ export default function ProjectDetailPage({ api }) {
   const todos = projectNotes.filter((note) => note.isTodo).sort(sortByPriorityThenNewest);
   const notes = projectNotes.filter((note) => !note.isTodo).sort(sortByPriorityThenNewest);
   const editingNote = projectNotes.find((note) => note.id === editingNoteId) || null;
+  const selectedTask = todos.find((note) => note.id === selectedTaskId) || null;
 
   const patchProject = (patch) => api.setData((prev) => ({
     ...prev,
@@ -112,25 +116,9 @@ export default function ProjectDetailPage({ api }) {
 
   const completeTodo = (note) => {
     if (!window.confirm('Mark this task as done?')) return;
-    const now = Date.now();
-    const completed = {
-      id: crypto.randomUUID(),
-      sourceNoteId: note.id,
-      projectId,
-      text: note.text,
-      priority: note.priority,
-      completedAt: now,
-    };
-    api.setData((prev) => ({
-      ...prev,
-      notes: (prev.notes || []).map((item) => item.id === note.id
-        ? { ...item, deleted: true, deletedAt: now, completedAt: now, updatedAt: now }
-        : item),
-      completedTasks: [completed, ...(prev.completedTasks || [])],
-      projects: prev.projects.map((item) => item.id === projectId
-        ? { ...item, tasksDone: (item.tasksDone || 0) + 1, updatedAt: now, lastInteractedAt: now }
-        : item),
-    }));
+    api.setData((prev) => completeTaskData(prev, note));
+    if (editingNoteId === note.id) setEditingNoteId(null);
+    if (selectedTaskId === note.id) setSelectedTaskId(null);
   };
 
   const toggleTodoEdit = (todoId) => {
@@ -193,7 +181,7 @@ export default function ProjectDetailPage({ api }) {
             <div key={todo.id} className="stack checklist-item-stack">
               <div className={`todo-row ${todo.important ? 'important-note-rainbow-border' : ''}`.trim()} style={{ '--priority-color': getPriorityColor(todo.priority) }}>
                 <input type="checkbox" checked={false} onChange={() => completeTodo(todo)} />
-                <span role="button" tabIndex={0} onClick={() => toggleTodoEdit(todo.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTodoEdit(todo.id); } }}>{todo.text}</span>
+                <span role="button" tabIndex={0} onClick={() => setSelectedTaskId(todo.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedTaskId(todo.id); } }}>{todo.text}</span>
                 <button
                   type="button"
                   className="todo-row-cog-button"
@@ -223,6 +211,18 @@ export default function ProjectDetailPage({ api }) {
             </div>
           ))}
         </section>
+      )}
+
+
+      {selectedTask && (
+        <TaskActionSheet
+          api={api}
+          task={selectedTask}
+          projectName={getProjectName(project)}
+          onClose={() => setSelectedTaskId(null)}
+          onEdit={() => setEditingNoteId(selectedTask.id)}
+          onComplete={() => completeTodo(selectedTask)}
+        />
       )}
 
       {newNoteOpen && (

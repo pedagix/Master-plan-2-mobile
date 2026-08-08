@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import CurrentTaskBar from './CurrentTaskBar';
 
 const links = [
   ['/aha', 'Notes'],
@@ -9,6 +10,7 @@ const links = [
 
 export default function Layout({
   children,
+  api,
   noteSaveConfirmation = { visible: false, id: 0 },
   themePalette,
   themeStyle,
@@ -82,7 +84,7 @@ export default function Layout({
         : 'section-neutral';
   return (
     <div
-      className={`app-shell ${sectionClass} ${keyboardOpen ? 'keyboard-open' : ''}`}
+      className={`app-shell ${sectionClass} ${keyboardOpen ? 'keyboard-open' : ''} ${api?.data?.activeTask ? 'has-now-bar' : ''}`}
       data-theme-palette={themePalette}
       data-theme-style={themeStyle}
     >
@@ -101,6 +103,7 @@ export default function Layout({
         <NavLink to="/settings" className="header-settings-link" aria-label="Settings">Settings</NavLink>
       </header>
       <main>{children}</main>
+      {api && <CurrentTaskBar api={api} keyboardOpen={keyboardOpen} />}
       <nav className="bottom-nav">
         {links.map(([to, label]) => (
           <NavLink

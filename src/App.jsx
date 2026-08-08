@@ -31,6 +31,8 @@ function debugDataCounts(label, data = {}) {
     suggestions: payload.suggestions?.length ?? 0,
     tasks: payload.tasks?.length ?? 0,
     completedTasks: payload.completedTasks?.length ?? 0,
+    taskSessions: payload.taskSessions?.length ?? 0,
+    activeTask: payload.activeTask?.taskNoteId ?? null,
     checklists: payload.checklists?.length ?? 0,
     questions: payload.questions?.length ?? 0,
     destructiveResetAt: payload.meta?.destructiveResetAt ?? null,
@@ -46,7 +48,7 @@ function hasMeaningfulArrayData(items = []) {
 }
 
 function hasMeaningfulFirestoreData(remote = {}) {
-  return hasMeaningfulArrayData(remote.projects) || hasMeaningfulArrayData(remote.captures) || hasMeaningfulArrayData(remote.suggestions);
+  return hasMeaningfulArrayData(remote.projects) || hasMeaningfulArrayData(remote.captures) || hasMeaningfulArrayData(remote.suggestions) || hasMeaningfulArrayData(remote.taskSessions) || Boolean(remote.activeTask?.taskNoteId);
 }
 
 function parseTimeMs(value) {
@@ -165,6 +167,8 @@ function mergeRemoteIntoLocal(localData, remoteData) {
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'aiInstructions') ? { aiInstructions: remote.aiInstructions } : {}),
       notes: mergeEntityArrays(local.notes, filterPreResetEntities(remote.notes, remoteResetAt)),
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'completedTasks') ? { completedTasks: remote.completedTasks } : {}),
+      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'taskSessions') ? { taskSessions: mergeEntityArrays(local.taskSessions, remote.taskSessions) } : {}),
+      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'activeTask') ? { activeTask: remote.activeTask } : {}),
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'tasks') ? { tasks: remote.tasks } : {}),
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'checklists') ? { checklists: remote.checklists } : {}),
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'questions') ? { questions: remote.questions } : {}),
@@ -191,6 +195,8 @@ function mergeRemoteIntoLocal(localData, remoteData) {
       suggestions: local.suggestions,
       notes: local.notes,
       completedTasks: local.completedTasks,
+      taskSessions: local.taskSessions,
+      activeTask: local.activeTask,
       tasks: local.tasks,
       checklists: local.checklists,
       questions: local.questions,
@@ -209,6 +215,8 @@ function mergeRemoteIntoLocal(localData, remoteData) {
     ...(has("aiInstructions") ? { aiInstructions: remote.aiInstructions } : {}),
     notes: mergeEntityArrays(local.notes, remote.notes),
     ...(has("completedTasks") ? { completedTasks: remote.completedTasks } : {}),
+    ...(has("taskSessions") ? { taskSessions: mergeEntityArrays(local.taskSessions, remote.taskSessions) } : {}),
+    ...(has("activeTask") ? { activeTask: remote.activeTask } : {}),
     ...(has("tasks") ? { tasks: remote.tasks } : {}),
     ...(has("checklists") ? { checklists: remote.checklists } : {}),
     ...(has("questions") ? { questions: remote.questions } : {}),
@@ -345,7 +353,7 @@ export default function App() {
   if (isFirebaseConfigured && user === undefined) return <div className="stack"><p>Checking authentication...</p></div>;
   if (isFirebaseConfigured && !user) return <Layout themePalette={themePalette} themeStyle={themeStyle}><LoginGate /></Layout>;
 
-  return <Layout themePalette={themePalette} themeStyle={themeStyle} noteSaveConfirmation={noteSaveConfirmation}><Routes>
+  return <Layout api={api} themePalette={themePalette} themeStyle={themeStyle} noteSaveConfirmation={noteSaveConfirmation}><Routes>
     <Route path="/" element={<Navigate to="/aha" replace />} />
     <Route path="/notes" element={<Navigate to="/aha" replace />} />
     <Route path="/plans" element={<Navigate to="/hmm" replace />} />

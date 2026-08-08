@@ -1420,3 +1420,302 @@ summary {
     flex: 1 1 0;
   }
 }
+
+/* Work sessions / time tracking ------------------------------------------------ */
+.app-shell.has-now-bar:not(.keyboard-open) {
+  padding-bottom: calc(var(--bottom-nav-height) + var(--bottom-nav-safe-area) + 68px);
+}
+
+.task-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: color-mix(in srgb, #000 48%, transparent);
+  padding: 12px max(8px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
+  backdrop-filter: blur(3px);
+}
+
+.task-sheet {
+  width: min(100%, 720px);
+  max-height: min(82dvh, 720px);
+  overflow-y: auto;
+  display: grid;
+  gap: 14px;
+  border: var(--border-width-card) solid var(--app-border);
+  border-radius: max(18px, var(--radius-card));
+  background: color-mix(in srgb, var(--app-surface) 96%, var(--app-bg));
+  box-shadow: 0 -14px 44px color-mix(in srgb, #000 30%, transparent);
+  color: var(--app-text);
+  padding: 10px 16px 18px;
+}
+
+.task-sheet-handle {
+  width: 42px;
+  height: 4px;
+  justify-self: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-muted) 55%, transparent);
+}
+
+.task-sheet-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.task-sheet-heading h3,
+.checkin-sheet h3 {
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+
+.task-sheet-heading small,
+.checkin-sheet > small {
+  color: var(--app-muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.task-sheet-close {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 4px;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.task-sheet-time,
+.task-current-note,
+.helper-text {
+  color: var(--app-muted);
+  line-height: 1.4;
+}
+
+.task-sheet-time strong {
+  color: var(--app-text);
+}
+
+.task-start-options {
+  gap: 12px;
+}
+
+.checkin-presets,
+.checkin-correction-presets,
+.checkin-break-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.checkin-presets button {
+  min-height: 38px;
+  border-color: var(--app-border);
+  background: var(--secondary-button-bg);
+  color: var(--app-text);
+  font-size: 13px;
+  padding: 7px 10px;
+}
+
+.checkin-presets button.selected {
+  border-color: var(--section-tada);
+  background: color-mix(in srgb, var(--section-tada) 24%, var(--app-surface));
+  box-shadow: inset 0 0 0 1px var(--section-tada);
+}
+
+.task-custom-interval {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--app-muted);
+  font-size: 13px;
+}
+
+.task-custom-interval input {
+  width: 88px;
+  min-height: 40px;
+}
+
+.task-start-button {
+  width: 100%;
+  min-height: 48px;
+  font-weight: 900;
+}
+
+.task-sheet-secondary-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.now-bar {
+  position: fixed;
+  right: 0;
+  bottom: calc(var(--bottom-nav-safe-area) + var(--bottom-nav-height));
+  left: 0;
+  z-index: 25;
+  width: 100%;
+  max-width: min(720px, 100%);
+  margin: 0 auto;
+  overflow: hidden;
+  border-top: 1px solid color-mix(in srgb, var(--section-tada) 66%, var(--app-border));
+  border-bottom: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--nav-bg) 92%, transparent);
+  box-shadow: 0 -10px 28px color-mix(in srgb, #000 18%, transparent);
+  backdrop-filter: blur(16px);
+}
+
+.now-bar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -30%;
+  width: 26%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--section-tada), transparent);
+  opacity: 0.8;
+  animation: now-scan-line 5.5s linear infinite;
+  pointer-events: none;
+}
+
+.now-bar-paused::before,
+.now-bar-break::before {
+  animation: none;
+  opacity: 0.25;
+}
+
+.now-bar-main {
+  appearance: none;
+  width: calc(100% - 48px);
+  min-height: 54px;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--app-text);
+  padding: 7px 8px 7px 12px;
+  text-align: left;
+}
+
+.now-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--section-tada);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--section-tada) 60%, transparent);
+  animation: now-live-pulse 1.8s ease-out infinite;
+}
+
+.now-bar-paused .now-live-dot,
+.now-bar-break .now-live-dot {
+  animation: none;
+  opacity: 0.65;
+}
+
+.now-label {
+  color: var(--section-tada);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+}
+
+.now-task-text {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--app-text);
+  font-size: 13px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.now-time {
+  color: var(--app-text);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.now-quick-button {
+  position: absolute;
+  top: 7px;
+  right: 6px;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  border-color: color-mix(in srgb, var(--section-tada) 55%, var(--app-border));
+  background: color-mix(in srgb, var(--app-surface) 75%, transparent);
+  color: var(--app-text);
+  padding: 0;
+}
+
+.now-expanded-controls {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid var(--app-border);
+  padding: 12px;
+}
+
+.now-expanded-controls > div:first-child {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.now-expanded-controls small {
+  color: var(--app-muted);
+}
+
+.now-break-ready {
+  border-left: 3px solid var(--section-tada);
+  background: color-mix(in srgb, var(--section-tada) 10%, transparent);
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.checkin-backdrop {
+  z-index: 70;
+}
+
+.checkin-sheet {
+  gap: 12px;
+}
+
+.checkin-sheet p {
+  margin: 0;
+}
+
+.checkin-actions {
+  gap: 8px;
+}
+
+@keyframes now-live-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--section-tada) 48%, transparent); opacity: 1; }
+  70% { box-shadow: 0 0 0 7px transparent; opacity: 0.82; }
+  100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
+}
+
+@keyframes now-scan-line {
+  from { transform: translateX(0); }
+  to { transform: translateX(500%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .now-bar::before,
+  .now-live-dot {
+    animation: none !important;
+  }
+}

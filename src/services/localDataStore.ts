@@ -33,6 +33,8 @@ function debugDataCounts(label, data: any) {
     suggestions: migrated.suggestions.length,
     tasks: migrated.tasks.length,
     completedTasks: migrated.completedTasks?.length || 0,
+    taskSessions: migrated.taskSessions?.length || 0,
+    activeTask: migrated.activeTask?.taskNoteId || null,
     checklists: migrated.checklists.length,
     questions: migrated.questions.length,
     destructiveResetAt: migrated.meta?.destructiveResetAt ?? null,
@@ -74,7 +76,7 @@ function downloadJson(payload, name) {
 }
 
 function exportFullBackup(data) {
-  downloadJson({ ...migrateData(data), meta: { ...(data.meta || {}), appName: 'Master Plan', schemaVersion: 2, exportType: 'full-backup', exportedAt: new Date().toISOString() } }, 'master-plan-full-backup');
+  downloadJson({ ...migrateData(data), meta: { ...(data.meta || {}), appName: 'Master Plan', schemaVersion: 4, exportType: 'full-backup', exportedAt: new Date().toISOString() } }, 'master-plan-full-backup');
 }
 
 function getRollbacks() {
@@ -94,6 +96,8 @@ function saveRollbackSnapshot(state, reason) {
       suggestions: migrated.suggestions.length,
       questions: migrated.questions.length,
       completedTasks: migrated.completedTasks?.length || 0,
+    taskSessions: migrated.taskSessions?.length || 0,
+    activeTask: migrated.activeTask?.taskNoteId || null,
       includesSettings: !!migrated.settings,
     },
     state: migrated,

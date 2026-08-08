@@ -1,10 +1,13 @@
 import { useMemo, useRef, useState } from 'react';
 import NoteCard from '../components/NoteCard';
 import NoteEditForm from '../components/NoteEditForm';
+import TaskActionSheet from '../components/TaskActionSheet';
 import { HMM_DESTINATION, PROJECT_DESTINATION, getPriorityColor, sortByPriorityThenNewest } from '../lib/model';
+import { completeTaskData } from '../lib/taskTracking';
 
 export default function HmmPage({ api }) {
   const [editingId, setEditingId] = useState(null);
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
   const submitHandlersRef = useRef({});
 
   const hmmNotes = useMemo(() => (api.data.notes || [])
@@ -14,6 +17,7 @@ export default function HmmPage({ api }) {
   const notes = hmmNotes.filter((note) => !note.isTodo);
 
   const editingNote = hmmNotes.find((note) => note.id === editingId) || null;
+  const selectedTask = todos.find((note) => note.id === selectedTaskId) || null;
 
   const saveEdit = (patch) => {
     if (!editingId) return;
@@ -59,24 +63,9 @@ export default function HmmPage({ api }) {
 
   const completeTodo = (note) => {
     if (!window.confirm('Mark this checklist item as done?')) return;
-    const now = Date.now();
-    const completed = {
-      id: crypto.randomUUID(),
-      text: note.text,
-      noteId: note.id,
-      destination: HMM_DESTINATION,
-      projectId: null,
-      completedAt: now,
-      completedFrom: 'plans',
-      priority: note.priority,
-      important: note.important,
-    };
-    api.setData((prev) => ({
-      ...prev,
-      notes: (prev.notes || []).map((item) => item.id === note.id ? { ...item, deleted: true, deletedAt: now, completedAt: now, updatedAt: now } : item),
-      completedTasks: [completed, ...(prev.completedTasks || [])],
-    }));
+    api.setData((prev) => completeTaskData(prev, note));
     if (editingId === note.id) setEditingId(null);
+    if (selectedTaskId === note.id) setSelectedTaskId(null);
   };
 
   const renderNote = (note) => (
@@ -100,7 +89,7 @@ export default function HmmPage({ api }) {
             <div key={todo.id} className="stack checklist-item-stack">
               <div className={`todo-row ${todo.important ? 'important-note-rainbow-border' : ''}`.trim()} style={{ '--priority-color': getPriorityColor(todo.priority) }}>
                 <input type="checkbox" checked={false} onChange={() => completeTodo(todo)} />
-                <span role="button" tabIndex={0} onClick={() => toggleEdit(todo.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleEdit(todo.id); } }}>{todo.text}</span>
+                <span role="button" tabIndex={0} onClick={() => setSelectedTaskId(todo.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedTaskId(todo.id); } }}>{todo.text}</span>
                 <button type="button" className="todo-row-cog-button" aria-label={editingId === todo.id ? 'Save and close checklist item editor' : 'Edit checklist item'} onClick={() => toggleEdit(todo.id)}>⚙️</button>
               </div>
               {editingId === todo.id && (
@@ -111,6 +100,18 @@ export default function HmmPage({ api }) {
             </div>
           ))}
         </section>
+      )}
+
+
+      {selectedTask && (
+        <TaskActionSheet
+          api={api}
+          task={selectedTask}
+          projectName="Plans"
+          onClose={() => setSelectedTaskId(null)}
+          onEdit={() => setEditingId(selectedTask.id)}
+          onComplete={() => completeTodo(selectedTask)}
+        />
       )}
 
       <div className="stack note-card-list">

@@ -63,6 +63,8 @@ function debugDataCounts(label: string, data: any) {
     suggestions: Array.isArray(payload.suggestions) ? payload.suggestions.length : 0,
     tasks: Array.isArray(payload.tasks) ? payload.tasks.length : 0,
     completedTasks: Array.isArray(payload.completedTasks) ? payload.completedTasks.length : 0,
+    taskSessions: Array.isArray(payload.taskSessions) ? payload.taskSessions.length : 0,
+    activeTask: payload.activeTask?.taskNoteId ?? null,
     checklists: Array.isArray(payload.checklists) ? payload.checklists.length : 0,
     questions: Array.isArray(payload.questions) ? payload.questions.length : 0,
     destructiveResetAt: payload.meta?.destructiveResetAt ?? null,
@@ -262,18 +264,22 @@ export function listenToAuthState(callback: (user: User | null) => void) {
 export async function loadUserData(uid: string) {
   if (!db) throw new Error('Firebase is not configured.');
 
-  const [userSnap, projectsSnap, notesSnap, suggestionsSnap, gallerySnap] = await Promise.all([
+  const [userSnap, projectsSnap, notesSnap, suggestionsSnap, gallerySnap, taskSessionsSnap, activeTaskSnap] = await Promise.all([
     getDoc(doc(db, `users/${uid}`)),
     getDocs(collection(db, `users/${uid}/projects`)),
     getDocs(collection(db, `users/${uid}/notes`)),
     getDocs(collection(db, `users/${uid}/suggestions`)),
     getDocs(collection(db, `users/${uid}/galleryImages`)),
+    getDocs(collection(db, `users/${uid}/taskSessions`)),
+    getDoc(doc(db, `users/${uid}/runtime/activeTask`)),
   ]);
 
   const projects = projectsSnap.docs.map((d) => sanitizeProjectForCloud(d.data()));
   const captures = notesSnap.docs.map((d) => d.data());
   const suggestions = suggestionsSnap.docs.map((d) => d.data());
   const galleryImages = gallerySnap.docs.map((d) => d.data());
+  const taskSessions = taskSessionsSnap.docs.map((d) => d.data());
+  const activeTask = activeTaskSnap.exists() ? activeTaskSnap.data() : null;
 
   const galleryByProject = new Map();
   for (const image of galleryImages) {
@@ -293,6 +299,8 @@ export async function loadUserData(uid: string) {
     })),
     captures,
     suggestions,
+    taskSessions,
+    activeTask,
   };
   debugDataCounts('firebase.loadUserData:loaded', loaded);
   return loaded;
@@ -302,11 +310,12 @@ export async function saveUserData(uid: string, data: any) {
   if (!db) throw new Error('Firebase is not configured.');
   debugDataCounts('firebase.saveUserData:payload', data);
 
-  const [projectsSnap, notesSnap, suggestionsSnap, gallerySnap] = await Promise.all([
+  const [projectsSnap, notesSnap, suggestionsSnap, gallerySnap, taskSessionsSnap] = await Promise.all([
     getDocs(collection(db, `users/${uid}/projects`)),
     getDocs(collection(db, `users/${uid}/notes`)),
     getDocs(collection(db, `users/${uid}/suggestions`)),
     getDocs(collection(db, `users/${uid}/galleryImages`)),
+    getDocs(collection(db, `users/${uid}/taskSessions`)),
   ]);
 
   const projectIds = new Set((data.projects ?? []).map((project) => project.id));
@@ -314,6 +323,7 @@ export async function saveUserData(uid: string, data: any) {
   const suggestionIds = new Set((data.suggestions ?? []).map((suggestion) => suggestion.id));
   const galleryImages = (data.projects ?? []).flatMap((project) => (project.gallery ?? []).map((image) => ({ ...image, id: image.id ?? crypto.randomUUID(), projectId: project.id })));
   const galleryImageIds = new Set(galleryImages.map((image) => image.id));
+  const taskSessionIds = new Set((data.taskSessions ?? []).map((session) => session.id));
 
   const batch = writeBatch(db);
   batch.set(doc(db, `users/${uid}`), pickCanonicalUserPayload(data), { merge: true });
@@ -329,6 +339,12 @@ export async function saveUserData(uid: string, data: any) {
   for (const image of galleryImages) {
     batch.set(doc(db, `users/${uid}/galleryImages/${image.id}`), image);
   }
+  for (const session of data.taskSessions ?? []) {
+    batch.set(doc(db, `users/${uid}/taskSessions/${session.id}`), session);
+  }
+  const activeTaskRef = doc(db, `users/${uid}/runtime/activeTask`);
+  if (data.activeTask?.taskNoteId) batch.set(activeTaskRef, data.activeTask);
+  else batch.delete(activeTaskRef);
 
   for (const snapshot of projectsSnap.docs) {
     if (!projectIds.has(snapshot.id)) batch.delete(snapshot.ref);
@@ -342,6 +358,9 @@ export async function saveUserData(uid: string, data: any) {
   for (const snapshot of gallerySnap.docs) {
     if (!galleryImageIds.has(snapshot.id)) batch.delete(snapshot.ref);
   }
+  for (const snapshot of taskSessionsSnap.docs) {
+    if (!taskSessionIds.has(snapshot.id)) batch.delete(snapshot.ref);
+  }
 
   await batch.commit();
 }
@@ -350,11 +369,13 @@ export async function deleteAllAppDataForUser(uid: string, cleanResetData: any) 
   if (!db) throw new Error('Firebase is not configured.');
   if (DEBUG_DATA_FLOW) console.log('[data-flow] deleteAllAppDataForUser:start', { uid });
 
-  const [projectsSnap, notesSnap, suggestionsSnap, gallerySnap] = await Promise.all([
+  const [projectsSnap, notesSnap, suggestionsSnap, gallerySnap, taskSessionsSnap, activeTaskSnap] = await Promise.all([
     getDocs(collection(db, `users/${uid}/projects`)),
     getDocs(collection(db, `users/${uid}/notes`)),
     getDocs(collection(db, `users/${uid}/suggestions`)),
     getDocs(collection(db, `users/${uid}/galleryImages`)),
+    getDocs(collection(db, `users/${uid}/taskSessions`)),
+    getDoc(doc(db, `users/${uid}/runtime/activeTask`)),
   ]);
 
   const refsToDelete = [
@@ -362,6 +383,8 @@ export async function deleteAllAppDataForUser(uid: string, cleanResetData: any) 
     ...notesSnap.docs.map((snapshot) => snapshot.ref),
     ...suggestionsSnap.docs.map((snapshot) => snapshot.ref),
     ...gallerySnap.docs.map((snapshot) => snapshot.ref),
+    ...taskSessionsSnap.docs.map((snapshot) => snapshot.ref),
+    ...(activeTaskSnap.exists() ? [activeTaskSnap.ref] : []),
   ];
 
   await applyBatchWrites(refsToDelete, (batch, ref) => {
@@ -379,6 +402,8 @@ export async function deleteAllAppDataForUser(uid: string, cleanResetData: any) 
     deletedNotes: notesSnap.size,
     deletedSuggestions: suggestionsSnap.size,
     deletedGalleryImages: gallerySnap.size,
+    deletedTaskSessions: taskSessionsSnap.size,
+    deletedActiveTask: activeTaskSnap.exists() ? 1 : 0,
     deletedDocs: refsToDelete.length,
   };
 }

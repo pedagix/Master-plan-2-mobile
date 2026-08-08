@@ -348,12 +348,14 @@ function migrateNotesFromLegacy(input = {}, projects = []) {
 export function buildDefaultData() {
   const now = Date.now(); const profile = buildDefaultPromptProfile(now);
   return {
-    meta: { appName: 'Master Plan', schemaVersion: 3, exportType: 'full-backup', exportedAt: new Date(now).toISOString() },
-    settings: { activePromptProfileId: profile.id, promptProfiles: [profile], notesProcessorHiddenActionIds: [], lastDestination: HMM_DESTINATION, hasCompletedInitialSetup: true, themePalette: DEFAULT_THEME_PALETTE, themeStyle: DEFAULT_THEME_STYLE },
+    meta: { appName: 'Master Plan', schemaVersion: 4, exportType: 'full-backup', exportedAt: new Date(now).toISOString() },
+    settings: { activePromptProfileId: profile.id, promptProfiles: [profile], notesProcessorHiddenActionIds: [], lastDestination: HMM_DESTINATION, hasCompletedInitialSetup: true, themePalette: DEFAULT_THEME_PALETTE, themeStyle: DEFAULT_THEME_STYLE, defaultCheckInMinutes: 30 },
     aiInstructions: { activePromptProfileId: profile.id, mainRole: 'You are analyzing a private mobile-first second brain system.', tone: 'Clear, direct, practical, and honest. Be brutally honest when useful, but still constructive.', goal: 'Help the user turn captured notes into useful next actions, project structure, suggestions, checklists, warnings, cleanup recommendations, and follow-up questions.', promptActions: structuredClone(DEFAULT_PROMPT_ACTIONS) },
     projects: [],
     notes: [],
     completedTasks: [],
+    taskSessions: [],
+    activeTask: null,
     captures: [],
     suggestions: [],
     tasks: [],
@@ -380,6 +382,8 @@ export function buildResetData() {
     projects: [],
     notes: [],
     completedTasks: [],
+    taskSessions: [],
+    activeTask: null,
     captures: [],
     suggestions: [],
     tasks: [],
@@ -417,6 +421,8 @@ export function buildGlobalNoteCleanupData(input, now = Date.now()) {
     projects: cleanedProjects,
     notes: [],
     completedTasks: [],
+    taskSessions: [],
+    activeTask: null,
     captures: [],
     suggestions: [],
     tasks: [],
@@ -430,7 +436,7 @@ export function buildGlobalNoteCleanupData(input, now = Date.now()) {
 
 export function migrateData(input) {
   const base = buildDefaultData(); const data = { ...base, ...(input || {}) };
-  data.meta = { ...base.meta, ...(input?.meta || {}), schemaVersion: 3, appName: 'Master Plan' };
+  data.meta = { ...base.meta, ...(input?.meta || {}), schemaVersion: 4, appName: 'Master Plan' };
   data.projects = (Array.isArray(input?.projects) ? input.projects : []).map(normalizeProject).filter((project) => project.id !== HMM_PROJECT_ID);
   const projectIds = new Set(data.projects.map((project) => project.id));
   data.captures = (Array.isArray(input?.captures) ? input.captures : []).map(normalizeCapture);
@@ -449,12 +455,44 @@ export function migrateData(input) {
     priority: clampPriority(task.priority),
     completedAt: task.completedAt || Date.now(),
   })).filter((task) => task.text);
+  data.taskSessions = (Array.isArray(input?.taskSessions) ? input.taskSessions : []).map((session) => ({
+    ...session,
+    id: session.id || `session-${session.taskNoteId || Date.now()}-${session.startedAt || Date.now()}`,
+    taskNoteId: session.taskNoteId || session.sourceNoteId || null,
+    projectId: session.projectId && projectIds.has(session.projectId) ? session.projectId : null,
+    taskTextSnapshot: String(session.taskTextSnapshot || session.text || '').trim(),
+    startedAt: Number(session.startedAt) || Date.now(),
+    endedAt: Number(session.endedAt) || Number(session.startedAt) || Date.now(),
+    durationMs: Math.max(0, Number(session.durationMs) || ((Number(session.endedAt) || 0) - (Number(session.startedAt) || 0))),
+    createdAt: Number(session.createdAt) || Number(session.startedAt) || Date.now(),
+    updatedAt: Number(session.updatedAt) || Number(session.endedAt) || Date.now(),
+  })).filter((session) => session.taskNoteId && session.durationMs >= 0);
+  if (input?.activeTask?.taskNoteId) {
+    const active = input.activeTask;
+    data.activeTask = {
+      ...active,
+      projectId: active.projectId && projectIds.has(active.projectId) ? active.projectId : null,
+      taskTextSnapshot: String(active.taskTextSnapshot || '').trim(),
+      status: ['running', 'paused', 'break'].includes(active.status) ? active.status : 'paused',
+      startedAt: Number(active.startedAt) || Date.now(),
+      segmentStartedAt: active.segmentStartedAt == null ? null : Number(active.segmentStartedAt),
+      pausedAt: active.pausedAt == null ? null : Number(active.pausedAt),
+      checkInMinutes: active.checkInMinutes === 0 ? 0 : Math.max(5, Math.min(240, Number(active.checkInMinutes) || 30)),
+      nextCheckInAt: active.nextCheckInAt == null ? null : Number(active.nextCheckInAt),
+      breakStartedAt: active.breakStartedAt == null ? null : Number(active.breakStartedAt),
+      breakEndsAt: active.breakEndsAt == null ? null : Number(active.breakEndsAt),
+      updatedAt: Number(active.updatedAt) || Date.now(),
+    };
+  } else {
+    data.activeTask = null;
+  }
   data.badIdeaLog = Array.isArray(input?.badIdeaLog) ? input.badIdeaLog : [];
   data.inboxActionLog = Array.isArray(input?.inboxActionLog) ? input.inboxActionLog : [];
   data.questionFeedbackLog = Array.isArray(input?.questionFeedbackLog) ? input.questionFeedbackLog : [];
   data.settings = { ...base.settings, lastSelectedProjectId: null, lastDestination: HMM_DESTINATION, ...(input?.settings || {}) };
   data.settings.themePalette = normalizeThemePaletteId(data.settings.themePalette);
   data.settings.themeStyle = normalizeThemeStyleId(data.settings.themeStyle);
+  data.settings.defaultCheckInMinutes = data.settings.defaultCheckInMinutes === 0 ? 0 : Math.max(5, Math.min(240, Number(data.settings.defaultCheckInMinutes) || 30));
   if (data.settings.lastSelectedProjectId && !data.projects.some((p) => p.id === data.settings.lastSelectedProjectId && p.status !== 'archived' && p.status !== 'hidden')) {
     data.settings.lastSelectedProjectId = data.projects.find((p) => p.status === 'active')?.id || null;
   }
