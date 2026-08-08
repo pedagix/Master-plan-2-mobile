@@ -65,6 +65,7 @@ function debugDataCounts(label: string, data: any) {
     completedTasks: Array.isArray(payload.completedTasks) ? payload.completedTasks.length : 0,
     taskSessions: Array.isArray(payload.taskSessions) ? payload.taskSessions.length : 0,
     activeTask: payload.activeTask?.taskNoteId ?? null,
+    activeTaskUpdatedAt: payload.taskTracking?.activeTaskUpdatedAt ?? null,
     checklists: Array.isArray(payload.checklists) ? payload.checklists.length : 0,
     questions: Array.isArray(payload.questions) ? payload.questions.length : 0,
     destructiveResetAt: payload.meta?.destructiveResetAt ?? null,
@@ -81,6 +82,8 @@ const USER_CANONICAL_FIELDS = [
   'aiInstructions',
   'notes',
   'completedTasks',
+  'activeTask',
+  'taskTracking',
   'tasks',
   'checklists',
   'questions',
@@ -95,6 +98,34 @@ function pickCanonicalUserPayload(data: any = {}) {
     if (key in data) acc[key] = data[key];
     return acc;
   }, {});
+}
+
+function toMillis(value: any) {
+  if (value == null) return 0;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (typeof value === 'string') {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) return numeric;
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  if (typeof value?.toMillis === 'function') return value.toMillis();
+  if (typeof value?.seconds === 'number') return (value.seconds * 1000) + Math.floor((value.nanoseconds || 0) / 1e6);
+  return 0;
+}
+
+function resolveLoadedActiveTask(userCanonical: any, runtimeSnap: any) {
+  const canonicalActive = userCanonical?.activeTask?.taskNoteId ? userCanonical.activeTask : null;
+  const canonicalRevision = toMillis(userCanonical?.taskTracking?.activeTaskUpdatedAt) || toMillis(canonicalActive?.updatedAt);
+  if (!runtimeSnap?.exists?.()) return canonicalActive;
+
+  const runtimeData = runtimeSnap.data();
+  const runtimeActive = runtimeData?.activeTask !== undefined
+    ? (runtimeData.activeTask?.taskNoteId ? runtimeData.activeTask : null)
+    : (runtimeData?.taskNoteId ? runtimeData : null);
+  const runtimeRevision = toMillis(runtimeData?.activeTaskUpdatedAt) || toMillis(runtimeActive?.updatedAt);
+
+  return runtimeRevision > canonicalRevision ? runtimeActive : canonicalActive;
 }
 const NOTE_COLLECTION_GROUPS = [
   'notes',
@@ -279,7 +310,6 @@ export async function loadUserData(uid: string) {
   const suggestions = suggestionsSnap.docs.map((d) => d.data());
   const galleryImages = gallerySnap.docs.map((d) => d.data());
   const taskSessions = taskSessionsSnap.docs.map((d) => d.data());
-  const activeTask = activeTaskSnap.exists() ? activeTaskSnap.data() : null;
 
   const galleryByProject = new Map();
   for (const image of galleryImages) {
@@ -290,6 +320,7 @@ export async function loadUserData(uid: string) {
   }
 
   const userCanonical = userSnap.exists() ? pickCanonicalUserPayload(userSnap.data()) : {};
+  const activeTask = resolveLoadedActiveTask(userCanonical, activeTaskSnap);
 
   const loaded = {
     ...userCanonical,
@@ -310,12 +341,11 @@ export async function saveUserData(uid: string, data: any) {
   if (!db) throw new Error('Firebase is not configured.');
   debugDataCounts('firebase.saveUserData:payload', data);
 
-  const [projectsSnap, notesSnap, suggestionsSnap, gallerySnap, taskSessionsSnap] = await Promise.all([
+  const [projectsSnap, notesSnap, suggestionsSnap, gallerySnap] = await Promise.all([
     getDocs(collection(db, `users/${uid}/projects`)),
     getDocs(collection(db, `users/${uid}/notes`)),
     getDocs(collection(db, `users/${uid}/suggestions`)),
     getDocs(collection(db, `users/${uid}/galleryImages`)),
-    getDocs(collection(db, `users/${uid}/taskSessions`)),
   ]);
 
   const projectIds = new Set((data.projects ?? []).map((project) => project.id));
@@ -323,8 +353,10 @@ export async function saveUserData(uid: string, data: any) {
   const suggestionIds = new Set((data.suggestions ?? []).map((suggestion) => suggestion.id));
   const galleryImages = (data.projects ?? []).flatMap((project) => (project.gallery ?? []).map((image) => ({ ...image, id: image.id ?? crypto.randomUUID(), projectId: project.id })));
   const galleryImageIds = new Set(galleryImages.map((image) => image.id));
-  const taskSessionIds = new Set((data.taskSessions ?? []).map((session) => session.id));
 
+  // Save the canonical app state and the long-standing collections first. Active task
+  // is also kept on the canonical user document as a reliable fallback if a newer
+  // task-tracking subcollection is unavailable or delayed.
   const batch = writeBatch(db);
   batch.set(doc(db, `users/${uid}`), pickCanonicalUserPayload(data), { merge: true });
   for (const project of data.projects ?? []) {
@@ -339,13 +371,6 @@ export async function saveUserData(uid: string, data: any) {
   for (const image of galleryImages) {
     batch.set(doc(db, `users/${uid}/galleryImages/${image.id}`), image);
   }
-  for (const session of data.taskSessions ?? []) {
-    batch.set(doc(db, `users/${uid}/taskSessions/${session.id}`), session);
-  }
-  const activeTaskRef = doc(db, `users/${uid}/runtime/activeTask`);
-  if (data.activeTask?.taskNoteId) batch.set(activeTaskRef, data.activeTask);
-  else batch.delete(activeTaskRef);
-
   for (const snapshot of projectsSnap.docs) {
     if (!projectIds.has(snapshot.id)) batch.delete(snapshot.ref);
   }
@@ -358,11 +383,30 @@ export async function saveUserData(uid: string, data: any) {
   for (const snapshot of gallerySnap.docs) {
     if (!galleryImageIds.has(snapshot.id)) batch.delete(snapshot.ref);
   }
-  for (const snapshot of taskSessionsSnap.docs) {
-    if (!taskSessionIds.has(snapshot.id)) batch.delete(snapshot.ref);
-  }
-
   await batch.commit();
+
+  // Session history and the runtime document are intentionally best-effort and
+  // isolated from the core save. A rules/deployment issue on a new collection
+  // must never prevent notes, task completion, or the canonical active task from saving.
+  try {
+    const taskSessionsSnap = await getDocs(collection(db, `users/${uid}/taskSessions`));
+    const taskSessionIds = new Set((data.taskSessions ?? []).map((session) => session.id));
+    const taskBatch = writeBatch(db);
+    for (const session of data.taskSessions ?? []) {
+      taskBatch.set(doc(db, `users/${uid}/taskSessions/${session.id}`), session);
+    }
+    for (const snapshot of taskSessionsSnap.docs) {
+      if (!taskSessionIds.has(snapshot.id)) taskBatch.delete(snapshot.ref);
+    }
+    const activeTaskRef = doc(db, `users/${uid}/runtime/activeTask`);
+    taskBatch.set(activeTaskRef, {
+      activeTask: data.activeTask?.taskNoteId ? data.activeTask : null,
+      activeTaskUpdatedAt: data.taskTracking?.activeTaskUpdatedAt || data.activeTask?.updatedAt || 0,
+    }, { merge: true });
+    await taskBatch.commit();
+  } catch (error) {
+    console.warn('Task tracking auxiliary sync failed; canonical/local task state remains saved.', error);
+  }
 }
 
 export async function deleteAllAppDataForUser(uid: string, cleanResetData: any) {

@@ -33,6 +33,7 @@ function debugDataCounts(label, data = {}) {
     completedTasks: payload.completedTasks?.length ?? 0,
     taskSessions: payload.taskSessions?.length ?? 0,
     activeTask: payload.activeTask?.taskNoteId ?? null,
+    activeTaskUpdatedAt: payload.taskTracking?.activeTaskUpdatedAt ?? null,
     checklists: payload.checklists?.length ?? 0,
     questions: payload.questions?.length ?? 0,
     destructiveResetAt: payload.meta?.destructiveResetAt ?? null,
@@ -119,6 +120,55 @@ function mergeEntityArrays(localItems = [], remoteItems = []) {
   return [...localById.values()];
 }
 
+function getActiveTaskStateUpdatedAt(data = {}) {
+  const explicit = parseTimeMs(data?.taskTracking?.activeTaskUpdatedAt);
+  if (Number.isFinite(explicit)) return explicit;
+  const activeUpdatedAt = parseTimeMs(data?.activeTask?.updatedAt);
+  return Number.isFinite(activeUpdatedAt) ? activeUpdatedAt : 0;
+}
+
+function mergeActiveTaskState(localData = {}, remoteData = {}) {
+  const localUpdatedAt = getActiveTaskStateUpdatedAt(localData);
+  const remoteUpdatedAt = getActiveTaskStateUpdatedAt(remoteData);
+
+  if (remoteUpdatedAt > localUpdatedAt) {
+    return {
+      activeTask: remoteData?.activeTask || null,
+      taskTracking: {
+        ...(localData?.taskTracking || {}),
+        ...(remoteData?.taskTracking || {}),
+        activeTaskUpdatedAt: remoteUpdatedAt,
+      },
+    };
+  }
+
+  if (localUpdatedAt > remoteUpdatedAt) {
+    return {
+      activeTask: localData?.activeTask || null,
+      taskTracking: {
+        ...(remoteData?.taskTracking || {}),
+        ...(localData?.taskTracking || {}),
+        activeTaskUpdatedAt: localUpdatedAt,
+      },
+    };
+  }
+
+  // Equal/legacy revisions: prefer an existing local task so a stale cloud null
+  // cannot erase a task that was just started before a refresh.
+  const activeTask = localData?.activeTask || remoteData?.activeTask || null;
+  const fallbackUpdatedAt = getNewestTimestampValue(localData?.activeTask?.updatedAt, remoteData?.activeTask?.updatedAt);
+  return {
+    activeTask,
+    taskTracking: {
+      ...(remoteData?.taskTracking || {}),
+      ...(localData?.taskTracking || {}),
+      activeTaskUpdatedAt: Number.isFinite(parseTimeMs(fallbackUpdatedAt))
+        ? parseTimeMs(fallbackUpdatedAt)
+        : localUpdatedAt || remoteUpdatedAt || 0,
+    },
+  };
+}
+
 function hasPostResetEntities(items = [], resetAtMs = Number.NaN) {
   if (!Number.isFinite(resetAtMs)) return false;
   return (Array.isArray(items) ? items : []).some((item) => {
@@ -141,6 +191,7 @@ function filterPreResetEntities(items = [], resetAtMs = Number.NaN) {
 function mergeRemoteIntoLocal(localData, remoteData) {
   const local = migrateData(localData);
   const remote = migrateData(remoteData || {});
+  const activeTaskState = mergeActiveTaskState(local, remote);
   debugDataCounts('mergeRemoteIntoLocal:local-in', local);
   debugDataCounts('mergeRemoteIntoLocal:remote-in', remoteData || {});
   const remoteResetAt = Date.parse(remote?.meta?.destructiveResetAt || '');
@@ -166,9 +217,9 @@ function mergeRemoteIntoLocal(localData, remoteData) {
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'settings') ? { settings: remote.settings } : {}),
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'aiInstructions') ? { aiInstructions: remote.aiInstructions } : {}),
       notes: mergeEntityArrays(local.notes, filterPreResetEntities(remote.notes, remoteResetAt)),
-      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'completedTasks') ? { completedTasks: remote.completedTasks } : {}),
+      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'completedTasks') ? { completedTasks: mergeEntityArrays(local.completedTasks, remote.completedTasks) } : {}),
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'taskSessions') ? { taskSessions: mergeEntityArrays(local.taskSessions, remote.taskSessions) } : {}),
-      ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'activeTask') ? { activeTask: remote.activeTask } : {}),
+      ...activeTaskState,
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'tasks') ? { tasks: remote.tasks } : {}),
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'checklists') ? { checklists: remote.checklists } : {}),
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'questions') ? { questions: remote.questions } : {}),
@@ -197,6 +248,7 @@ function mergeRemoteIntoLocal(localData, remoteData) {
       completedTasks: local.completedTasks,
       taskSessions: local.taskSessions,
       activeTask: local.activeTask,
+      taskTracking: local.taskTracking,
       tasks: local.tasks,
       checklists: local.checklists,
       questions: local.questions,
@@ -214,9 +266,9 @@ function mergeRemoteIntoLocal(localData, remoteData) {
     ...(has("settings") ? { settings: remote.settings } : {}),
     ...(has("aiInstructions") ? { aiInstructions: remote.aiInstructions } : {}),
     notes: mergeEntityArrays(local.notes, remote.notes),
-    ...(has("completedTasks") ? { completedTasks: remote.completedTasks } : {}),
+    ...(has("completedTasks") ? { completedTasks: mergeEntityArrays(local.completedTasks, remote.completedTasks) } : {}),
     ...(has("taskSessions") ? { taskSessions: mergeEntityArrays(local.taskSessions, remote.taskSessions) } : {}),
-    ...(has("activeTask") ? { activeTask: remote.activeTask } : {}),
+    ...activeTaskState,
     ...(has("tasks") ? { tasks: remote.tasks } : {}),
     ...(has("checklists") ? { checklists: remote.checklists } : {}),
     ...(has("questions") ? { questions: remote.questions } : {}),
@@ -234,6 +286,8 @@ function mergeRemoteIntoLocal(localData, remoteData) {
 
 export default function App() {
   const [data, setData] = useState(() => localDataStore.load());
+  const dataRef = useRef(data);
+  dataRef.current = data;
   const [user, setUser] = useState(undefined);
   const [isRemoteHydrationComplete, setIsRemoteHydrationComplete] = useState(!isFirebaseConfigured);
   const [noteSaveConfirmation, setNoteSaveConfirmation] = useState({ visible: false, id: 0 });
@@ -248,6 +302,17 @@ export default function App() {
       .then(() => saveUserData(uid, nextData));
     remoteSaveQueueRef.current = save.catch(() => {});
     return save;
+  }, []);
+
+  const setDataPersisted = useCallback((nextOrUpdater) => {
+    const previous = dataRef.current;
+    const candidate = typeof nextOrUpdater === 'function' ? nextOrUpdater(previous) : nextOrUpdater;
+    const next = migrateData(candidate);
+    dataRef.current = next;
+    // Persist synchronously so an immediate refresh cannot lose a just-started,
+    // paused, resumed, corrected, or completed work session.
+    localDataStore.save(next);
+    setData(next);
   }, []);
 
   const showNoteSavedConfirmation = useCallback(() => {
@@ -277,6 +342,7 @@ export default function App() {
           if (!hasMeaningfulFirestoreData(remoteData) && hasMeaningfulFirestoreData(previous)) {
             enqueueRemoteSave(user.uid, merged).catch((error) => console.warn('Failed to seed Firestore from local data.', error));
           }
+          dataRef.current = merged;
           return merged;
         });
         setIsRemoteHydrationComplete(true);
@@ -336,7 +402,7 @@ export default function App() {
   }, [data, user?.uid]);
 
   const api = useMemo(() => ({
-    data, setData, user,
+    data, setData: setDataPersisted, user,
     showNoteSavedConfirmation,
     exportJson: () => localDataStore.exportFullBackup?.(data),
     exportFullBackup: () => localDataStore.exportFullBackup?.(data),
@@ -348,7 +414,7 @@ export default function App() {
     deleteRollbackById: (id) => localDataStore.deleteRollbackById?.(id),
     resetAppData,
     deleteAllAppData,
-  }), [data, deleteAllAppData, importLocalDataToFirebase, resetAppData, showNoteSavedConfirmation, user]);
+  }), [data, deleteAllAppData, importLocalDataToFirebase, resetAppData, setDataPersisted, showNoteSavedConfirmation, user]);
 
   if (isFirebaseConfigured && user === undefined) return <div className="stack"><p>Checking authentication...</p></div>;
   if (isFirebaseConfigured && !user) return <Layout themePalette={themePalette} themeStyle={themeStyle}><LoginGate /></Layout>;

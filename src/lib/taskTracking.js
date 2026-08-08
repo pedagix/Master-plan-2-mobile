@@ -7,6 +7,17 @@ function makeId(prefix) {
   return `${prefix}-${crypto.randomUUID()}`;
 }
 
+function withActiveTaskState(data, activeTask, updatedAt = Date.now()) {
+  return {
+    ...data,
+    activeTask,
+    taskTracking: {
+      ...(data?.taskTracking || {}),
+      activeTaskUpdatedAt: updatedAt,
+    },
+  };
+}
+
 export function clampCheckInMinutes(value) {
   if (value === 0 || value === '0' || value === null) return 0;
   const parsed = Number(value);
@@ -61,79 +72,69 @@ export function pauseActiveTaskData(data, now = Date.now()) {
   const active = data?.activeTask;
   if (!active || active.status !== 'running') return data;
   const withSession = appendSession(data, active, now);
-  return {
-    ...withSession,
-    activeTask: {
-      ...active,
-      status: 'paused',
-      segmentStartedAt: null,
-      pausedAt: now,
-      nextCheckInAt: null,
-      updatedAt: now,
-    },
-  };
+  return withActiveTaskState(withSession, {
+    ...active,
+    status: 'paused',
+    segmentStartedAt: null,
+    pausedAt: now,
+    nextCheckInAt: null,
+    updatedAt: now,
+  }, now);
 }
 
 export function resumeActiveTaskData(data, now = Date.now()) {
   const active = data?.activeTask;
   if (!active || active.status === 'running') return data;
   const checkInMinutes = clampCheckInMinutes(active.checkInMinutes);
-  return {
-    ...data,
-    activeTask: {
-      ...active,
-      status: 'running',
-      segmentStartedAt: now,
-      pausedAt: null,
-      breakStartedAt: null,
-      breakEndsAt: null,
-      nextCheckInAt: checkInMinutes > 0 ? now + (checkInMinutes * 60_000) : null,
-      updatedAt: now,
-    },
-  };
+  return withActiveTaskState(data, {
+    ...active,
+    status: 'running',
+    segmentStartedAt: now,
+    pausedAt: null,
+    breakStartedAt: null,
+    breakEndsAt: null,
+    nextCheckInAt: checkInMinutes > 0 ? now + (checkInMinutes * 60_000) : null,
+    updatedAt: now,
+  }, now);
 }
 
 export function startTaskData(data, task, { checkInMinutes = DEFAULT_CHECK_IN_MINUTES } = {}, now = Date.now()) {
   let next = data;
   if (next?.activeTask?.status === 'running') next = pauseActiveTaskData(next, now);
   const interval = clampCheckInMinutes(checkInMinutes);
-  return {
+  return withActiveTaskState({
     ...next,
     settings: {
       ...(next.settings || {}),
       defaultCheckInMinutes: interval,
     },
-    activeTask: {
-      id: makeId('active-task'),
-      taskNoteId: task.id,
-      taskTextSnapshot: task.text || '',
-      projectId: task.projectId || null,
-      destination: task.destination || (task.projectId ? 'project' : HMM_DESTINATION),
-      status: 'running',
-      startedAt: now,
-      segmentStartedAt: now,
-      pausedAt: null,
-      checkInMinutes: interval,
-      nextCheckInAt: interval > 0 ? now + (interval * 60_000) : null,
-      createdAt: now,
-      updatedAt: now,
-    },
-  };
+  }, {
+    id: makeId('active-task'),
+    taskNoteId: task.id,
+    taskTextSnapshot: task.text || '',
+    projectId: task.projectId || null,
+    destination: task.destination || (task.projectId ? 'project' : HMM_DESTINATION),
+    status: 'running',
+    startedAt: now,
+    segmentStartedAt: now,
+    pausedAt: null,
+    checkInMinutes: interval,
+    nextCheckInAt: interval > 0 ? now + (interval * 60_000) : null,
+    createdAt: now,
+    updatedAt: now,
+  }, now);
 }
 
 export function continueAfterCheckInData(data, now = Date.now()) {
   const active = data?.activeTask;
   if (!active || active.status !== 'running') return data;
   const interval = clampCheckInMinutes(active.checkInMinutes);
-  return {
-    ...data,
-    activeTask: {
-      ...active,
-      nextCheckInAt: interval > 0 ? now + (interval * 60_000) : null,
-      lastCheckInAt: now,
-      updatedAt: now,
-    },
-  };
+  return withActiveTaskState(data, {
+    ...active,
+    nextCheckInAt: interval > 0 ? now + (interval * 60_000) : null,
+    lastCheckInAt: now,
+    updatedAt: now,
+  }, now);
 }
 
 export function correctAndPauseActiveTaskData(data, minutesAgo, now = Date.now()) {
@@ -142,18 +143,15 @@ export function correctAndPauseActiveTaskData(data, minutesAgo, now = Date.now()
   const correctionMinutes = Math.max(0, Number(minutesAgo) || 0);
   const correctedEnd = Math.max(active.segmentStartedAt || now, now - (correctionMinutes * 60_000));
   const withSession = appendSession(data, active, correctedEnd, { correctionMinutes });
-  return {
-    ...withSession,
-    activeTask: {
-      ...active,
-      status: 'paused',
-      segmentStartedAt: null,
-      pausedAt: correctedEnd,
-      nextCheckInAt: null,
-      lastCorrectionMinutes: correctionMinutes,
-      updatedAt: now,
-    },
-  };
+  return withActiveTaskState(withSession, {
+    ...active,
+    status: 'paused',
+    segmentStartedAt: null,
+    pausedAt: correctedEnd,
+    nextCheckInAt: null,
+    lastCorrectionMinutes: correctionMinutes,
+    updatedAt: now,
+  }, now);
 }
 
 export function startBreakData(data, minutes = 5, now = Date.now()) {
@@ -161,19 +159,16 @@ export function startBreakData(data, minutes = 5, now = Date.now()) {
   if (!active || active.status !== 'running') return data;
   const withSession = appendSession(data, active, now);
   const breakMinutes = Math.max(1, Math.min(60, Math.round(Number(minutes) || 5)));
-  return {
-    ...withSession,
-    activeTask: {
-      ...active,
-      status: 'break',
-      segmentStartedAt: null,
-      pausedAt: now,
-      breakStartedAt: now,
-      breakEndsAt: now + (breakMinutes * 60_000),
-      nextCheckInAt: null,
-      updatedAt: now,
-    },
-  };
+  return withActiveTaskState(withSession, {
+    ...active,
+    status: 'break',
+    segmentStartedAt: null,
+    pausedAt: now,
+    breakStartedAt: now,
+    breakEndsAt: now + (breakMinutes * 60_000),
+    nextCheckInAt: null,
+    updatedAt: now,
+  }, now);
 }
 
 export function completeTaskData(data, task, now = Date.now()) {
@@ -196,11 +191,13 @@ export function completeTaskData(data, task, now = Date.now()) {
     priority: task.priority,
     important: Boolean(task.important),
     completedAt: now,
+    createdAt: now,
+    updatedAt: now,
     trackedMs,
     sessionCount: (next.taskSessions || []).filter((session) => session.taskNoteId === task.id).length,
     completedFrom: projectId ? 'project' : 'plans',
   };
-  return {
+  const completedData = {
     ...next,
     notes: (next.notes || []).map((item) => item.id === task.id
       ? { ...item, deleted: true, deletedAt: now, completedAt: now, updatedAt: now }
@@ -211,6 +208,8 @@ export function completeTaskData(data, task, now = Date.now()) {
         ? { ...project, tasksDone: (project.tasksDone || 0) + 1, updatedAt: now, lastInteractedAt: now }
         : project)
       : next.projects,
-    activeTask: active?.taskNoteId === task.id ? null : next.activeTask,
   };
+  return active?.taskNoteId === task.id
+    ? withActiveTaskState(completedData, null, now)
+    : completedData;
 }

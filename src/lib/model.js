@@ -356,6 +356,7 @@ export function buildDefaultData() {
     completedTasks: [],
     taskSessions: [],
     activeTask: null,
+    taskTracking: { activeTaskUpdatedAt: 0 },
     captures: [],
     suggestions: [],
     tasks: [],
@@ -384,6 +385,7 @@ export function buildResetData() {
     completedTasks: [],
     taskSessions: [],
     activeTask: null,
+    taskTracking: { activeTaskUpdatedAt: 0 },
     captures: [],
     suggestions: [],
     tasks: [],
@@ -423,6 +425,7 @@ export function buildGlobalNoteCleanupData(input, now = Date.now()) {
     completedTasks: [],
     taskSessions: [],
     activeTask: null,
+    taskTracking: { activeTaskUpdatedAt: 0 },
     captures: [],
     suggestions: [],
     tasks: [],
@@ -454,6 +457,8 @@ export function migrateData(input) {
     text: String(task.text || task.title || '').trim(),
     priority: clampPriority(task.priority),
     completedAt: task.completedAt || Date.now(),
+    createdAt: Number(task.createdAt) || Number(task.completedAt) || Date.now(),
+    updatedAt: Number(task.updatedAt) || Number(task.completedAt) || Date.now(),
   })).filter((task) => task.text);
   data.taskSessions = (Array.isArray(input?.taskSessions) ? input.taskSessions : []).map((session) => ({
     ...session,
@@ -486,6 +491,14 @@ export function migrateData(input) {
   } else {
     data.activeTask = null;
   }
+  const activeTaskUpdatedAt = Number(input?.taskTracking?.activeTaskUpdatedAt)
+    || Number(input?.activeTask?.updatedAt)
+    || 0;
+  data.taskTracking = {
+    ...(base.taskTracking || {}),
+    ...(input?.taskTracking || {}),
+    activeTaskUpdatedAt,
+  };
   data.badIdeaLog = Array.isArray(input?.badIdeaLog) ? input.badIdeaLog : [];
   data.inboxActionLog = Array.isArray(input?.inboxActionLog) ? input.inboxActionLog : [];
   data.questionFeedbackLog = Array.isArray(input?.questionFeedbackLog) ? input.questionFeedbackLog : [];

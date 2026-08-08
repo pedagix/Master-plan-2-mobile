@@ -35,6 +35,14 @@ Core rule: time tracking must never make it harder to capture notes and ideas or
 - Completed tasks preserve tracked duration and session count.
 - Backups/reset/migration include the new local work-session state.
 
+### Batch 1.1 persistence fix
+
+- Task actions are written to local storage immediately, before cloud sync finishes.
+- Active-task state carries an update revision so refresh hydration can keep the newest local/cloud state instead of blindly accepting a stale cloud null.
+- Active-task state is also saved on the canonical user document as a fallback, while the runtime document remains available for later realtime sync.
+- Completed-task history is merged instead of replaced during hydration, preventing just-finished progression from disappearing after refresh.
+- Task-session/runtime Firestore writes are isolated from the core save so a rules/deployment problem on the new tracking collections cannot block normal Master Plan data from saving.
+
 ## Next batch
 
 - Manual session history and correction UI.
