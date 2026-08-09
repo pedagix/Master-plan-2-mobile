@@ -35,7 +35,7 @@ The code already maps Firestore `notes` docs into local `captures` in memory, bu
 | `suggestions` | Notes processor + inbox-decision state machine | In `master_plan_v1` | `users/{uid}/suggestions/*` | Partial-active (legacy queue behavior still active) | **Yes (AI-era heavy)** | `proposals` or `legacyProposals` | Wait |
 | `questions` | Canonical root array + processor/review references | In `master_plan_v1` | Root user payload field `questions` | Partial | Mostly yes | `followUpQuestions` | Wait |
 | `inbox` / `inboxStatus` / `inboxActionLog` | Suggestion state fields and logs | Stored in canonical state/logs and legacy-key cleanup | Root payload includes `inboxActionLog`; suggestion docs include `inboxStatus` | Partial | **Yes** | `proposalQueue` / `decisionStatus` / `proposalActionLog` | Wait |
-| `promptActions` | Settings + aiInstructions normalization | In `settings.promptProfiles[].promptActions` and `aiInstructions.promptActions` | Root user payload fields under settings/aiInstructions | Partial (settings still functional) | **Yes (AI control plane)** | `analysisActions` | Wait |
+| `promptActions` | Legacy AI control plane | Removed from active schema in v7 | Legacy backups/cloud data only; ignored during migration | Removed | No | — | Do not restore |
 | `aiInstructions` | Default model data + persistence and settings mirroring | In `master_plan_v1` | Root payload field `aiInstructions` | Partial/legacy | **Yes** | `assistantConfig` / `analysisConfig` | Wait |
 | `galleryImages` | Firebase load/save of project gallery docs | In-memory via projects[].gallery (not separate root array locally) | `users/{uid}/galleryImages/*` | Yes (project media) | No | keep `galleryImages` | Keep |
 | `destructiveResetAt` | Reset markers and merge cutoff logic | `meta.destructiveResetAt` in canonical local object | `users/{uid}.meta.destructiveResetAt` | Yes (safety-critical) | No | keep name (explicit) | Keep |
@@ -50,7 +50,7 @@ The code already maps Firestore `notes` docs into local `captures` in memory, bu
 2. **Cloud collection disambiguation**: keep Firestore path `users/{uid}/notes` unchanged for now, but refer to it in code/docs as **captureDocs** or **legacyCaptureDocs**.
 3. **Hmm semantics**: keep as explicit system destination/bucket, not user-created normal project.
 4. **Ta-da semantics**: document as the project dashboard surface (projects + project tasks + important notes).
-5. **AI-era structures**: mark each as active-vs-legacy (especially `suggestions`, `inbox*`, `promptActions`, `aiInstructions`, legacy key families).
+5. **AI-era structures**: treat `promptActions` and `aiInstructions` as removed legacy data. Other old AI-era structures remain migration-only until separately retired.
 
 ## Rename safety guidance
 - **Do now (safe)**: documentation clarifications, comments, glossary labels, and explicit “legacy” tags.

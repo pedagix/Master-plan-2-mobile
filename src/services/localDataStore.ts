@@ -76,7 +76,7 @@ function downloadJson(payload, name) {
 }
 
 function exportFullBackup(data) {
-  downloadJson({ ...migrateData(data), meta: { ...(data.meta || {}), appName: 'Master Plan', schemaVersion: 6, exportType: 'full-backup', exportedAt: new Date().toISOString() } }, 'master-plan-full-backup');
+  downloadJson({ ...migrateData(data), meta: { ...(data.meta || {}), appName: 'Master Plan', schemaVersion: 7, exportType: 'full-backup', exportedAt: new Date().toISOString() } }, 'master-plan-full-backup');
 }
 
 function getRollbacks() {

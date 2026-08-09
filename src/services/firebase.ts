@@ -79,7 +79,6 @@ function debugDataCounts(label: string, data: any) {
 const USER_CANONICAL_FIELDS = [
   'meta',
   'settings',
-  'aiInstructions',
   'notes',
   'completedTasks',
   'activeTask',

@@ -1,10 +1,3 @@
-import {
-  DEFAULT_THEME_PALETTE,
-  DEFAULT_THEME_STYLE,
-  normalizeThemePaletteId,
-  normalizeThemeStyleId,
-} from './theme';
-
 export const STATUSES = ['active', 'paused', 'hidden', 'archived'];
 export const HMM_DESTINATION = 'hmm';
 export const PROJECT_DESTINATION = 'project';
@@ -38,54 +31,6 @@ const LEGACY_PROJECT_NOTE_FIELDS = [
   'processorGroups',
   'groupedAnalysisOutputs',
 ];
-
-const DEFAULT_PROMPT_ACTIONS = {
-  suggestions: { id: 'suggestions', title: 'Suggestions', description: 'Generate useful suggestions from projects, notes, captures, and current project states.', enabled: true, prompt: "Generate useful suggestions based on the user's projects, captures, notes, suggestions, and current project states. Prioritize suggestions that help the user make progress, reduce confusion, or organize important material." },
-  nextSteps: { id: 'nextSteps', title: 'Next steps', description: 'Create small realistic actions.', enabled: true, prompt: 'Create realistic next steps. If a project seems inactive, overwhelming, unclear, or avoided, make the next step smaller. A next step must be something the user can actually do.' },
-  checklists: { id: 'checklists', title: 'Checklists', description: 'Convert suitable notes into practical checklists.', enabled: true, prompt: 'Convert suitable notes into practical checklists when this would make the information easier to use or act on.' },
-  weeklyReview: { id: 'weeklyReview', title: 'Weekly review', description: 'Summarize progress, problems, and priorities.', enabled: true, prompt: 'Create a weekly review summary that highlights progress, stuck projects, important new ideas, unfinished loops, and recommended priorities.' },
-  projectCleanup: { id: 'projectCleanup', title: 'Project cleanup', description: 'Find stale, unclear, overloaded, or low-value material.', enabled: true, prompt: 'Identify stale, duplicated, unclear, overloaded, or low-value material. Suggest whether items should be kept, clarified, connected to a project, hidden, archived, or deleted.' },
-  motivation: { id: 'motivation', title: 'Motivation', description: 'Adapt motivation to project momentum.', enabled: true, prompt: "Give motivation that matches the user's actual project momentum. If progress is low, reduce task size and remove pressure. If momentum is strong, suggest a more ambitious next action." },
-  brutalFilter: { id: 'brutalFilter', title: 'Brutal filter', description: 'Challenge weak ideas and overloaded project lists.', enabled: true, prompt: 'Be direct about weak ideas, overloaded project lists, avoidance patterns, and unclear priorities. Do not sugarcoat, but remain useful and constructive.' },
-  connections: { id: 'connections', title: 'Connections', description: 'Find useful links between notes and projects.', enabled: true, prompt: 'Find meaningful connections between notes, captures, suggestions, and projects. Suggest when two items should be linked or merged.' },
-  archiveDeleteRecommendations: { id: 'archiveDeleteRecommendations', title: 'Archive / delete recommendations', description: 'Recommend what should disappear from the active dashboard.', enabled: true, prompt: 'Recommend items that should be archived, hidden, dismissed, or deleted when they no longer deserve active attention.' },
-  clarifyingQuestions: { id: 'clarifyingQuestions', title: 'Clarifying questions', description: 'Ask questions when missing information blocks progress.', enabled: true, prompt: 'Ask clarifying questions when important information is missing and the missing information blocks useful progress.' },
-  followUpQuestions: { id: 'followUpQuestions', title: 'Follow-up questions', description: 'Generate useful questions from notes when there are blind spots or missing knowledge.', enabled: true, prompt: 'Generate follow-up questions based on notes when there is a useful blind spot, missing information, unclear assumption, weak plan, or knowledge gap that may block progress. Do not generate questions for every note. Prefer fewer high-quality questions over generic questions.' },
-  newIdeaRouting: { id: 'newIdeaRouting', title: 'New idea routing', description: 'Connect new ideas to existing projects or ask the user to assign them.', enabled: true, prompt: 'When a capture or note has isNewIdea: true, treat it as an unprocessed idea. First check whether it clearly connects to an existing project using project title, description, notes, captures, and suggestions. If there is a clear connection, recommend connecting the idea to that project and make any generated suggestions, questions, next steps, or checklists use that projectId. If there is no clear connection, do not invent a project connection. Mark the item as needing project assignment and ask the user to choose or create the right project before generating project-specific outputs.' },
-  inboxDecisionWorkflow: { id: 'inboxDecisionWorkflow', title: 'Legacy AI decision workflow', description: 'Keep imported AI-generated outputs pending until the user chooses what to do with them.', enabled: true, prompt: 'Treat new AI-generated outputs as pending legacy proposals first. New suggestions, next steps, checklists, questions, cleanup recommendations, and project routing recommendations should not become accepted project tasks or permanent project notes until the user approves them. The user may mark an item as important, convert it to a to-do, reject it, or delay it. Use badIdeaLog and inboxActionLog to learn what the user accepts, rejects, delays, or values.' }
-  ,rawNotesWorkflow: { id: 'rawNotesWorkflow', title: 'Notes workflow', description: 'Unprocessed notes are analyzed only after the user manually selects processing tags, then preserved as archived notes.', enabled: true, prompt: 'Treat tagged unprocessed notes as the source material for analysis. Notes without processingTags must not be analyzed. After analysis, notes should not be deleted. They should be preserved and moved to archived notes only when the user explicitly marks them as analyzed. Archived notes are historical source material and should not be reprocessed unless explicitly marked for re-analysis.' }
-};
-
-function cleanPromptActionCopy(id, action = {}) {
-  if (id === 'inboxDecisionWorkflow') {
-    const clean = (value) => typeof value === 'string'
-      ? value.replaceAll('Inbox', 'legacy proposal queue').replaceAll('Notes processor', 'legacy proposal queue')
-      : value;
-    return {
-      ...action,
-      title: action.title === 'Notes processor decision workflow' || action.title === 'Inbox decision workflow' ? DEFAULT_PROMPT_ACTIONS[id].title : clean(action.title),
-      description: clean(action.description),
-      prompt: clean(action.prompt),
-    };
-  }
-  if (id === 'rawNotesWorkflow') {
-    const clean = (value) => typeof value === 'string'
-      ? value.replaceAll('RAW notes', 'notes').replaceAll('RAW note', 'note').replaceAll('Raw Notes', 'Notes').replaceAll('raw notes', 'notes').replaceAll('raw note', 'note')
-      : value;
-    return { ...action, title: action.title === 'RAW notes workflow' ? DEFAULT_PROMPT_ACTIONS[id].title : clean(action.title), description: clean(action.description), prompt: clean(action.prompt) };
-  }
-  return action;
-}
-
-function normalizePromptActions(actions = {}) {
-  const ids = new Set([...Object.keys(DEFAULT_PROMPT_ACTIONS), ...Object.keys(actions || {})]);
-  return Object.fromEntries([...ids].map((id) => {
-    const defaults = DEFAULT_PROMPT_ACTIONS[id] || { id, title: id, description: '', enabled: true, prompt: '' };
-    return [id, cleanPromptActionCopy(id, { ...structuredClone(defaults), ...(actions?.[id] || {}) })];
-  }));
-}
-
-export function buildDefaultPromptProfile(now = Date.now()) { return { id: 'default-master-plan-v1', name: 'Default Master Plan Analysis', isDefault: true, createdAt: now, updatedAt: now, promptActions: structuredClone(DEFAULT_PROMPT_ACTIONS) }; }
 
 export function getProjectName(project = {}) {
   return String(project.name || project.title || 'Untitled project').trim() || 'Untitled project';
@@ -347,11 +292,10 @@ function migrateNotesFromLegacy(input = {}, projects = []) {
 }
 
 export function buildDefaultData() {
-  const now = Date.now(); const profile = buildDefaultPromptProfile(now);
+  const now = Date.now();
   return {
-    meta: { appName: 'Master Plan', schemaVersion: 6, exportType: 'full-backup', exportedAt: new Date(now).toISOString() },
-    settings: { activePromptProfileId: profile.id, promptProfiles: [profile], notesProcessorHiddenActionIds: [], lastDestination: HMM_DESTINATION, hasCompletedInitialSetup: true, themePalette: DEFAULT_THEME_PALETTE, themeStyle: DEFAULT_THEME_STYLE, defaultCheckInMinutes: 30 },
-    aiInstructions: { activePromptProfileId: profile.id, mainRole: 'You are analyzing a private mobile-first second brain system.', tone: 'Clear, direct, practical, and honest. Be brutally honest when useful, but still constructive.', goal: 'Help the user turn captured notes into useful next actions, project structure, suggestions, checklists, warnings, cleanup recommendations, and follow-up questions.', promptActions: structuredClone(DEFAULT_PROMPT_ACTIONS) },
+    meta: { appName: 'Master Plan', schemaVersion: 7, exportType: 'full-backup', exportedAt: new Date(now).toISOString() },
+    settings: { lastDestination: HMM_DESTINATION, lastSelectedProjectId: null, hasCompletedInitialSetup: true, defaultCheckInMinutes: 30 },
     projects: [],
     notes: [],
     completedTasks: [],
@@ -379,7 +323,6 @@ export function buildResetData() {
       destructiveResetAt: nowIso,
     },
     settings: defaults.settings,
-    aiInstructions: defaults.aiInstructions,
     questionLearningSettings: defaults.questionLearningSettings,
     projects: [],
     notes: [],
@@ -440,7 +383,7 @@ export function buildGlobalNoteCleanupData(input, now = Date.now()) {
 
 export function migrateData(input) {
   const base = buildDefaultData(); const data = { ...base, ...(input || {}) };
-  data.meta = { ...base.meta, ...(input?.meta || {}), schemaVersion: 6, appName: 'Master Plan' };
+  data.meta = { ...base.meta, ...(input?.meta || {}), schemaVersion: 7, appName: 'Master Plan' };
   data.projects = (Array.isArray(input?.projects) ? input.projects : []).map(normalizeProject).filter((project) => project.id !== HMM_PROJECT_ID);
   const projectIds = new Set(data.projects.map((project) => project.id));
   data.captures = (Array.isArray(input?.captures) ? input.captures : []).map(normalizeCapture);
@@ -510,9 +453,15 @@ export function migrateData(input) {
   data.badIdeaLog = Array.isArray(input?.badIdeaLog) ? input.badIdeaLog : [];
   data.inboxActionLog = Array.isArray(input?.inboxActionLog) ? input.inboxActionLog : [];
   data.questionFeedbackLog = Array.isArray(input?.questionFeedbackLog) ? input.questionFeedbackLog : [];
-  data.settings = { ...base.settings, lastSelectedProjectId: null, lastDestination: HMM_DESTINATION, ...(input?.settings || {}) };
-  data.settings.themePalette = normalizeThemePaletteId(data.settings.themePalette);
-  data.settings.themeStyle = normalizeThemeStyleId(data.settings.themeStyle);
+  const {
+    activePromptProfileId: _legacyActivePromptProfileId,
+    promptProfiles: _legacyPromptProfiles,
+    notesProcessorHiddenActionIds: _legacyHiddenActions,
+    themePalette: _legacyThemePalette,
+    themeStyle: _legacyThemeStyle,
+    ...cleanInputSettings
+  } = input?.settings || {};
+  data.settings = { ...base.settings, lastSelectedProjectId: null, lastDestination: HMM_DESTINATION, ...cleanInputSettings };
   data.settings.defaultCheckInMinutes = data.settings.defaultCheckInMinutes === 0 ? 0 : Math.max(5, Math.min(240, Number(data.settings.defaultCheckInMinutes) || 30));
   if (data.settings.lastSelectedProjectId && !data.projects.some((p) => p.id === data.settings.lastSelectedProjectId && p.status !== 'archived' && p.status !== 'hidden')) {
     data.settings.lastSelectedProjectId = data.projects.find((p) => p.status === 'active')?.id || null;
@@ -520,14 +469,7 @@ export function migrateData(input) {
   if (!data.settings.lastDestination || (data.settings.lastDestination !== HMM_DESTINATION && !projectIds.has(data.settings.lastDestination))) {
     data.settings.lastDestination = HMM_DESTINATION;
   }
-  data.settings.promptProfiles = Array.isArray(data.settings.promptProfiles) && data.settings.promptProfiles.length ? data.settings.promptProfiles : [buildDefaultPromptProfile()];
-  data.settings.promptProfiles = data.settings.promptProfiles.map((profile) => ({ ...profile, promptActions: normalizePromptActions(profile.promptActions) }));
-  data.settings.activePromptProfileId = data.settings.activePromptProfileId || data.settings.promptProfiles[0].id;
-  data.settings.notesProcessorHiddenActionIds = Array.isArray(data.settings.notesProcessorHiddenActionIds) ? data.settings.notesProcessorHiddenActionIds : [];
-  const activeProfile = data.settings.promptProfiles.find((p) => p.id === data.settings.activePromptProfileId) || data.settings.promptProfiles[0];
-  data.aiInstructions = { ...base.aiInstructions, ...(input?.aiInstructions || {}), activePromptProfileId: data.settings.activePromptProfileId, promptActions: normalizePromptActions({ ...(activeProfile?.promptActions || {}), ...(input?.aiInstructions?.promptActions || {}) }) };
   data.questionLearningSettings = { ...base.questionLearningSettings, ...(input?.questionLearningSettings || {}) };
+  delete data.aiInstructions;
   return data;
 }
-
-export function getEnabledPromptActions(actions = {}) { return Object.fromEntries(Object.entries(actions).filter(([, value]) => value?.enabled)); }

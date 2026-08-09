@@ -158,8 +158,8 @@ export default function ProjectDetailPage({ api }) {
           <h2>{getProjectName(project)}</h2>
         </div>
         <div className="header-actions">
-          <button type="button" className="secondary-button" onClick={() => { setProjectView('current'); setNewNoteOpen(true); }}>New Note</button>
-          <button type="button" className="secondary-button" onClick={() => { setProjectView('current'); setSettingsOpen((value) => !value); }}>Settings</button>
+          <button type="button" className="secondary-button" onClick={() => { setProjectView('current'); setNewNoteOpen(true); }}>+ Note</button>
+          <button type="button" className="secondary-button" onClick={() => { setProjectView('current'); setSettingsOpen((value) => !value); }}>Edit</button>
         </div>
       </div>
       {project.description && <p className="project-description">{project.description}</p>}
@@ -195,14 +195,6 @@ export default function ProjectDetailPage({ api }) {
               <div className={`todo-row ${todo.important ? 'important-note-rainbow-border' : ''}`.trim()} style={{ '--priority-color': getPriorityColor(todo.priority) }}>
                 <input type="checkbox" checked={false} onChange={() => completeTodo(todo)} />
                 <span role="button" tabIndex={0} onClick={() => setSelectedTaskId(todo.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedTaskId(todo.id); } }}>{todo.text}</span>
-                <button
-                  type="button"
-                  className="todo-row-cog-button"
-                  aria-label={editingNoteId === todo.id ? 'Save and close checklist item editor' : 'Edit checklist item'}
-                  onClick={() => toggleTodoEdit(todo.id)}
-                >
-                  ⚙
-                </button>
               </div>
               {editingNoteId === todo.id && (
                 <div className="edit-panel">

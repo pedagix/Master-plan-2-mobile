@@ -5,27 +5,23 @@ import CurrentTaskBar from './CurrentTaskBar';
 const links = [
   ['/aha', 'Notes'],
   ['/hmm', 'Plans'],
-  ['/ta-da', 'Projects']
+  ['/ta-da', 'Projects'],
 ];
 
-export default function Layout({
-  children,
-  api,
-  noteSaveConfirmation = { visible: false, id: 0 },
-  themePalette,
-  themeStyle,
-}) {
+export default function Layout({ children, api, noteSaveConfirmation = { visible: false, id: 0 } }) {
   const location = useLocation();
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const activeHeaderTitle = location.pathname.startsWith('/reports')
     ? 'Reports'
-    : location.pathname.startsWith('/hmm')
-    ? 'Plans'
-    : location.pathname.startsWith('/ta-da') || location.pathname.startsWith('/projects/')
-      ? 'Projects'
-      : location.pathname.startsWith('/aha')
-        ? 'Notes'
-        : 'Master Plan';
+    : location.pathname.startsWith('/settings')
+      ? 'System'
+      : location.pathname.startsWith('/hmm')
+        ? 'Plans'
+        : location.pathname.startsWith('/ta-da') || location.pathname.startsWith('/projects/')
+          ? 'Projects'
+          : location.pathname.startsWith('/aha')
+            ? 'Notes'
+            : 'Master Plan';
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -37,10 +33,8 @@ export default function Layout({
       if (!element || !(element instanceof HTMLElement)) return false;
       if (element.tagName === 'TEXTAREA') return true;
       if (element.tagName !== 'INPUT') return element.isContentEditable;
-
-      const input = element;
       const ignoredTypes = ['button', 'submit', 'checkbox', 'radio', 'range', 'file', 'color', 'image', 'reset'];
-      return !ignoredTypes.includes(input.type);
+      return !ignoredTypes.includes(element.type);
     };
 
     const updateKeyboardOffset = () => {
@@ -49,15 +43,13 @@ export default function Layout({
       const viewportHeight = viewport?.height ?? fullHeight;
       const viewportOffsetTop = viewport?.offsetTop ?? 0;
       const keyboardHeight = Math.max(0, fullHeight - viewportHeight - viewportOffsetTop);
-      const activeElement = document.activeElement;
-      const shouldLiftNav = keyboardHeight > keyboardThreshold && isKeyboardFocusable(activeElement);
+      const shouldLiftNav = keyboardHeight > keyboardThreshold && isKeyboardFocusable(document.activeElement);
 
       rootStyle.setProperty('--keyboard-offset', shouldLiftNav ? `${keyboardHeight}px` : '0px');
       setKeyboardOpen(shouldLiftNav);
     };
 
     updateKeyboardOffset();
-
     const viewport = window.visualViewport;
     viewport?.addEventListener('resize', updateKeyboardOffset);
     viewport?.addEventListener('scroll', updateKeyboardOffset);
@@ -78,52 +70,53 @@ export default function Layout({
   }, []);
 
   const sectionClass = location.pathname.startsWith('/hmm')
-    ? 'section-hmm'
+    ? 'section-plans'
     : location.pathname.startsWith('/ta-da') || location.pathname.startsWith('/projects/')
-      ? 'section-tada'
+      ? 'section-projects'
       : location.pathname.startsWith('/aha')
-        ? 'section-aha'
+        ? 'section-notes'
         : 'section-neutral';
+
   return (
-    <div
-      className={`app-shell ${sectionClass} ${keyboardOpen ? 'keyboard-open' : ''} ${api?.data?.activeTask ? 'has-now-bar' : ''}`}
-      data-theme-palette={themePalette}
-      data-theme-style={themeStyle}
-    >
+    <div className={`app-shell ${sectionClass} ${keyboardOpen ? 'keyboard-open' : ''} ${api?.data?.activeTask ? 'has-now-bar' : ''} ${noteSaveConfirmation.visible ? 'save-signal-active' : ''}`}>
       <header className="top-header">
-        <h1>{activeHeaderTitle}</h1>
+        <div className="header-identity">
+          <span className="header-status-dot" aria-hidden="true" />
+          <h1>{activeHeaderTitle}</h1>
+        </div>
+
         {noteSaveConfirmation.visible && (
-          <div
-            key={noteSaveConfirmation.id}
-            className="header-save-confirmation"
-            role="status"
-            aria-live="polite"
-          >
-            Note saved
+          <div key={noteSaveConfirmation.id} className="header-save-confirmation" role="status" aria-live="polite">
+            <span className="save-confirmation-scan" aria-hidden="true" />
+            <span className="save-confirmation-dot" aria-hidden="true" />
+            <span>NOTE SAVED</span>
           </div>
         )}
-        <NavLink to="/settings" className="header-settings-link" aria-label="Settings">Settings</NavLink>
+
+        {api && <NavLink to="/settings" className="header-settings-link" aria-label="Open system settings">SYS</NavLink>}
       </header>
-      <main>{children}</main>
+
+      <main className="app-main">{children}</main>
+
       {api && <CurrentTaskBar api={api} keyboardOpen={keyboardOpen} />}
-      <nav className="bottom-nav">
-        {links.map(([to, label]) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) => {
-              const active = isActive || (to === '/ta-da' && location.pathname.startsWith('/projects/'));
-              if (!active) return undefined;
-              if (to === '/aha') return 'active active-aha';
-              if (to === '/hmm') return 'active active-hmm';
-              if (to === '/ta-da') return 'active active-tada';
-              return 'active';
-            }}
-          >
-            {label}
-          </NavLink>
-        ))}
-      </nav>
+
+      {api && (
+        <nav className="bottom-nav" aria-label="Main navigation">
+          {links.map(([to, label]) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) => {
+                const active = isActive || (to === '/ta-da' && location.pathname.startsWith('/projects/'));
+                return active ? 'active' : undefined;
+              }}
+            >
+              <span className="nav-active-dot" aria-hidden="true" />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </nav>
+      )}
     </div>
   );
 }

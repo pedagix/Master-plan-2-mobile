@@ -102,7 +102,6 @@ export default function HmmPage({ api }) {
               <div className={`todo-row ${todo.important ? 'important-note-rainbow-border' : ''}`.trim()} style={{ '--priority-color': getPriorityColor(todo.priority) }}>
                 <input type="checkbox" checked={false} onChange={() => completeTodo(todo)} />
                 <span role="button" tabIndex={0} onClick={() => setSelectedTaskId(todo.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedTaskId(todo.id); } }}>{todo.text}</span>
-                <button type="button" className="todo-row-cog-button" aria-label={editingId === todo.id ? 'Save and close checklist item editor' : 'Edit checklist item'} onClick={() => toggleEdit(todo.id)}>⚙️</button>
               </div>
               {editingId === todo.id && (
                 <div className="edit-panel">

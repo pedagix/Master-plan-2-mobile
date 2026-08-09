@@ -18,7 +18,7 @@
   - `users/{uid}/galleryImages/{imageId}`
 - On login, cloud data is loaded, compared with local state, safely merged, and only then cloud writes are allowed.
 
-## 2) Full JSON structure (current schema v6)
+## 2) Full JSON structure (current schema v7)
 
 The canonical app state object (local backup/export and in-memory model) contains:
 
@@ -30,16 +30,13 @@ The canonical app state object (local backup/export and in-memory model) contain
 
 - `settings`
   - `activePromptProfileId`
-  - `promptProfiles[]` with per-profile `promptActions`
   - `notesProcessorHiddenActionIds[]`
   - `lastDestination` (`hmm` or a valid project id)
   - `lastSelectedProjectId`
   - `hasCompletedInitialSetup`
 
-- `aiInstructions`
   - `activePromptProfileId`
   - `mainRole`, `tone`, `goal`
-  - `promptActions` (normalized action map)
 
 - `projects[]`
   - normalized fields include: `id`, `name`, `title`, `description`, `status`, `tasksDone`, `archived`, `hidden`, `createdAt`, `updatedAt`, `lastInteractedAt`, `interactionCount`, `notes[]` (legacy-compatible), `gallery[]`
@@ -84,7 +81,6 @@ This means nearly any imported JSON shape is coerced into the current stable sch
 - **Aha / Project detail / Hmm flows** edit canonical `notes[]` (create/update/soft-delete), update note flags (`important`, `isTodo`), and may append to `completedTasks[]`.
 - **Capture/Raw Notes workflows** create and edit `captures[]`, including note-processing lifecycle fields (`rawState`, `analysisState`, `processingTags`, etc.).
 - **Inbox workflows** operate on `suggestions[]`, transitioning state/action selections and may create follow-up items (e.g., questions).
-- **Settings prompt/action editing** updates `settings.promptProfiles[].promptActions` and mirrors active prompt actions into `aiInstructions.promptActions`.
 
 ## 5) Backup and restore behavior
 
@@ -177,7 +173,6 @@ Each action has configurable: `title`, `description`, `enabled`, `prompt`.
 
 - Local canonical state keeps many arrays (`notes`, `captures`, `suggestions`, `questions`, etc.) in one JSON object.
 - Firestore sync persists two layers:
-  - Canonical app-state fields are stored on `users/{uid}` (meta/settings/aiInstructions/notes/completedTasks/tasks/checklists/questions/logs/questionLearningSettings).
   - Cloud collections remain as before for operational data: `projects`, `notes` (captures), `suggestions`, and `galleryImages`.
 - On cloud load, the app now **safe-merges** remote data into current local state:
   - Canonical/root fields are replaced only when explicitly present on remote payload; missing remote root fields keep local values.
