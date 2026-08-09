@@ -348,7 +348,7 @@ function migrateNotesFromLegacy(input = {}, projects = []) {
 export function buildDefaultData() {
   const now = Date.now(); const profile = buildDefaultPromptProfile(now);
   return {
-    meta: { appName: 'Master Plan', schemaVersion: 4, exportType: 'full-backup', exportedAt: new Date(now).toISOString() },
+    meta: { appName: 'Master Plan', schemaVersion: 5, exportType: 'full-backup', exportedAt: new Date(now).toISOString() },
     settings: { activePromptProfileId: profile.id, promptProfiles: [profile], notesProcessorHiddenActionIds: [], lastDestination: HMM_DESTINATION, hasCompletedInitialSetup: true, themePalette: DEFAULT_THEME_PALETTE, themeStyle: DEFAULT_THEME_STYLE, defaultCheckInMinutes: 30 },
     aiInstructions: { activePromptProfileId: profile.id, mainRole: 'You are analyzing a private mobile-first second brain system.', tone: 'Clear, direct, practical, and honest. Be brutally honest when useful, but still constructive.', goal: 'Help the user turn captured notes into useful next actions, project structure, suggestions, checklists, warnings, cleanup recommendations, and follow-up questions.', promptActions: structuredClone(DEFAULT_PROMPT_ACTIONS) },
     projects: [],
@@ -439,7 +439,7 @@ export function buildGlobalNoteCleanupData(input, now = Date.now()) {
 
 export function migrateData(input) {
   const base = buildDefaultData(); const data = { ...base, ...(input || {}) };
-  data.meta = { ...base.meta, ...(input?.meta || {}), schemaVersion: 4, appName: 'Master Plan' };
+  data.meta = { ...base.meta, ...(input?.meta || {}), schemaVersion: 5, appName: 'Master Plan' };
   data.projects = (Array.isArray(input?.projects) ? input.projects : []).map(normalizeProject).filter((project) => project.id !== HMM_PROJECT_ID);
   const projectIds = new Set(data.projects.map((project) => project.id));
   data.captures = (Array.isArray(input?.captures) ? input.captures : []).map(normalizeCapture);
@@ -459,6 +459,11 @@ export function migrateData(input) {
     completedAt: task.completedAt || Date.now(),
     createdAt: Number(task.createdAt) || Number(task.completedAt) || Date.now(),
     updatedAt: Number(task.updatedAt) || Number(task.completedAt) || Date.now(),
+    trackedMs: Math.max(0, Number(task.trackedMs) || 0),
+    sessionCount: Math.max(0, Number(task.sessionCount) || 0),
+    sessionIds: Array.isArray(task.sessionIds) ? task.sessionIds.filter(Boolean) : [],
+    valueRating: task.valueRating === null || task.valueRating === undefined || task.valueRating === '' ? null : Math.max(0, Math.min(5, Math.round(Number(task.valueRating) || 0))),
+    restoredAt: task.restoredAt == null ? null : Number(task.restoredAt),
   })).filter((task) => task.text);
   data.taskSessions = (Array.isArray(input?.taskSessions) ? input.taskSessions : []).map((session) => ({
     ...session,

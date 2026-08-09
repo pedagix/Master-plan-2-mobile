@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import TaskCompletionSheet from './TaskCompletionSheet';
 import {
   continueAfterCheckInData,
   correctAndPauseActiveTaskData,
@@ -7,7 +8,6 @@ import {
   pauseActiveTaskData,
   resumeActiveTaskData,
   startBreakData,
-  completeTaskData,
 } from '../lib/taskTracking';
 
 function playCheckInTone() {
@@ -38,6 +38,7 @@ export default function CurrentTaskBar({ api, keyboardOpen = false }) {
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [correctionOpen, setCorrectionOpen] = useState(false);
   const [customCorrection, setCustomCorrection] = useState('');
+  const [completionTask, setCompletionTask] = useState(null);
   const lastPromptedAtRef = useRef(null);
 
   useEffect(() => {
@@ -79,9 +80,7 @@ export default function CurrentTaskBar({ api, keyboardOpen = false }) {
       priority: 5,
       important: false,
     };
-    if (!window.confirm(`Finish “${active.taskTextSnapshot}”?`)) return;
-    api.setData((prev) => completeTaskData(prev, task));
-    setExpanded(false);
+    setCompletionTask(task);
   };
 
   const correct = (minutes) => {
@@ -119,6 +118,16 @@ export default function CurrentTaskBar({ api, keyboardOpen = false }) {
           </div>
         )}
       </section>
+
+      {completionTask && (
+        <TaskCompletionSheet
+          api={api}
+          task={completionTask}
+          projectName={(api.data.projects || []).find((project) => project.id === completionTask.projectId)?.name || (completionTask.projectId ? 'Project' : 'Plans')}
+          onClose={() => setCompletionTask(null)}
+          onCompleted={() => setExpanded(false)}
+        />
+      )}
 
       {checkInOpen && (
         <div className="task-sheet-backdrop checkin-backdrop" role="presentation">

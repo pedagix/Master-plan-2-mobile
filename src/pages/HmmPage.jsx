@@ -2,12 +2,17 @@ import { useMemo, useRef, useState } from 'react';
 import NoteCard from '../components/NoteCard';
 import NoteEditForm from '../components/NoteEditForm';
 import TaskActionSheet from '../components/TaskActionSheet';
+import TaskCompletionSheet from '../components/TaskCompletionSheet';
+import HistoryTimeline from '../components/HistoryTimeline';
+import TaskHistorySheet from '../components/TaskHistorySheet';
 import { HMM_DESTINATION, PROJECT_DESTINATION, getPriorityColor, sortByPriorityThenNewest } from '../lib/model';
-import { completeTaskData } from '../lib/taskTracking';
 
 export default function HmmPage({ api }) {
   const [editingId, setEditingId] = useState(null);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [completionTask, setCompletionTask] = useState(null);
+  const [historyTask, setHistoryTask] = useState(null);
+  const [plansView, setPlansView] = useState('current');
   const submitHandlersRef = useRef({});
 
   const hmmNotes = useMemo(() => (api.data.notes || [])
@@ -18,6 +23,7 @@ export default function HmmPage({ api }) {
 
   const editingNote = hmmNotes.find((note) => note.id === editingId) || null;
   const selectedTask = todos.find((note) => note.id === selectedTaskId) || null;
+  const completedPlanTasks = (api.data.completedTasks || []).filter((task) => !task.projectId && (task.completedFrom === 'plans' || task.destination === HMM_DESTINATION));
 
   const saveEdit = (patch) => {
     if (!editingId) return;
@@ -62,8 +68,7 @@ export default function HmmPage({ api }) {
   };
 
   const completeTodo = (note) => {
-    if (!window.confirm('Mark this checklist item as done?')) return;
-    api.setData((prev) => completeTaskData(prev, note));
+    setCompletionTask(note);
     if (editingId === note.id) setEditingId(null);
     if (selectedTaskId === note.id) setSelectedTaskId(null);
   };
@@ -80,6 +85,12 @@ export default function HmmPage({ api }) {
 
   return (
     <div className="stack page-screen">
+      <div className="history-view-switch" role="tablist" aria-label="Plans view">
+        <button type="button" role="tab" aria-selected={plansView === 'current'} className={plansView === 'current' ? 'selected' : ''} onClick={() => setPlansView('current')}>Current</button>
+        <button type="button" role="tab" aria-selected={plansView === 'history'} className={plansView === 'history' ? 'selected' : ''} onClick={() => setPlansView('history')}>History <span>{completedPlanTasks.length}</span></button>
+      </div>
+
+      {plansView === 'current' && (<>
       {!!todos.length && (
         <section className="stack checklist-list">
           <div className="section-title-row">
@@ -117,6 +128,27 @@ export default function HmmPage({ api }) {
       <div className="stack note-card-list">
         {!notes.length ? <p className="empty-state">Nothing in Plans.</p> : notes.map(renderNote)}
       </div>
+      </>)}
+
+      {plansView === 'history' && (
+        <section className="stack project-history-section">
+          <div className="section-title-row">
+            <div>
+              <h3>Progress timeline</h3>
+              <p className="helper-text">Completed general tasks, newest first.</p>
+            </div>
+          </div>
+          <HistoryTimeline completedTasks={completedPlanTasks} onSelect={setHistoryTask} />
+        </section>
+      )}
+
+      {completionTask && (
+        <TaskCompletionSheet api={api} task={completionTask} projectName="Plans" onClose={() => setCompletionTask(null)} />
+      )}
+
+      {historyTask && (
+        <TaskHistorySheet api={api} completedTask={historyTask} projectName="Plans" onClose={() => setHistoryTask(null)} />
+      )}
     </div>
   );
 }

@@ -4,9 +4,12 @@ import NoteCard from '../components/NoteCard';
 import NoteEditForm from '../components/NoteEditForm';
 import ImageViewer from '../components/ImageViewer';
 import TaskActionSheet from '../components/TaskActionSheet';
+import TaskCompletionSheet from '../components/TaskCompletionSheet';
+import HistoryTimeline from '../components/HistoryTimeline';
+import TaskHistorySheet from '../components/TaskHistorySheet';
 import { fileToDataUrl } from '../lib/storage';
 import { HMM_PROJECT_ID, PROJECT_DESTINATION, getProjectName, getPriorityColor, sortByPriorityThenNewest } from '../lib/model';
-import { completeTaskData } from '../lib/taskTracking';
+
 
 export default function ProjectDetailPage({ api }) {
   const { projectId } = useParams();
@@ -15,6 +18,9 @@ export default function ProjectDetailPage({ api }) {
   const [settingsDraft, setSettingsDraft] = useState({ name: '', description: '' });
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [completionTask, setCompletionTask] = useState(null);
+  const [historyTask, setHistoryTask] = useState(null);
+  const [projectView, setProjectView] = useState('current');
   const todoSubmitHandlersRef = useRef({});
   const noteSubmitHandlersRef = useRef({});
   const [newFormKey, setNewFormKey] = useState(0);
@@ -46,6 +52,7 @@ export default function ProjectDetailPage({ api }) {
   const notes = projectNotes.filter((note) => !note.isTodo).sort(sortByPriorityThenNewest);
   const editingNote = projectNotes.find((note) => note.id === editingNoteId) || null;
   const selectedTask = todos.find((note) => note.id === selectedTaskId) || null;
+  const completedProjectTasks = (api.data.completedTasks || []).filter((task) => task.projectId === projectId);
 
   const patchProject = (patch) => api.setData((prev) => ({
     ...prev,
@@ -115,8 +122,7 @@ export default function ProjectDetailPage({ api }) {
   };
 
   const completeTodo = (note) => {
-    if (!window.confirm('Mark this task as done?')) return;
-    api.setData((prev) => completeTaskData(prev, note));
+    setCompletionTask(note);
     if (editingNoteId === note.id) setEditingNoteId(null);
     if (selectedTaskId === note.id) setSelectedTaskId(null);
   };
@@ -152,11 +158,18 @@ export default function ProjectDetailPage({ api }) {
           <h2>{getProjectName(project)}</h2>
         </div>
         <div className="header-actions">
-          <button type="button" className="secondary-button" onClick={() => setNewNoteOpen(true)}>New Note</button>
-          <button type="button" className="secondary-button" onClick={() => setSettingsOpen((value) => !value)}>Settings</button>
+          <button type="button" className="secondary-button" onClick={() => { setProjectView('current'); setNewNoteOpen(true); }}>New Note</button>
+          <button type="button" className="secondary-button" onClick={() => { setProjectView('current'); setSettingsOpen((value) => !value); }}>Settings</button>
         </div>
       </div>
       {project.description && <p className="project-description">{project.description}</p>}
+
+      <div className="history-view-switch" role="tablist" aria-label="Project view">
+        <button type="button" role="tab" aria-selected={projectView === 'current'} className={projectView === 'current' ? 'selected' : ''} onClick={() => setProjectView('current')}>Current</button>
+        <button type="button" role="tab" aria-selected={projectView === 'history'} className={projectView === 'history' ? 'selected' : ''} onClick={() => setProjectView('history')}>History <span>{completedProjectTasks.length}</span></button>
+      </div>
+
+      {projectView === 'current' && (<>
 
       {settingsOpen && (
         <section className="edit-panel stack">
@@ -272,6 +285,37 @@ export default function ProjectDetailPage({ api }) {
 
       {selectedGalleryImage && (
         <ImageViewer image={selectedGalleryImage} onClose={() => setSelectedGalleryImage(null)} />
+      )}
+      </>)}
+
+      {projectView === 'history' && (
+        <section className="stack project-history-section">
+          <div className="section-title-row">
+            <div>
+              <h3>Progress timeline</h3>
+              <p className="helper-text">Newest completed work first.</p>
+            </div>
+          </div>
+          <HistoryTimeline completedTasks={completedProjectTasks} onSelect={setHistoryTask} />
+        </section>
+      )}
+
+      {completionTask && (
+        <TaskCompletionSheet
+          api={api}
+          task={completionTask}
+          projectName={getProjectName(project)}
+          onClose={() => setCompletionTask(null)}
+        />
+      )}
+
+      {historyTask && (
+        <TaskHistorySheet
+          api={api}
+          completedTask={historyTask}
+          projectName={getProjectName(project)}
+          onClose={() => setHistoryTask(null)}
+        />
       )}
     </div>
   );

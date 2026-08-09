@@ -58,3 +58,26 @@ Core rule: time tracking must never make it harder to capture notes and ideas or
 - Service-worker / background notification improvements.
 - Capacitor / native Android wrapper if PWA behavior proves insufficient.
 - AI analysis, XP, achievements, fake productivity scores, automatic app/screen monitoring, or giant analytics dashboards.
+
+## Batch 2 implemented — Completion & History
+
+- Schema v5 adds completion `valueRating`, per-completion `sessionIds`, and restore metadata.
+- Completing any task now opens a shared completion sheet instead of a browser confirm.
+- Completion sheet shows tracked time/session count and asks for **Valuable** rating 0–5; rating can be skipped.
+- 0 is preserved as a real rating and displayed as 0/5; 5 means completely worth doing.
+- Projects now have **Current / History** views.
+- Plans now have **Current / History** views.
+- History is a newest-first progression timeline showing completion date group, task name, tracked time, and Valuable rating.
+- Tapping a history item opens detailed completion history with exact completion time, sessions, total tracked time, and editable Valuable rating.
+- Historical work sessions can be corrected by editing their duration or deleted if they were recorded by mistake.
+- Completed tasks can be restored to the checklist without deleting or rewriting their previous history/rating.
+- Re-completing a restored task creates a new completion event using only the work sessions from the restored work cycle, so earlier timeline totals stay accurate.
+
+## Next recommended batch
+
+- Optional task time estimate and estimate-vs-actual display.
+- Global Reports view plus project report drilldowns (today/week/month).
+- Aggregate time by project/task and Valuable rating.
+- Break totals and average session length.
+- Realtime cross-device listener for the active-task runtime document.
+- PWA/service-worker notification work after the core report workflow has been tested in daily use.
