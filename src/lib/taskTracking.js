@@ -25,6 +25,13 @@ export function clampCheckInMinutes(value) {
   return Math.max(5, Math.min(240, Math.round(parsed)));
 }
 
+export function clampEstimateMinutes(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return Math.max(5, Math.min(24 * 60, Math.round(parsed)));
+}
+
 export function clampValueRating(value) {
   if (value === null || value === undefined || value === '') return null;
   const parsed = Number(value);
@@ -131,12 +138,14 @@ export function resumeActiveTaskData(data, now = Date.now()) {
   }, now);
 }
 
-export function startTaskData(data, task, { checkInMinutes = DEFAULT_CHECK_IN_MINUTES } = {}, now = Date.now()) {
+export function startTaskData(data, task, { checkInMinutes = DEFAULT_CHECK_IN_MINUTES, estimateMinutes = task?.estimateMinutes ?? null } = {}, now = Date.now()) {
   let next = data;
   if (next?.activeTask?.status === 'running') next = pauseActiveTaskData(next, now);
   const interval = clampCheckInMinutes(checkInMinutes);
+  const estimate = clampEstimateMinutes(estimateMinutes);
   return withActiveTaskState({
     ...next,
+    notes: (next.notes || []).map((note) => note.id === task.id ? { ...note, estimateMinutes: estimate, updatedAt: now } : note),
     settings: {
       ...(next.settings || {}),
       defaultCheckInMinutes: interval,
@@ -152,6 +161,7 @@ export function startTaskData(data, task, { checkInMinutes = DEFAULT_CHECK_IN_MI
     segmentStartedAt: now,
     pausedAt: null,
     checkInMinutes: interval,
+    estimateMinutes: estimate,
     nextCheckInAt: interval > 0 ? now + (interval * 60_000) : null,
     createdAt: now,
     updatedAt: now,
@@ -234,6 +244,7 @@ export function completeTaskData(data, task, { valueRating = null } = {}, now = 
     sessionCount: completionSessions.length,
     sessionIds,
     valueRating: clampValueRating(valueRating),
+    estimateMinutes: clampEstimateMinutes(task.estimateMinutes ?? active?.estimateMinutes),
     completedFrom: projectId ? 'project' : 'plans',
     restoredFromCompletionId: task.restoredFromCompletionId || null,
   };
@@ -281,6 +292,7 @@ export function restoreCompletedTaskData(data, completedTask, now = Date.now()) 
       completedAt: null,
       restoredAt: now,
       restoredFromCompletionId: completedTask.id,
+      estimateMinutes: clampEstimateMinutes(completedTask.estimateMinutes),
       updatedAt: now,
     }
     : {
@@ -294,6 +306,7 @@ export function restoreCompletedTaskData(data, completedTask, now = Date.now()) 
       deleted: false,
       restoredAt: now,
       restoredFromCompletionId: completedTask.id,
+      estimateMinutes: clampEstimateMinutes(completedTask.estimateMinutes),
       createdAt: Number(completedTask.createdAt) || now,
       updatedAt: now,
     };

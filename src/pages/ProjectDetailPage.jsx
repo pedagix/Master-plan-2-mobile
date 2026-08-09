@@ -295,6 +295,7 @@ export default function ProjectDetailPage({ api }) {
               <h3>Progress timeline</h3>
               <p className="helper-text">Newest completed work first.</p>
             </div>
+            <Link className="secondary-button button-link" to={`/reports?project=${projectId}`}>Report</Link>
           </div>
           <HistoryTimeline completedTasks={completedProjectTasks} onSelect={setHistoryTask} />
         </section>

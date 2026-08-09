@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import NoteCard from '../components/NoteCard';
 import NoteEditForm from '../components/NoteEditForm';
 import TaskActionSheet from '../components/TaskActionSheet';
@@ -137,6 +138,7 @@ export default function HmmPage({ api }) {
               <h3>Progress timeline</h3>
               <p className="helper-text">Completed general tasks, newest first.</p>
             </div>
+            <Link className="secondary-button button-link" to="/reports?project=plans">Report</Link>
           </div>
           <HistoryTimeline completedTasks={completedPlanTasks} onSelect={setHistoryTask} />
         </section>

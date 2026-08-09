@@ -81,3 +81,28 @@ Core rule: time tracking must never make it harder to capture notes and ideas or
 - Break totals and average session length.
 - Realtime cross-device listener for the active-task runtime document.
 - PWA/service-worker notification work after the core report workflow has been tested in daily use.
+
+## Batch 3 implemented — Reports & Time Analysis
+
+- Schema v6 adds optional `estimateMinutes` to tasks, active work, and completion history.
+- Starting a task can optionally capture a 30 min / 1h / 2h / custom estimate; choosing no estimate remains the default and does not slow down task start.
+- Completion/history details show the estimate when one exists.
+- Added a global **Reports** view with Today / Week / Month periods.
+- Reports are calculated entirely from the current local Master Plan data; no server query is required to render them.
+- Global report summary shows tracked time, tasks completed, average Valuable rating, and average work-session length.
+- Global report groups tracked time by project plus Plans and supports one-tap project/Plans drilldown.
+- Project/Plans report shows completed task rows with time and Valuable rating and opens the existing task-history detail/edit sheet.
+- Added estimate-vs-actual totals for tasks that have both an estimate and tracked time.
+- Added time distribution by Valuable rating.
+- Added **High time / low value** review list for tasks rated 0–2 with the most tracked time.
+- Added **Most time** list for the longest completed tasks in a period.
+- Reports are linked from Projects, Plans History, and each Project History without adding another bottom-navigation tab.
+- Full-backup schema metadata is now kept in sync at v6.
+
+## Next recommended batch
+
+- Record completed break sessions so break totals can be reported accurately.
+- Improve break-complete sound/prompt behavior.
+- Realtime cross-device listener for only the active-task runtime document.
+- PWA/service-worker notifications after the current timer/report workflow has been exercised in daily use.
+- Consider a lightweight review/reflection field for high-time/low-value tasks only if the reports prove useful.

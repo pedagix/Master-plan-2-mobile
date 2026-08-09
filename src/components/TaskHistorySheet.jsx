@@ -73,6 +73,7 @@ export default function TaskHistorySheet({ api, completedTask, projectName, onCl
         <div className="history-summary-grid">
           <div><small>Total time</small><strong>{formatHistoryDuration(latest.trackedMs)}</strong></div>
           <div><small>Sessions</small><strong>{latest.sessionCount || sessions.length || '—'}</strong></div>
+          {latest.estimateMinutes && <div><small>Estimate</small><strong>{formatHistoryDuration(latest.estimateMinutes * 60_000)}</strong></div>}
         </div>
 
         <div className="stack history-rating-editor">

@@ -8,6 +8,10 @@ export default function TaDaPage({ api }) {
 
   return (
     <div className="stack page-screen">
+      <div className="section-title-row reports-entry-row">
+        <div><strong>Projects</strong><p className="helper-text">Open a project or review where your time has gone.</p></div>
+        <Link className="secondary-button button-link" to="/reports">Reports</Link>
+      </div>
       <section className="stack">
         {!projects.length && <p className="empty-state">No projects yet.</p>}
         <div className="project-grid">

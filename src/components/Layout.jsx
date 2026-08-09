@@ -17,7 +17,9 @@ export default function Layout({
 }) {
   const location = useLocation();
   const [keyboardOpen, setKeyboardOpen] = useState(false);
-  const activeHeaderTitle = location.pathname.startsWith('/hmm')
+  const activeHeaderTitle = location.pathname.startsWith('/reports')
+    ? 'Reports'
+    : location.pathname.startsWith('/hmm')
     ? 'Plans'
     : location.pathname.startsWith('/ta-da') || location.pathname.startsWith('/projects/')
       ? 'Projects'

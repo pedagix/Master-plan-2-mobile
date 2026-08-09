@@ -15,6 +15,7 @@ import HmmPage from './pages/HmmPage';
 import TaDaPage from './pages/TaDaPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import SettingsPage from './pages/SettingsPage';
+import ReportsPage from './pages/ReportsPage';
 import { buildResetData, migrateData } from './lib/model';
 import { applyThemeToRoot, normalizeThemePaletteId, normalizeThemeStyleId } from './lib/theme';
 
@@ -435,6 +436,7 @@ export default function App() {
     <Route path="/ideas" element={<Navigate to="/hmm" replace />} />
     <Route path="/raw-notes" element={<Navigate to="/hmm" replace />} />
     <Route path="/settings" element={<SettingsPage api={api} />} />
+    <Route path="/reports" element={<ReportsPage api={api} />} />
     <Route path="*" element={<Navigate to="/aha" replace />} />
   </Routes></Layout>;
 }

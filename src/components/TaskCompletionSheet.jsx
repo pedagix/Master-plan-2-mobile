@@ -13,6 +13,7 @@ export default function TaskCompletionSheet({ api, task, projectName, onClose, o
     return stored + Math.max(0, Date.now() - active.segmentStartedAt);
   }, [completionSessions, api.data.activeTask, task.id]);
   const sessionCount = completionSessions.length + (api.data.activeTask?.taskNoteId === task.id && api.data.activeTask?.status === 'running' ? 1 : 0);
+  const estimateMinutes = task.estimateMinutes ?? (api.data.activeTask?.taskNoteId === task.id ? api.data.activeTask?.estimateMinutes : null);
 
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -44,6 +45,7 @@ export default function TaskCompletionSheet({ api, task, projectName, onClose, o
         <div className="completion-summary-grid">
           <div><small>Time</small><strong>{formatHistoryDuration(trackedMs)}</strong></div>
           <div><small>Sessions</small><strong>{sessionCount || '—'}</strong></div>
+          {estimateMinutes && <div><small>Estimate</small><strong>{formatHistoryDuration(estimateMinutes * 60_000)}</strong></div>}
         </div>
 
         <div className="stack valuable-rating-block">

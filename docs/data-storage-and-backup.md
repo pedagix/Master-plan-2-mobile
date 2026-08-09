@@ -6,7 +6,7 @@
 - The app stores primary state in browser `localStorage` under:
   - `master_plan_v1` (full app state JSON)
   - `master_plan_rollbacks_v1` (recent rollback/import snapshots)
-- `localDataStore.load()` reads `master_plan_v1`, parses JSON, and always runs `migrateData(...)` so older/malformed payloads are normalized to schema v3 defaults. If parsing fails, defaults are used.  
+- `localDataStore.load()` reads `master_plan_v1`, parses JSON, and always runs `migrateData(...)` so older/malformed payloads are normalized to current schema defaults. If parsing fails, defaults are used.  
 - `localDataStore.save()` writes migrated full-state JSON back to `master_plan_v1`.
 
 ### Cloud sync (optional, only when Firebase is configured + user signed in)
@@ -18,7 +18,7 @@
   - `users/{uid}/galleryImages/{imageId}`
 - On login, cloud data is loaded, compared with local state, safely merged, and only then cloud writes are allowed.
 
-## 2) Full JSON structure (schema v3)
+## 2) Full JSON structure (current schema v6)
 
 The canonical app state object (local backup/export and in-memory model) contains:
 
@@ -77,7 +77,7 @@ The canonical app state object (local backup/export and in-memory model) contain
   - settings repair (`lastSelectedProjectId`, `lastDestination`, prompt profiles)
   - AI instructions synchronized to active prompt profile
 
-This means nearly any imported JSON shape is coerced into stable schema v3.
+This means nearly any imported JSON shape is coerced into the current stable schema.
 
 ## 4) How data is edited by feature
 
