@@ -61,8 +61,8 @@ export default function TaskActionSheet({ api, task, projectName, onClose, onEdi
   };
 
   return (
-    <div className="task-sheet-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section ref={sheetRef} tabIndex={-1} className="task-sheet" role="dialog" aria-modal="true" aria-labelledby="task-sheet-title">
+    <div className={`task-sheet-backdrop task-action-backdrop ${api.data.activeTask ? 'with-now' : ''}`.trim()} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <section ref={sheetRef} tabIndex={-1} className="task-sheet task-action-sheet" role="dialog" aria-modal="true" aria-labelledby="task-sheet-title">
         <div className="task-sheet-handle" aria-hidden="true" />
         <div className="task-sheet-heading">
           <div>

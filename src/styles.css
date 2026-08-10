@@ -961,3 +961,127 @@ details > summary { color: var(--text-soft); cursor: pointer; font-size: 12px; }
 }
 
 .image-viewer-image.quarter-turn { max-width: calc(100dvh - 132px); max-height: 100vw; }
+
+/* ---------- compact mobile task action module ---------- */
+@media (max-width: 759px) {
+  /* Give the action module a real safe viewport between the fixed app chrome. */
+  .task-action-backdrop {
+    inset: 0;
+    padding: calc(var(--header-h) + env(safe-area-inset-top) + 6px) 8px calc(var(--nav-h) + env(safe-area-inset-bottom) + 6px);
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .task-action-backdrop.with-now {
+    padding-bottom: calc(var(--nav-h) + var(--now-h) + env(safe-area-inset-bottom) + 6px);
+  }
+
+  .task-action-sheet {
+    width: min(100%, 620px);
+    max-height: 100%;
+    margin: 0;
+    padding: 10px 12px 12px;
+    border-radius: 16px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+  .task-action-sheet::-webkit-scrollbar { display: none; }
+
+  /* This panel is an action module, not a draggable bottom sheet. */
+  .task-action-sheet .task-sheet-handle { display: none; }
+
+  .task-action-sheet .task-sheet-heading {
+    gap: 8px;
+    padding-bottom: 9px;
+  }
+  .task-action-sheet .task-sheet-heading h3 {
+    margin-top: 3px;
+    font-size: 16px;
+    line-height: 1.2;
+  }
+  .task-action-sheet .task-sheet-heading small:first-child { font-size: 8px; }
+  .task-action-sheet .task-sheet-close {
+    width: 30px;
+    height: 30px;
+    min-height: 30px;
+    font-size: 18px;
+  }
+  .task-action-sheet .task-sheet-time {
+    margin: 0;
+    padding: 7px 0 2px;
+    font-size: 11px;
+  }
+
+  .task-action-sheet .task-start-options {
+    margin-top: 9px;
+    gap: 9px;
+  }
+  .task-action-sheet .task-start-options strong { font-size: 13px; }
+
+  /* The long explanations are useful documentation but waste the working viewport. */
+  .task-action-sheet .task-start-options > div:first-child > .helper-text,
+  .task-action-sheet .task-estimate-block > .helper-text {
+    display: none;
+  }
+
+  .task-action-sheet .checkin-presets {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .task-action-sheet .checkin-presets button {
+    min-width: 0;
+    min-height: 31px;
+    padding: 0 6px;
+    border-radius: 7px;
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+
+  .task-action-sheet .task-estimate-block {
+    padding-top: 9px;
+  }
+  .task-action-sheet .estimate-presets { margin-top: 7px; }
+
+  .task-action-sheet .task-custom-interval {
+    grid-template-columns: minmax(0, 1fr) 84px;
+    gap: 7px;
+    font-size: 11px;
+  }
+  .task-action-sheet .task-custom-interval input {
+    min-height: 31px;
+    padding: 5px 7px;
+    font-size: 12px;
+  }
+
+  .task-action-sheet .task-start-button {
+    min-height: 36px;
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: 12.5px;
+  }
+
+  .task-action-sheet .task-current-note {
+    margin: 9px 0;
+    padding: 9px 10px;
+    font-size: 11.5px;
+  }
+
+  .task-action-sheet .task-sheet-secondary-actions,
+  .task-action-sheet .task-sheet-secondary-actions.has-delete {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    margin-top: 9px;
+  }
+  .task-action-sheet .task-sheet-secondary-actions button {
+    min-height: 34px;
+    padding: 0 6px;
+    border-radius: 7px;
+    font-size: 12px;
+  }
+  .task-action-sheet .task-sheet-secondary-actions.has-delete .danger-button {
+    grid-column: auto;
+  }
+}
