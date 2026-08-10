@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CHECK_IN_PRESETS, clampCheckInMinutes, clampEstimateMinutes, formatDuration, getTaskTrackedMs, startTaskData } from '../lib/taskTracking';
 
 const ESTIMATE_PRESETS = [30, 60, 120];
 
 export default function TaskActionSheet({ api, task, projectName, onClose, onEdit, onComplete, onDelete }) {
   const defaultInterval = clampCheckInMinutes(api.data.settings?.defaultCheckInMinutes ?? 30);
+  const sheetRef = useRef(null);
   const [checkInMinutes, setCheckInMinutes] = useState(defaultInterval);
   const [customOpen, setCustomOpen] = useState(false);
   const [customMinutes, setCustomMinutes] = useState(defaultInterval || 30);
@@ -23,6 +24,20 @@ export default function TaskActionSheet({ api, task, projectName, onClose, onEdi
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
+
+  useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const frame = window.requestAnimationFrame(() => {
+      if (!sheetRef.current) return;
+      sheetRef.current.scrollTop = 0;
+      sheetRef.current.focus({ preventScroll: true });
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.body.style.overflow = previousBodyOverflow;
+    };
+  }, []);
 
   const start = () => {
     if (active && active.taskNoteId !== task.id) {
@@ -47,7 +62,7 @@ export default function TaskActionSheet({ api, task, projectName, onClose, onEdi
 
   return (
     <div className="task-sheet-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section className="task-sheet" role="dialog" aria-modal="true" aria-labelledby="task-sheet-title">
+      <section ref={sheetRef} tabIndex={-1} className="task-sheet" role="dialog" aria-modal="true" aria-labelledby="task-sheet-title">
         <div className="task-sheet-handle" aria-hidden="true" />
         <div className="task-sheet-heading">
           <div>
