@@ -962,38 +962,46 @@ details > summary { color: var(--text-soft); cursor: pointer; font-size: 12px; }
 
 .image-viewer-image.quarter-turn { max-width: calc(100dvh - 132px); max-height: 100vw; }
 
-/* ---------- compact mobile task action module ---------- */
+/* ---------- adaptive task action module ---------- */
+.task-action-backdrop {
+  /* The task window only owns the live app area. Header, NOW and bottom nav
+     stay outside this overlay, visible and usable while the panel is open. */
+  inset: var(--task-action-safe-top, calc(var(--header-h) + env(safe-area-inset-top) + 8px))
+         0
+         var(--task-action-safe-bottom, calc(var(--nav-h) + env(safe-area-inset-bottom) + 8px))
+         0;
+  padding: 8px max(8px, env(safe-area-inset-right)) 8px max(8px, env(safe-area-inset-left));
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.task-action-backdrop.with-now {
+  --task-action-safe-bottom: calc(var(--nav-h) + var(--now-h) + env(safe-area-inset-bottom) + 12px);
+}
+
+.task-action-sheet {
+  width: min(100%, 620px);
+  height: auto;
+  min-height: 0;
+  /* Content decides the real height. Seventy percent is a ceiling, not a
+     forced height: short panels stay short; long panels scroll internally. */
+  max-height: 70%;
+  align-self: auto;
+  margin: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scroll-padding-block: 12px 28px;
+}
+
 @media (max-width: 759px) {
-  /* Give the action module a real safe viewport between the fixed app chrome. */
-  .task-action-backdrop {
-    inset: 0;
-    padding: calc(var(--header-h) + env(safe-area-inset-top) + 8px) 8px calc(var(--nav-h) + env(safe-area-inset-bottom) + 8px);
-    /* The backdrop already defines the safe space between the fixed chrome.
-       Stretch the action module through that whole space instead of centering
-       an auto-height panel inside it. */
-    align-items: stretch;
-    justify-content: center;
-    overflow: hidden;
-  }
-
-  .task-action-backdrop.with-now {
-    padding-bottom: calc(var(--nav-h) + var(--now-h) + env(safe-area-inset-bottom) + 6px);
-  }
-
   .task-action-sheet {
-    width: min(100%, 620px);
-    height: auto;
-    min-height: 0;
-    max-height: none;
-    align-self: stretch;
-    margin: 0;
-    padding: 10px 12px 16px;
+    padding: 12px 14px 16px;
     border-radius: 16px;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    scroll-padding-block: 12px 28px;
   }
   .task-action-sheet::-webkit-scrollbar { display: none; }
 
@@ -1002,46 +1010,45 @@ details > summary { color: var(--text-soft); cursor: pointer; font-size: 12px; }
 
   .task-action-sheet .task-sheet-heading {
     gap: 8px;
-    padding-bottom: 9px;
+    padding-bottom: 10px;
   }
   .task-action-sheet .task-sheet-heading h3 {
     margin-top: 3px;
-    font-size: 16px;
-    line-height: 1.2;
+    font-size: 17px;
+    line-height: 1.22;
   }
   .task-action-sheet .task-sheet-heading small:first-child { font-size: 8px; }
   .task-action-sheet .task-sheet-close {
-    width: 30px;
-    height: 30px;
-    min-height: 30px;
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
     font-size: 18px;
   }
   .task-action-sheet .task-sheet-time {
     margin: 0;
-    padding: 7px 0 2px;
+    padding: 8px 0 2px;
     font-size: 11px;
   }
 
   .task-action-sheet .task-start-options {
-    margin-top: 9px;
-    gap: 9px;
+    margin-top: 10px;
+    gap: 11px;
   }
   .task-action-sheet .task-start-options strong { font-size: 13px; }
-
-  /* The long explanations are useful documentation but waste the working viewport. */
-  .task-action-sheet .task-start-options > div:first-child > .helper-text,
-  .task-action-sheet .task-estimate-block > .helper-text {
-    display: none;
+  .task-action-sheet .helper-text {
+    margin-top: 4px;
+    font-size: 10.5px;
+    line-height: 1.35;
   }
 
   .task-action-sheet .checkin-presets {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 5px;
+    gap: 6px;
   }
   .task-action-sheet .checkin-presets button {
     min-width: 0;
-    min-height: 31px;
+    min-height: 34px;
     padding: 0 6px;
     border-radius: 7px;
     font-size: 11.5px;
@@ -1049,42 +1056,42 @@ details > summary { color: var(--text-soft); cursor: pointer; font-size: 12px; }
   }
 
   .task-action-sheet .task-estimate-block {
-    padding-top: 9px;
+    padding-top: 10px;
   }
-  .task-action-sheet .estimate-presets { margin-top: 7px; }
+  .task-action-sheet .estimate-presets { margin-top: 8px; }
 
   .task-action-sheet .task-custom-interval {
-    grid-template-columns: minmax(0, 1fr) 84px;
-    gap: 7px;
+    grid-template-columns: minmax(0, 1fr) 88px;
+    gap: 8px;
     font-size: 11px;
   }
   .task-action-sheet .task-custom-interval input {
-    min-height: 31px;
+    min-height: 34px;
     padding: 5px 7px;
     font-size: 12px;
   }
 
   .task-action-sheet .task-start-button {
-    min-height: 36px;
+    min-height: 40px;
     padding: 0 10px;
     border-radius: 8px;
     font-size: 12.5px;
   }
 
   .task-action-sheet .task-current-note {
-    margin: 9px 0;
-    padding: 9px 10px;
+    margin: 10px 0;
+    padding: 10px;
     font-size: 11.5px;
   }
 
   .task-action-sheet .task-sheet-secondary-actions,
   .task-action-sheet .task-sheet-secondary-actions.has-delete {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 5px;
-    margin-top: 9px;
+    gap: 6px;
+    margin-top: 10px;
   }
   .task-action-sheet .task-sheet-secondary-actions button {
-    min-height: 34px;
+    min-height: 36px;
     padding: 0 6px;
     border-radius: 7px;
     font-size: 12px;
@@ -1093,3 +1100,4 @@ details > summary { color: var(--text-soft); cursor: pointer; font-size: 12px; }
     grid-column: auto;
   }
 }
+

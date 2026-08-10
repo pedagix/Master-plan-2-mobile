@@ -5,6 +5,7 @@ const ESTIMATE_PRESETS = [30, 60, 120];
 
 export default function TaskActionSheet({ api, task, projectName, onClose, onEdit, onComplete, onDelete }) {
   const defaultInterval = clampCheckInMinutes(api.data.settings?.defaultCheckInMinutes ?? 30);
+  const backdropRef = useRef(null);
   const sheetRef = useRef(null);
   const [checkInMinutes, setCheckInMinutes] = useState(defaultInterval);
   const [customOpen, setCustomOpen] = useState(false);
@@ -39,6 +40,70 @@ export default function TaskActionSheet({ api, task, projectName, onClose, onEdi
     };
   }, []);
 
+  useEffect(() => {
+    const backdrop = backdropRef.current;
+    if (!backdrop || typeof window === 'undefined') return undefined;
+
+    let frame = 0;
+    const observed = new Set();
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => scheduleMeasure())
+      : null;
+
+    const observe = (element) => {
+      if (!resizeObserver || !element || observed.has(element)) return;
+      observed.add(element);
+      resizeObserver.observe(element);
+    };
+
+    const measureSafeRegion = () => {
+      frame = 0;
+      const viewport = window.visualViewport;
+      const viewportTop = viewport?.offsetTop ?? 0;
+      const viewportHeight = viewport?.height ?? window.innerHeight;
+      const viewportBottom = viewportTop + viewportHeight;
+      const header = document.querySelector('.top-header');
+      const nav = document.querySelector('.bottom-nav');
+      const nowBar = document.querySelector('.now-bar');
+
+      observe(header);
+      observe(nav);
+      observe(nowBar);
+
+      const headerBottom = header?.getBoundingClientRect().bottom ?? viewportTop;
+      const persistentTop = nowBar?.getBoundingClientRect().top
+        ?? nav?.getBoundingClientRect().top
+        ?? viewportBottom;
+
+      const safeTop = Math.max(viewportTop, headerBottom) + 8;
+      const safeBottom = Math.max(safeTop, Math.min(viewportBottom, persistentTop - 6));
+
+      backdrop.style.setProperty('--task-action-safe-top', `${Math.round(safeTop)}px`);
+      backdrop.style.setProperty('--task-action-safe-bottom', `${Math.round(Math.max(0, viewportBottom - safeBottom))}px`);
+    };
+
+    const scheduleMeasure = () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(measureSafeRegion);
+    };
+
+    scheduleMeasure();
+    const viewport = window.visualViewport;
+    viewport?.addEventListener('resize', scheduleMeasure);
+    viewport?.addEventListener('scroll', scheduleMeasure);
+    window.addEventListener('resize', scheduleMeasure);
+    window.addEventListener('orientationchange', scheduleMeasure);
+
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      resizeObserver?.disconnect();
+      viewport?.removeEventListener('resize', scheduleMeasure);
+      viewport?.removeEventListener('scroll', scheduleMeasure);
+      window.removeEventListener('resize', scheduleMeasure);
+      window.removeEventListener('orientationchange', scheduleMeasure);
+    };
+  }, [Boolean(api.data.activeTask)]);
+
   const start = () => {
     if (active && active.taskNoteId !== task.id) {
       const ok = window.confirm(`Pause “${active.taskTextSnapshot}” and start this item?`);
@@ -61,8 +126,8 @@ export default function TaskActionSheet({ api, task, projectName, onClose, onEdi
   };
 
   return (
-    <div className={`task-sheet-backdrop task-action-backdrop ${api.data.activeTask ? 'with-now' : ''}`.trim()} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section ref={sheetRef} tabIndex={-1} className="task-sheet task-action-sheet" role="dialog" aria-modal="true" aria-labelledby="task-sheet-title">
+    <div ref={backdropRef} className={`task-sheet-backdrop task-action-backdrop ${api.data.activeTask ? 'with-now' : ''}`.trim()} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <section ref={sheetRef} tabIndex={-1} className="task-sheet task-action-sheet" role="dialog" aria-modal="false" aria-labelledby="task-sheet-title">
         <div className="task-sheet-handle" aria-hidden="true" />
         <div className="task-sheet-heading">
           <div>

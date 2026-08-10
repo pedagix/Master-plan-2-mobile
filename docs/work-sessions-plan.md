@@ -116,3 +116,10 @@ Core rule: time tracking must never make it harder to capture notes and ideas or
 
 ## Mobile task action module layout note
 The task action module must use the full safe vertical region between the fixed header and the NOW/bottom-navigation area on mobile. The module itself is the scroll container; do not vertically center an auto-height sheet inside that safe region, because that can collapse the usable scroll viewport on Android.
+
+
+## Task action window sizing
+
+The task start/action window is content-sized with a hard maximum of 70% of the currently usable app area. It must never be forced to 70% when its content needs less room. If the content exceeds the 70% ceiling, the window remains capped and its own contents become vertically scrollable.
+
+The usable app area is measured dynamically from the visible viewport between the fixed header and the highest persistent bottom UI. When a NOW/current-task bar exists, its actual rendered top edge is the lower boundary, so even an expanded NOW bar remains visible and usable while the task window is open. The bottom navigation is treated the same way when NOW is absent. The calculation responds to viewport changes, orientation changes, the mobile visual viewport/keyboard, and NOW bar resizing.
