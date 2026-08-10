@@ -27,3 +27,11 @@ All other application files from the supplied source are included unchanged in t
 - Measure the real visual viewport plus the live header, bottom navigation and NOW bar.
 - Set the action panel maximum height in pixels to 70% of the actual usable region; shorter content remains content-height and taller content scrolls internally.
 - Keep the NOW bar outside the overlay region so it remains visible and interactive while the task action sheet is open.
+
+## 2026-08-10 slider controls
+- Replaced all check-in preset/custom buttons with one mobile-friendly range slider.
+- Check-in range is Off to 2 hours in 5-minute steps.
+- Replaced all estimate preset/custom buttons with one range slider.
+- Estimate range is Off to 8 hours in 15-minute steps.
+- The current slider value is shown beside each section heading, with Off at the left edge and the maximum at the right edge.
+- Slider movement keeps the existing local-first task-start persistence path unchanged.

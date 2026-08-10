@@ -24,7 +24,7 @@ Core rule: time tracking must never make it harder to capture notes and ideas or
 - Schema v4 foundation with `taskSessions` and `activeTask`.
 - Separate Firestore `taskSessions` collection and `runtime/activeTask` document.
 - Project checklist and Plans checklist task-action sheet.
-- Check-in interval presets, custom interval, and Off.
+- Check-in interval slider from Off to 2 hours.
 - Start / pause / resume / finish.
 - Small persistent animated NOW bar above bottom navigation.
 - One active task at a time; starting another pauses the running segment first.
@@ -85,7 +85,7 @@ Core rule: time tracking must never make it harder to capture notes and ideas or
 ## Batch 3 implemented — Reports & Time Analysis
 
 - Schema v6 added optional `estimateMinutes` to tasks, active work, and completion history.
-- Starting a task can optionally capture a 30 min / 1h / 2h / custom estimate; choosing no estimate remains the default and does not slow down task start.
+- Starting a task can optionally capture an estimate with a slider from Off to 8 hours; Off remains the default when a task has no saved estimate.
 - Completion/history details show the estimate when one exists.
 - Added a global **Reports** view with Today / Week / Month periods.
 - Reports are calculated entirely from the current local Master Plan data; no server query is required to render them.

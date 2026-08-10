@@ -1102,3 +1102,124 @@ details > summary { color: var(--text-soft); cursor: pointer; font-size: 12px; }
   }
 }
 
+
+/* ---------- task start sliders ---------- */
+.task-range-section {
+  min-width: 0;
+}
+.task-range-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.task-range-heading > strong {
+  min-width: 0;
+}
+.task-range-value {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font: 700 13px/1 "Cascadia Code", Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.task-range-control {
+  margin-top: 12px;
+}
+.task-range-input {
+  --task-range-progress: 0%;
+  width: 100%;
+  height: 38px;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+.task-range-input::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: 99px;
+  background: linear-gradient(
+    to right,
+    rgba(125,247,200,.62) 0,
+    rgba(125,247,200,.62) var(--task-range-progress),
+    rgba(199,216,209,.08) var(--task-range-progress),
+    rgba(199,216,209,.08) 100%
+  );
+}
+.task-range-input::-webkit-slider-thumb {
+  width: 22px;
+  height: 22px;
+  margin-top: -9px;
+  border: 2px solid #0b0f12;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 1px rgba(125,247,200,.42), 0 0 18px rgba(125,247,200,.16);
+  appearance: none;
+  -webkit-appearance: none;
+}
+.task-range-input::-moz-range-track {
+  width: 100%;
+  height: 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: 99px;
+  background: rgba(199,216,209,.08);
+}
+.task-range-input::-moz-range-progress {
+  height: 5px;
+  border-radius: 99px;
+  background: rgba(125,247,200,.62);
+}
+.task-range-input::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #0b0f12;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 1px rgba(125,247,200,.42), 0 0 18px rgba(125,247,200,.16);
+}
+.task-range-input:focus-visible {
+  outline: none;
+}
+.task-range-input:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 1px rgba(125,247,200,.6), 0 0 0 5px rgba(125,247,200,.12), 0 0 18px rgba(125,247,200,.2);
+}
+.task-range-input:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 1px rgba(125,247,200,.6), 0 0 0 5px rgba(125,247,200,.12), 0 0 18px rgba(125,247,200,.2);
+}
+.task-range-limits {
+  display: flex;
+  justify-content: space-between;
+  margin-top: -1px;
+  color: var(--text-dim);
+  font: 600 9px/1.2 "Cascadia Code", Consolas, monospace;
+  letter-spacing: .06em;
+}
+
+@media (max-width: 759px) {
+  .task-action-sheet .task-range-heading {
+    gap: 10px;
+  }
+  .task-action-sheet .task-range-value {
+    font-size: 12px;
+  }
+  .task-action-sheet .task-range-control {
+    margin-top: 9px;
+  }
+  .task-action-sheet .task-range-input {
+    height: 40px;
+  }
+  .task-action-sheet .task-range-input::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+    margin-top: -9px;
+  }
+  .task-action-sheet .task-range-input::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+  }
+}
