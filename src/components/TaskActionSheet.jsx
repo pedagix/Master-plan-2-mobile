@@ -3,7 +3,7 @@ import { CHECK_IN_PRESETS, clampCheckInMinutes, clampEstimateMinutes, formatDura
 
 const ESTIMATE_PRESETS = [30, 60, 120];
 
-export default function TaskActionSheet({ api, task, projectName, onClose, onEdit, onComplete }) {
+export default function TaskActionSheet({ api, task, projectName, onClose, onEdit, onComplete, onDelete }) {
   const defaultInterval = clampCheckInMinutes(api.data.settings?.defaultCheckInMinutes ?? 30);
   const [checkInMinutes, setCheckInMinutes] = useState(defaultInterval);
   const [customOpen, setCustomOpen] = useState(false);
@@ -26,7 +26,7 @@ export default function TaskActionSheet({ api, task, projectName, onClose, onEdi
 
   const start = () => {
     if (active && active.taskNoteId !== task.id) {
-      const ok = window.confirm(`Pause “${active.taskTextSnapshot}” and start this task?`);
+      const ok = window.confirm(`Pause “${active.taskTextSnapshot}” and start this item?`);
       if (!ok) return;
     }
     const interval = customOpen ? clampCheckInMinutes(customMinutes) : checkInMinutes;
@@ -54,7 +54,7 @@ export default function TaskActionSheet({ api, task, projectName, onClose, onEdi
             <small>{projectName || 'Plans'}</small>
             <h3 id="task-sheet-title">{task.text}</h3>
           </div>
-          <button type="button" className="icon-button task-sheet-close" onClick={onClose} aria-label="Close task actions">×</button>
+          <button type="button" className="icon-button task-sheet-close" onClick={onClose} aria-label="Close actions">×</button>
         </div>
 
         {trackedMs > 0 && <p className="task-sheet-time">Tracked so far <strong>{formatDuration(trackedMs)}</strong></p>}
@@ -97,15 +97,16 @@ export default function TaskActionSheet({ api, task, projectName, onClose, onEdi
               )}
             </div>
 
-            <button type="button" className="task-start-button" onClick={start}>▶ Start task</button>
+            <button type="button" className="task-start-button" onClick={start}>▶ Start</button>
           </div>
         )}
 
-        {isCurrentTask && <p className="task-current-note">This is the current task. Use the NOW bar to pause, resume, take a break, or finish it.</p>}
+        {isCurrentTask && <p className="task-current-note">This is the current item. Use the NOW bar to pause, resume, take a break, or finish it.</p>}
 
-        <div className="task-sheet-secondary-actions">
+        <div className={`task-sheet-secondary-actions ${onDelete ? 'has-delete' : ''}`.trim()}>
           <button type="button" className="secondary-button" onClick={() => { onClose(); onEdit(); }}>Edit</button>
           <button type="button" className="secondary-button" onClick={() => { onClose(); onComplete(); }}>Complete</button>
+          {onDelete && <button type="button" className="danger-button" onClick={() => { onClose(); onDelete(task); }}>Delete</button>}
         </div>
       </section>
     </div>

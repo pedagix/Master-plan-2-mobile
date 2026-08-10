@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import NoteCard from '../components/NoteCard';
 import NoteEditForm from '../components/NoteEditForm';
@@ -8,8 +8,8 @@ import TaskCompletionSheet from '../components/TaskCompletionSheet';
 import HistoryTimeline from '../components/HistoryTimeline';
 import TaskHistorySheet from '../components/TaskHistorySheet';
 import { fileToDataUrl } from '../lib/storage';
-import { HMM_PROJECT_ID, PROJECT_DESTINATION, getProjectName, getPriorityColor, sortByPriorityThenNewest } from '../lib/model';
-
+import { HMM_PROJECT_ID, PROJECT_DESTINATION, getProjectName, sortByPriorityThenNewest } from '../lib/model';
+import { deleteNoteData } from '../lib/taskTracking';
 
 export default function ProjectDetailPage({ api }) {
   const { projectId } = useParams();
@@ -17,12 +17,10 @@ export default function ProjectDetailPage({ api }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsDraft, setSettingsDraft] = useState({ name: '', description: '' });
   const [editingNoteId, setEditingNoteId] = useState(null);
-  const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [selectedItemId, setSelectedItemId] = useState(null);
   const [completionTask, setCompletionTask] = useState(null);
   const [historyTask, setHistoryTask] = useState(null);
   const [projectView, setProjectView] = useState('current');
-  const todoSubmitHandlersRef = useRef({});
-  const noteSubmitHandlersRef = useRef({});
   const [newFormKey, setNewFormKey] = useState(0);
   const [newNoteOpen, setNewNoteOpen] = useState(false);
   const [selectedGalleryImage, setSelectedGalleryImage] = useState(null);
@@ -47,12 +45,12 @@ export default function ProjectDetailPage({ api }) {
   if (projectId === HMM_PROJECT_ID) return <Navigate to="/hmm" replace />;
   if (!project) return <div className="stack"><p>Project not found.</p><Link to="/ta-da">Back to Projects</Link></div>;
 
-  const projectNotes = (api.data.notes || []).filter((note) => !note.deleted && !note.legacyShape && note.projectId === projectId);
-  const todos = projectNotes.filter((note) => note.isTodo).sort(sortByPriorityThenNewest);
-  const notes = projectNotes.filter((note) => !note.isTodo).sort(sortByPriorityThenNewest);
-  const editingNote = projectNotes.find((note) => note.id === editingNoteId) || null;
-  const selectedTask = todos.find((note) => note.id === selectedTaskId) || null;
-  const completedProjectTasks = (api.data.completedTasks || []).filter((task) => task.projectId === projectId);
+  const currentItems = (api.data.notes || [])
+    .filter((note) => !note.deleted && !note.legacyShape && note.projectId === projectId)
+    .sort(sortByPriorityThenNewest);
+  const editingNote = currentItems.find((note) => note.id === editingNoteId) || null;
+  const selectedItem = currentItems.find((note) => note.id === selectedItemId) || null;
+  const completedProjectTasks = (api.data.completedTasks || []).filter((task) => !task.deleted && task.projectId === projectId);
 
   const patchProject = (patch) => api.setData((prev) => ({
     ...prev,
@@ -112,32 +110,16 @@ export default function ProjectDetailPage({ api }) {
   };
 
   const deleteNote = (note) => {
-    if (!window.confirm('Delete this note?')) return;
-    const now = Date.now();
-    api.setData((prev) => ({
-      ...prev,
-      notes: (prev.notes || []).map((item) => item.id === note.id ? { ...item, deleted: true, deletedAt: now, updatedAt: now } : item),
-    }));
+    if (!window.confirm(`Delete “${note.text}”?`)) return;
+    api.setData((prev) => deleteNoteData(prev, note));
     if (editingNoteId === note.id) setEditingNoteId(null);
+    if (selectedItemId === note.id) setSelectedItemId(null);
   };
 
-  const completeTodo = (note) => {
+  const completeItem = (note) => {
     setCompletionTask(note);
     if (editingNoteId === note.id) setEditingNoteId(null);
-    if (selectedTaskId === note.id) setSelectedTaskId(null);
-  };
-
-  const toggleTodoEdit = (todoId) => {
-    if (editingNoteId !== todoId) {
-      setEditingNoteId(todoId);
-      return;
-    }
-    const submitHandler = todoSubmitHandlersRef.current[todoId] || noteSubmitHandlersRef.current[todoId];
-    if (submitHandler) {
-      submitHandler();
-      return;
-    }
-    setEditingNoteId(null);
+    if (selectedItemId === note.id) setSelectedItemId(null);
   };
 
   const upload = async (event) => {
@@ -145,9 +127,29 @@ export default function ProjectDetailPage({ api }) {
     if (!file) return;
     const url = await fileToDataUrl(file);
     patchProject({
-      gallery: [...(project.gallery || []), { id: crypto.randomUUID(), name: file.name, createdAt: Date.now(), previewUrl: url, noteId: null }],
+      gallery: [...(project.gallery || []), { id: crypto.randomUUID(), name: file.name, createdAt: Date.now(), previewUrl: url, noteId: null, rotation: 0 }],
       lastInteractedAt: Date.now(),
     });
+    event.target.value = '';
+  };
+
+  const rotateGalleryImage = (image) => {
+    const rotation = ((Number(image.rotation) || 0) + 90) % 360;
+    const updated = { ...image, rotation, updatedAt: Date.now() };
+    patchProject({
+      gallery: (project.gallery || []).map((item) => item.id === image.id ? updated : item),
+      lastInteractedAt: Date.now(),
+    });
+    setSelectedGalleryImage(updated);
+  };
+
+  const deleteGalleryImage = (image) => {
+    if (!window.confirm(`Delete ${image.name || 'this image'} from the gallery?`)) return;
+    patchProject({
+      gallery: (project.gallery || []).filter((item) => item.id !== image.id),
+      lastInteractedAt: Date.now(),
+    });
+    setSelectedGalleryImage(null);
   };
 
   return (
@@ -170,114 +172,91 @@ export default function ProjectDetailPage({ api }) {
       </div>
 
       {projectView === 'current' && (<>
+        {settingsOpen && (
+          <section className="edit-panel stack">
+            <input value={settingsDraft.name} onChange={(event) => setSettingsDraft((prev) => ({ ...prev, name: event.target.value }))} placeholder="Project title" />
+            <textarea rows={3} value={settingsDraft.description} onChange={(event) => setSettingsDraft((prev) => ({ ...prev, description: event.target.value }))} placeholder="Description" />
+            <div className="actions">
+              <button type="button" onClick={saveProjectSettings}>Save settings</button>
+              <button type="button" className="secondary-button" onClick={() => setSettingsOpen(false)}>Cancel</button>
+              <button type="button" className="secondary-button" onClick={() => setProjectStatus('hidden')}>Hide</button>
+              <button type="button" className="danger-button" onClick={() => setProjectStatus('archived')}>Archive</button>
+            </div>
+          </section>
+        )}
 
-      {settingsOpen && (
-        <section className="edit-panel stack">
-          <input value={settingsDraft.name} onChange={(event) => setSettingsDraft((prev) => ({ ...prev, name: event.target.value }))} placeholder="Project title" />
-          <textarea rows={3} value={settingsDraft.description} onChange={(event) => setSettingsDraft((prev) => ({ ...prev, description: event.target.value }))} placeholder="Description" />
-          <div className="actions">
-            <button type="button" onClick={saveProjectSettings}>Save settings</button>
-            <button type="button" className="secondary-button" onClick={() => setSettingsOpen(false)}>Cancel</button>
-            <button type="button" className="secondary-button" onClick={() => setProjectStatus('hidden')}>Hide</button>
-            <button type="button" className="danger-button" onClick={() => setProjectStatus('archived')}>Archive</button>
-          </div>
-        </section>
-      )}
+        {newNoteOpen && (
+          <section className="stack edit-panel new-aha-panel">
+            <div className="section-title-row"><h3>New Note</h3></div>
+            <NoteEditForm
+              key={`${projectId}-${newFormKey}`}
+              api={api}
+              initialNote={{ destination: PROJECT_DESTINATION, projectId, priority: 5 }}
+              submitLabel="Save Note"
+              onSave={addNote}
+              onCancel={() => setNewNoteOpen(false)}
+              autoFocus
+            />
+          </section>
+        )}
 
-      {!!todos.length && (
-        <section className="stack checklist-list">
-          <div className="section-title-row">
-            <h3>Checklist</h3>
-            <span className="done-counter">{project.tasksDone || 0} done</span>
-          </div>
-          {todos.map((todo) => (
-            <div key={todo.id} className="stack checklist-item-stack">
-              <div className={`todo-row ${todo.important ? 'important-note-rainbow-border' : ''}`.trim()} style={{ '--priority-color': getPriorityColor(todo.priority) }}>
-                <input type="checkbox" checked={false} onChange={() => completeTodo(todo)} />
-                <span role="button" tabIndex={0} onClick={() => setSelectedTaskId(todo.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedTaskId(todo.id); } }}>{todo.text}</span>
-              </div>
-              {editingNoteId === todo.id && (
+        <section className="stack note-card-list unified-item-list">
+          {!currentItems.length && <p className="empty-state">No current items.</p>}
+          {currentItems.map((note) => (
+            <NoteCard key={note.id} note={note} onOpen={() => setSelectedItemId(note.id)}>
+              {editingNoteId === note.id && (
                 <div className="edit-panel">
                   <NoteEditForm
                     api={api}
-                    initialNote={todo}
-                    submitLabel="Save"
+                    initialNote={editingNote}
+                    submitLabel="Save note"
                     onSave={saveNoteEdit}
                     onDelete={deleteNote}
                     onCancel={() => setEditingNoteId(null)}
                     autoScrollOnMount
-                    registerSubmitHandler={(submitHandler) => {
-                      if (submitHandler) todoSubmitHandlersRef.current[todo.id] = submitHandler;
-                      else delete todoSubmitHandlersRef.current[todo.id];
-                    }}
                   />
                 </div>
               )}
-            </div>
+            </NoteCard>
           ))}
         </section>
-      )}
 
-
-      {selectedTask && (
-        <TaskActionSheet
-          api={api}
-          task={selectedTask}
-          projectName={getProjectName(project)}
-          onClose={() => setSelectedTaskId(null)}
-          onEdit={() => setEditingNoteId(selectedTask.id)}
-          onComplete={() => completeTodo(selectedTask)}
-        />
-      )}
-
-      {newNoteOpen && (
-        <section className="stack edit-panel new-aha-panel">
-          <div className="section-title-row">
-            <h3>New Note</h3>
-          </div>
-          <NoteEditForm
-            key={`${projectId}-${newFormKey}`}
+        {selectedItem && (
+          <TaskActionSheet
             api={api}
-            initialNote={{ destination: PROJECT_DESTINATION, projectId, priority: 5, important: false, isTodo: false }}
-            submitLabel="Save Note"
-            onSave={addNote}
-            onCancel={() => setNewNoteOpen(false)}
-            autoFocus
+            task={selectedItem}
+            projectName={getProjectName(project)}
+            onClose={() => setSelectedItemId(null)}
+            onEdit={() => setEditingNoteId(selectedItem.id)}
+            onComplete={() => completeItem(selectedItem)}
+            onDelete={deleteNote}
           />
-        </section>
-      )}
+        )}
 
-      <section className="stack note-card-list">
-        <h3>Notes</h3>
-        {!notes.length && <p className="empty-state">No project notes.</p>}
-        {notes.map((note) => (
-          <NoteCard key={note.id} note={note} projects={api.data.projects} onEdit={() => toggleTodoEdit(note.id)}>
-            {editingNoteId === note.id && (
-              <div className="edit-panel">
-                <NoteEditForm api={api} initialNote={editingNote} submitLabel="Save note" onSave={saveNoteEdit} onDelete={deleteNote} onCancel={() => setEditingNoteId(null)} autoScrollOnMount registerSubmitHandler={(submitHandler) => { if (submitHandler) noteSubmitHandlersRef.current[note.id] = submitHandler; else delete noteSubmitHandlersRef.current[note.id]; }} />
-              </div>
-            )}
-          </NoteCard>
-        ))}
-      </section>
+        <details className="stack">
+          <summary>Gallery</summary>
+          <label className="gallery-upload-button">
+            <span>Upload picture</span>
+            <input className="gallery-upload-input" type="file" accept="image/*" onChange={upload} />
+          </label>
+          <div className="gallery">{[...(project.gallery || [])].sort((a, b) => a.createdAt - b.createdAt).map((img) => (
+            <button type="button" className="img-card" key={img.id} onClick={() => setSelectedGalleryImage(img)} aria-label={`Open ${img.name || 'project photo'} in full-resolution viewer`}>
+              <span className="img-card-frame">
+                <img src={img.previewUrl} alt={img.name || 'Project gallery photo'} style={{ transform: `rotate(${Number(img.rotation) || 0}deg)` }} />
+              </span>
+              <small>{img.name || 'Project photo'}</small>
+            </button>
+          ))}</div>
+        </details>
 
-      <details className="stack">
-        <summary>Gallery</summary>
-        <label className="gallery-upload-button">
-          <span>Upload picture</span>
-          <input className="gallery-upload-input" type="file" accept="image/*" onChange={upload} />
-        </label>
-        <div className="gallery">{[...(project.gallery || [])].sort((a, b) => a.createdAt - b.createdAt).map((img) => (
-          <button type="button" className="img-card" key={img.id} onClick={() => setSelectedGalleryImage(img)} aria-label={`Open ${img.name || 'project photo'} in full-resolution viewer`}>
-            <img src={img.previewUrl} alt={img.name || 'Project gallery photo'} />
-            <small>{img.name || 'Project photo'}</small>
-          </button>
-        ))}</div>
-      </details>
-
-      {selectedGalleryImage && (
-        <ImageViewer image={selectedGalleryImage} onClose={() => setSelectedGalleryImage(null)} />
-      )}
+        {selectedGalleryImage && (
+          <ImageViewer
+            image={selectedGalleryImage}
+            onClose={() => setSelectedGalleryImage(null)}
+            onRotate={() => rotateGalleryImage(selectedGalleryImage)}
+            onDelete={() => deleteGalleryImage(selectedGalleryImage)}
+          />
+        )}
       </>)}
 
       {projectView === 'history' && (

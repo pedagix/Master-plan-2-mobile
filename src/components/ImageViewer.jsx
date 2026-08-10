@@ -7,13 +7,14 @@ const ZOOM_STEP = 0.5;
 const clampScale = (value) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, value));
 const getDistance = (first, second) => Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY);
 
-export default function ImageViewer({ image, onClose }) {
+export default function ImageViewer({ image, onClose, onRotate, onDelete }) {
   const [transform, setTransform] = useState({ scale: MIN_SCALE, x: 0, y: 0 });
   const pointersRef = useRef(new Map());
   const gestureRef = useRef(null);
   const transformRef = useRef(transform);
   const safeName = useMemo(() => image?.name || 'project-photo', [image?.name]);
   const imageSource = image?.originalUrl || image?.previewUrl || image?.src || '';
+  const rotation = Number(image?.rotation) || 0;
 
   useEffect(() => {
     transformRef.current = transform;
@@ -111,7 +112,6 @@ export default function ImageViewer({ image, onClose }) {
   const handlePointerEnd = (event) => {
     pointersRef.current.delete(event.pointerId);
     const pointers = Array.from(pointersRef.current.values());
-
     if (pointers.length === 1) {
       gestureRef.current = {
         type: 'pan',
@@ -122,16 +122,12 @@ export default function ImageViewer({ image, onClose }) {
       };
       return;
     }
-
     gestureRef.current = null;
   };
 
   const handleDoubleClick = () => {
-    if (transformRef.current.scale > MIN_SCALE) {
-      resetZoom();
-      return;
-    }
-    updateScale(2.5);
+    if (transformRef.current.scale > MIN_SCALE) resetZoom();
+    else updateScale(2.5);
   };
 
   const handleWheel = (event) => {
@@ -143,7 +139,11 @@ export default function ImageViewer({ image, onClose }) {
     <div className="image-viewer-overlay" role="dialog" aria-modal="true" aria-label={`Viewing ${safeName}`}>
       <div className="image-viewer-topbar">
         <button type="button" className="secondary-button image-viewer-close" onClick={onClose} aria-label="Close image viewer">Close</button>
-        <a className="image-viewer-download" href={imageSource} download={safeName}>Download</a>
+        <div className="image-viewer-top-actions">
+          {onRotate && <button type="button" className="secondary-button" onClick={onRotate}>↻ Rotate</button>}
+          {onDelete && <button type="button" className="danger-button" onClick={onDelete}>Delete</button>}
+          <a className="image-viewer-download" href={imageSource} download={safeName}>Download</a>
+        </div>
       </div>
 
       <div
@@ -156,11 +156,11 @@ export default function ImageViewer({ image, onClose }) {
         onWheel={handleWheel}
       >
         <img
-          className="image-viewer-image"
+          className={`image-viewer-image ${Math.abs(rotation % 180) === 90 ? 'quarter-turn' : ''}`.trim()}
           src={imageSource}
           alt={safeName}
           draggable="false"
-          style={{ transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${transform.scale})` }}
+          style={{ transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${transform.scale}) rotate(${rotation}deg)` }}
         />
       </div>
 

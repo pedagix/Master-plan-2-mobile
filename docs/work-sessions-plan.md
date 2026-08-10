@@ -106,3 +106,10 @@ Core rule: time tracking must never make it harder to capture notes and ideas or
 - Realtime cross-device listener for only the active-task runtime document.
 - PWA/service-worker notifications after the current timer/report workflow has been exercised in daily use.
 - Consider a lightweight review/reflection field for high-time/low-value tasks only if the reports prove useful.
+
+
+## Current-item simplification
+- The separate checklist creation UI has been retired.
+- Any current note/item can be started or completed through the same action sheet.
+- Completed History entries can be permanently removed from visible/history data; associated timing sessions are deleted too.
+- Deletion is local-first. Tiny deletion tombstones prevent stale cloud/device data from resurrecting deliberately removed History/session records while Firestore sync catches up.

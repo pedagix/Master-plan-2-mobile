@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  deleteCompletedTaskData,
   deleteTaskSessionData,
   formatHistoryDuration,
   getCompletionSessions,
@@ -55,6 +56,12 @@ export default function TaskHistorySheet({ api, completedTask, projectName, onCl
   const restore = () => {
     if (alreadyActive || !isLatestCompletion) return;
     api.setData((prev) => restoreCompletedTaskData(prev, latest));
+  };
+
+  const deleteCompleted = () => {
+    if (!window.confirm('Delete this completed item and its associated timing history? This cannot be undone.')) return;
+    api.setData((prev) => deleteCompletedTaskData(prev, latest));
+    onClose();
   };
 
   return (
@@ -124,8 +131,13 @@ export default function TaskHistorySheet({ api, completedTask, projectName, onCl
         </div>
 
         <div className="history-restore-block">
-          <button type="button" className="secondary-button" disabled={alreadyActive || !isLatestCompletion} onClick={restore}>{alreadyActive ? 'Already on checklist' : !isLatestCompletion ? 'Older history entry' : 'Restore to checklist'}</button>
+          <button type="button" className="secondary-button" disabled={alreadyActive || !isLatestCompletion} onClick={restore}>{alreadyActive ? 'Already current' : !isLatestCompletion ? 'Older history entry' : 'Restore to current'}</button>
           {latest.restoredAt && <small>Previously restored {formatDateTime(latest.restoredAt)}</small>}
+        </div>
+
+        <div className="history-delete-block">
+          <button type="button" className="danger-button" onClick={deleteCompleted}>Delete from history</button>
+          <small>Removes this completion and its timing records from Master Plan and from cloud storage on the next sync.</small>
         </div>
       </section>
     </div>

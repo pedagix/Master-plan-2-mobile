@@ -188,6 +188,35 @@ function filterPreResetEntities(items = [], resetAtMs = Number.NaN) {
   });
 }
 
+function mergeDeletionMaps(localMap = {}, remoteMap = {}) {
+  const merged = { ...(localMap || {}) };
+  Object.entries(remoteMap || {}).forEach(([id, deletedAt]) => {
+    merged[id] = Math.max(Number(merged[id]) || 0, Number(deletedAt) || 0);
+  });
+  return merged;
+}
+
+function applyTrackingDeletions(data, localData = {}, remoteData = {}) {
+  const deletedCompletedTasks = mergeDeletionMaps(
+    localData?.taskTracking?.deletedCompletedTasks,
+    remoteData?.taskTracking?.deletedCompletedTasks,
+  );
+  const deletedTaskSessions = mergeDeletionMaps(
+    localData?.taskTracking?.deletedTaskSessions,
+    remoteData?.taskTracking?.deletedTaskSessions,
+  );
+  return migrateData({
+    ...data,
+    completedTasks: (data?.completedTasks || []).filter((item) => !deletedCompletedTasks[item.id]),
+    taskSessions: (data?.taskSessions || []).filter((item) => !deletedTaskSessions[item.id]),
+    taskTracking: {
+      ...(data?.taskTracking || {}),
+      deletedCompletedTasks,
+      deletedTaskSessions,
+    },
+  });
+}
+
 function mergeRemoteIntoLocal(localData, remoteData) {
   const local = migrateData(localData);
   const remote = migrateData(remoteData || {});
@@ -206,11 +235,12 @@ function mergeRemoteIntoLocal(localData, remoteData) {
       suggestions: filterPreResetEntities(remote.suggestions, remoteResetAt),
       notes: mergeEntityArrays(filterPreResetEntities(local.notes, remoteResetAt), filterPreResetEntities(remote.notes, remoteResetAt)),
     });
-    debugDataCounts('mergeRemoteIntoLocal:remote-reset-wins', merged);
-    return merged;
+    const deletionSafeMerged = applyTrackingDeletions(merged, local, remote);
+    debugDataCounts('mergeRemoteIntoLocal:remote-reset-wins', deletionSafeMerged);
+    return deletionSafeMerged;
   }
   if (Number.isFinite(remoteResetAt) && Number.isFinite(localResetAt) && remoteResetAt === localResetAt) {
-    if (!hasMeaningfulFirestoreData(remote) && hasLocalPostResetData) return local;
+    if (!hasMeaningfulFirestoreData(remote) && hasLocalPostResetData) return applyTrackingDeletions(local, local, remote);
     const merged = migrateData({
       ...local,
       ...(Object.prototype.hasOwnProperty.call(remoteData || {}, 'meta') ? { meta: remote.meta } : {}),
@@ -230,8 +260,9 @@ function mergeRemoteIntoLocal(localData, remoteData) {
       captures: mergeEntityArrays(local.captures, filterPreResetEntities(remote.captures, remoteResetAt)),
       suggestions: mergeEntityArrays(local.suggestions, filterPreResetEntities(remote.suggestions, remoteResetAt)),
     });
-    debugDataCounts('mergeRemoteIntoLocal:equal-reset-merged', merged);
-    return merged;
+    const deletionSafeMerged = applyTrackingDeletions(merged, local, remote);
+    debugDataCounts('mergeRemoteIntoLocal:equal-reset-merged', deletionSafeMerged);
+    return deletionSafeMerged;
   }
   if (Number.isFinite(localResetAt) && (!Number.isFinite(remoteResetAt) || remoteResetAt < localResetAt)) {
     const merged = migrateData({
@@ -254,8 +285,9 @@ function mergeRemoteIntoLocal(localData, remoteData) {
       inboxActionLog: local.inboxActionLog,
       questionFeedbackLog: local.questionFeedbackLog,
     });
-    debugDataCounts('mergeRemoteIntoLocal:local-reset-wins', merged);
-    return merged;
+    const deletionSafeMerged = applyTrackingDeletions(merged, local, remote);
+    debugDataCounts('mergeRemoteIntoLocal:local-reset-wins', deletionSafeMerged);
+    return deletionSafeMerged;
   }
   const has = (key) => Object.prototype.hasOwnProperty.call(remoteData || {}, key);
   const merged = migrateData({
@@ -277,8 +309,9 @@ function mergeRemoteIntoLocal(localData, remoteData) {
     captures: mergeEntityArrays(local.captures, remote.captures),
     suggestions: mergeEntityArrays(local.suggestions, remote.suggestions),
   });
-  debugDataCounts('mergeRemoteIntoLocal:default-merged', merged);
-  return merged;
+  const deletionSafeMerged = applyTrackingDeletions(merged, local, remote);
+  debugDataCounts('mergeRemoteIntoLocal:default-merged', deletionSafeMerged);
+  return deletionSafeMerged;
 }
 
 export default function App() {
