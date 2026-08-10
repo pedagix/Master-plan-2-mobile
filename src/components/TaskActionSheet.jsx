@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CHECK_IN_PRESETS, clampCheckInMinutes, clampEstimateMinutes, formatDuration, getTaskTrackedMs, startTaskData } from '../lib/taskTracking';
 
 const ESTIMATE_PRESETS = [30, 60, 120];
@@ -77,9 +78,13 @@ export default function TaskActionSheet({ api, task, projectName, onClose, onEdi
 
       const safeTop = Math.max(viewportTop, headerBottom) + 8;
       const safeBottom = Math.max(safeTop, Math.min(viewportBottom, persistentTop - 6));
+      const backdropPadding = 16; // 8px top + 8px bottom from CSS.
+      const availableHeight = Math.max(0, safeBottom - safeTop - backdropPadding);
+      const preferredMaxHeight = Math.max(180, Math.floor(availableHeight * 0.70));
 
       backdrop.style.setProperty('--task-action-safe-top', `${Math.round(safeTop)}px`);
       backdrop.style.setProperty('--task-action-safe-bottom', `${Math.round(Math.max(0, viewportBottom - safeBottom))}px`);
+      backdrop.style.setProperty('--task-action-max-height', `${preferredMaxHeight}px`);
     };
 
     const scheduleMeasure = () => {
@@ -125,7 +130,7 @@ export default function TaskActionSheet({ api, task, projectName, onClose, onEdi
     setEstimateCustomOpen(false);
   };
 
-  return (
+  const sheet = (
     <div ref={backdropRef} className={`task-sheet-backdrop task-action-backdrop ${api.data.activeTask ? 'with-now' : ''}`.trim()} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <section ref={sheetRef} tabIndex={-1} className="task-sheet task-action-sheet" role="dialog" aria-modal="false" aria-labelledby="task-sheet-title">
         <div className="task-sheet-handle" aria-hidden="true" />
@@ -191,4 +196,9 @@ export default function TaskActionSheet({ api, task, projectName, onClose, onEdi
       </section>
     </div>
   );
+
+  // Global overlays must live outside animated page containers. A transformed
+  // ancestor changes the containing block for position: fixed on mobile, which
+  // was shrinking this panel to the project page instead of the viewport.
+  return createPortal(sheet, document.body);
 }

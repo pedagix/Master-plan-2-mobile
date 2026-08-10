@@ -21,3 +21,9 @@ This package is the complete application source, not a patch.
 - `docs/work-sessions-plan.md`
 
 All other application files from the supplied source are included unchanged in this full rewrite package.
+
+## 2026-08-10 task action sheet viewport fix
+- Render `TaskActionSheet` through a React portal into `document.body` so its fixed-position backdrop is never constrained by an animated/transformed page container.
+- Measure the real visual viewport plus the live header, bottom navigation and NOW bar.
+- Set the action panel maximum height in pixels to 70% of the actual usable region; shorter content remains content-height and taller content scrolls internally.
+- Keep the NOW bar outside the overlay region so it remains visible and interactive while the task action sheet is open.

@@ -984,9 +984,10 @@ details > summary { color: var(--text-soft); cursor: pointer; font-size: 12px; }
   width: min(100%, 620px);
   height: auto;
   min-height: 0;
-  /* Content decides the real height. Seventy percent is a ceiling, not a
-     forced height: short panels stay short; long panels scroll internally. */
-  max-height: 70%;
+  /* Content decides the real height. JS measures the actual live viewport
+     above NOW/nav and gives us a pixel ceiling. This avoids percentage-height
+     bugs when mobile browsers establish unexpected containing blocks. */
+  max-height: min(var(--task-action-max-height, 70dvh), calc(100% - 16px));
   align-self: auto;
   margin: 0;
   overflow-x: hidden;
