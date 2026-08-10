@@ -967,8 +967,11 @@ details > summary { color: var(--text-soft); cursor: pointer; font-size: 12px; }
   /* Give the action module a real safe viewport between the fixed app chrome. */
   .task-action-backdrop {
     inset: 0;
-    padding: calc(var(--header-h) + env(safe-area-inset-top) + 6px) 8px calc(var(--nav-h) + env(safe-area-inset-bottom) + 6px);
-    align-items: center;
+    padding: calc(var(--header-h) + env(safe-area-inset-top) + 8px) 8px calc(var(--nav-h) + env(safe-area-inset-bottom) + 8px);
+    /* The backdrop already defines the safe space between the fixed chrome.
+       Stretch the action module through that whole space instead of centering
+       an auto-height panel inside it. */
+    align-items: stretch;
     justify-content: center;
     overflow: hidden;
   }
@@ -979,13 +982,18 @@ details > summary { color: var(--text-soft); cursor: pointer; font-size: 12px; }
 
   .task-action-sheet {
     width: min(100%, 620px);
-    max-height: 100%;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    align-self: stretch;
     margin: 0;
-    padding: 10px 12px 12px;
+    padding: 10px 12px 16px;
     border-radius: 16px;
     overflow-y: auto;
     overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    scroll-padding-block: 12px 28px;
   }
   .task-action-sheet::-webkit-scrollbar { display: none; }
 

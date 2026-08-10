@@ -113,3 +113,6 @@ Core rule: time tracking must never make it harder to capture notes and ideas or
 - Any current note/item can be started or completed through the same action sheet.
 - Completed History entries can be permanently removed from visible/history data; associated timing sessions are deleted too.
 - Deletion is local-first. Tiny deletion tombstones prevent stale cloud/device data from resurrecting deliberately removed History/session records while Firestore sync catches up.
+
+## Mobile task action module layout note
+The task action module must use the full safe vertical region between the fixed header and the NOW/bottom-navigation area on mobile. The module itself is the scroll container; do not vertically center an auto-height sheet inside that safe region, because that can collapse the usable scroll viewport on Android.
