@@ -32,7 +32,7 @@ export default function HistoryTimeline({ completedTasks, onSelect }) {
                   <span>{formatHistoryDuration(task.trackedMs)}</span>
                   <span>{ratingStars(task.valueRating)}</span>
                 </span>
-                {task.restoredAt && <small className="history-restored-label">Restored to checklist</small>}
+                {task.restoredAt && <small className="history-restored-label">Restored</small>}
               </span>
             </button>
           </div>

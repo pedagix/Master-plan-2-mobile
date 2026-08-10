@@ -40,7 +40,7 @@ export default function AhaPage({ api }) {
       <NoteEditForm
         key={formKey}
         api={api}
-        initialNote={{ destination: HMM_DESTINATION, priority: 5, important: false, isTodo: false }}
+        initialNote={{ destination: HMM_DESTINATION, priority: 5 }}
         submitLabel="Save Note"
         onSave={saveNote}
         autoFocus

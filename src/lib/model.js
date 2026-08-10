@@ -56,7 +56,10 @@ export function normalizeProject(project = {}) {
     lastOpenedAt: project.lastOpenedAt ?? null,
     interactionCount: project.interactionCount ?? 0,
     notes: Array.isArray(project.notes) ? project.notes : [],
-    gallery: Array.isArray(project.gallery) ? project.gallery : [],
+    gallery: (Array.isArray(project.gallery) ? project.gallery : []).map((image) => ({
+      ...image,
+      rotation: ((Number(image?.rotation) || 0) % 360 + 360) % 360,
+    })),
   };
 }
 
@@ -294,14 +297,14 @@ function migrateNotesFromLegacy(input = {}, projects = []) {
 export function buildDefaultData() {
   const now = Date.now();
   return {
-    meta: { appName: 'Master Plan', schemaVersion: 7, exportType: 'full-backup', exportedAt: new Date(now).toISOString() },
+    meta: { appName: 'Master Plan', schemaVersion: 8, exportType: 'full-backup', exportedAt: new Date(now).toISOString() },
     settings: { lastDestination: HMM_DESTINATION, lastSelectedProjectId: null, hasCompletedInitialSetup: true, defaultCheckInMinutes: 30 },
     projects: [],
     notes: [],
     completedTasks: [],
     taskSessions: [],
     activeTask: null,
-    taskTracking: { activeTaskUpdatedAt: 0 },
+    taskTracking: { activeTaskUpdatedAt: 0, deletedCompletedTasks: {}, deletedTaskSessions: {} },
     captures: [],
     suggestions: [],
     tasks: [],
@@ -329,7 +332,7 @@ export function buildResetData() {
     completedTasks: [],
     taskSessions: [],
     activeTask: null,
-    taskTracking: { activeTaskUpdatedAt: 0 },
+    taskTracking: { activeTaskUpdatedAt: 0, deletedCompletedTasks: {}, deletedTaskSessions: {} },
     captures: [],
     suggestions: [],
     tasks: [],
@@ -369,7 +372,7 @@ export function buildGlobalNoteCleanupData(input, now = Date.now()) {
     completedTasks: [],
     taskSessions: [],
     activeTask: null,
-    taskTracking: { activeTaskUpdatedAt: 0 },
+    taskTracking: { activeTaskUpdatedAt: 0, deletedCompletedTasks: {}, deletedTaskSessions: {} },
     captures: [],
     suggestions: [],
     tasks: [],
@@ -383,7 +386,7 @@ export function buildGlobalNoteCleanupData(input, now = Date.now()) {
 
 export function migrateData(input) {
   const base = buildDefaultData(); const data = { ...base, ...(input || {}) };
-  data.meta = { ...base.meta, ...(input?.meta || {}), schemaVersion: 7, appName: 'Master Plan' };
+  data.meta = { ...base.meta, ...(input?.meta || {}), schemaVersion: 8, appName: 'Master Plan' };
   data.projects = (Array.isArray(input?.projects) ? input.projects : []).map(normalizeProject).filter((project) => project.id !== HMM_PROJECT_ID);
   const projectIds = new Set(data.projects.map((project) => project.id));
   data.captures = (Array.isArray(input?.captures) ? input.captures : []).map(normalizeCapture);
@@ -449,7 +452,11 @@ export function migrateData(input) {
     ...(base.taskTracking || {}),
     ...(input?.taskTracking || {}),
     activeTaskUpdatedAt,
+    deletedCompletedTasks: { ...(input?.taskTracking?.deletedCompletedTasks || {}) },
+    deletedTaskSessions: { ...(input?.taskTracking?.deletedTaskSessions || {}) },
   };
+  data.completedTasks = data.completedTasks.filter((task) => !data.taskTracking.deletedCompletedTasks?.[task.id]);
+  data.taskSessions = data.taskSessions.filter((session) => !data.taskTracking.deletedTaskSessions?.[session.id]);
   data.badIdeaLog = Array.isArray(input?.badIdeaLog) ? input.badIdeaLog : [];
   data.inboxActionLog = Array.isArray(input?.inboxActionLog) ? input.inboxActionLog : [];
   data.questionFeedbackLog = Array.isArray(input?.questionFeedbackLog) ? input.questionFeedbackLog : [];

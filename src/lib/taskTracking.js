@@ -18,6 +18,25 @@ function withActiveTaskState(data, activeTask, updatedAt = Date.now()) {
   };
 }
 
+function addDeletionMarkers(existing = {}, ids = [], deletedAt = Date.now()) {
+  const next = { ...(existing || {}) };
+  ids.filter(Boolean).forEach((id) => {
+    next[id] = Math.max(Number(next[id]) || 0, deletedAt);
+  });
+  return next;
+}
+
+function withDeletionMarkers(data, { completedTaskIds = [], sessionIds = [] } = {}, deletedAt = Date.now()) {
+  return {
+    ...data,
+    taskTracking: {
+      ...(data?.taskTracking || {}),
+      deletedCompletedTasks: addDeletionMarkers(data?.taskTracking?.deletedCompletedTasks, completedTaskIds, deletedAt),
+      deletedTaskSessions: addDeletionMarkers(data?.taskTracking?.deletedTaskSessions, sessionIds, deletedAt),
+    },
+  };
+}
+
 export function clampCheckInMinutes(value) {
   if (value === 0 || value === '0' || value === null) return 0;
   const parsed = Number(value);
@@ -62,7 +81,8 @@ export function formatHistoryDuration(ms = 0) {
 }
 
 export function getTaskSessions(data, taskNoteId) {
-  return (data?.taskSessions || []).filter((session) => session.taskNoteId === taskNoteId);
+  const deleted = data?.taskTracking?.deletedTaskSessions || {};
+  return (data?.taskSessions || []).filter((session) => session.taskNoteId === taskNoteId && !deleted?.[session.id]);
 }
 
 export function getTaskTrackedMs(data, taskNoteId, now = Date.now()) {
@@ -221,7 +241,7 @@ export function completeTaskData(data, task, { valueRating = null } = {}, now = 
     next = appendSession(next, active, now);
   }
 
-  const taskSessions = (next.taskSessions || []).filter((session) => session.taskNoteId === task.id);
+  const taskSessions = getTaskSessions(next, task.id);
   const completionSessions = task.restoredAt
     ? taskSessions.filter((session) => Number(session.startedAt) >= Number(task.restoredAt))
     : taskSessions;
@@ -360,16 +380,73 @@ export function updateTaskSessionDurationData(data, sessionId, durationMinutes, 
   };
 }
 
-export function deleteTaskSessionData(data, sessionId) {
+export function deleteTaskSessionData(data, sessionId, now = Date.now()) {
   const affectedCompletionIds = new Set((data.completedTasks || [])
     .filter((item) => getCompletionSessions(data, item).some((session) => session.id === sessionId))
     .map((item) => item.id));
-  const next = {
+  const withoutSession = {
     ...data,
     taskSessions: (data.taskSessions || []).filter((session) => session.id !== sessionId),
   };
+  const next = withDeletionMarkers(withoutSession, { sessionIds: [sessionId] }, now);
   return {
     ...next,
     completedTasks: (next.completedTasks || []).map((item) => affectedCompletionIds.has(item.id) ? recalculateCompletionFromSessions(next, item) : item),
   };
+}
+
+export function deleteNoteData(data, note, now = Date.now()) {
+  if (!note?.id) return data;
+  const sourceId = note.id;
+  const protectedSessionIds = new Set((data.completedTasks || []).flatMap((item) => Array.isArray(item.sessionIds) ? item.sessionIds : []));
+  const disposableSessions = (data.taskSessions || [])
+    .filter((session) => session.taskNoteId === sourceId && !protectedSessionIds.has(session.id))
+    .map((session) => session.id);
+
+  let next = {
+    ...data,
+    notes: (data.notes || []).map((item) => item.id === sourceId
+      ? { ...item, deleted: true, deletedAt: now, updatedAt: now }
+      : item),
+    taskSessions: (data.taskSessions || []).filter((session) => !disposableSessions.includes(session.id)),
+  };
+
+  if (data.activeTask?.taskNoteId === sourceId) {
+    next = withActiveTaskState(next, null, now);
+  }
+
+  return withDeletionMarkers(next, { sessionIds: disposableSessions }, now);
+}
+
+export function deleteCompletedTaskData(data, completedTask, now = Date.now()) {
+  const target = typeof completedTask === 'string'
+    ? (data.completedTasks || []).find((item) => item.id === completedTask)
+    : completedTask;
+  if (!target?.id) return data;
+
+  const targetSessionIds = new Set(getCompletionSessions(data, target).map((session) => session.id));
+  const remainingCompletions = (data.completedTasks || []).filter((item) => item.id !== target.id);
+  const protectedByOtherCompletions = new Set(
+    remainingCompletions.flatMap((item) => getCompletionSessions(data, item).map((session) => session.id))
+  );
+  const sessionIdsToDelete = [...targetSessionIds].filter((id) => !protectedByOtherCompletions.has(id));
+
+  const projectId = target.projectId || null;
+  let next = {
+    ...data,
+    completedTasks: remainingCompletions,
+    taskSessions: (data.taskSessions || []).filter((session) => !sessionIdsToDelete.includes(session.id)),
+    projects: projectId && !target.restoredAt
+      ? (data.projects || []).map((project) => project.id === projectId
+        ? { ...project, tasksDone: Math.max(0, (project.tasksDone || 0) - 1), updatedAt: now, lastInteractedAt: now }
+        : project)
+      : data.projects,
+  };
+
+  next = withDeletionMarkers(next, {
+    completedTaskIds: [target.id],
+    sessionIds: sessionIdsToDelete,
+  }, now);
+
+  return next;
 }

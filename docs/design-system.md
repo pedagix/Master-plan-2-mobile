@@ -23,3 +23,16 @@ The application owns a single palette through CSS variables in `src/styles.css`.
 ## Persistence
 
 Visual changes never change the local-first rule. User actions are committed to local storage first; Firebase synchronization follows asynchronously.
+
+
+## Unified current items
+- Notes and former checklist items share one visual treatment.
+- There is no separate “make checklist” control.
+- Tapping any current item opens its action sheet: Start, Complete, Edit, Delete.
+- The Important-note control is removed from the active interface.
+- Current items stay visually quiet; active work is communicated through the NOW bar.
+
+## Color discipline
+- No interface element uses pure white.
+- Primary text is a muted green-grey that belongs to the same palette as the accent and surfaces.
+- Text inputs, placeholders, carets, autofill states, buttons, and system overlays use the same palette.

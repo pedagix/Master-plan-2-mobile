@@ -51,10 +51,7 @@ export default function NoteEditForm({
   const [text, setText] = useState(initialNote?.text || '');
   const [destination, setDestination] = useState(destinationFromNote(initialNote));
   const [priority, setPriority] = useState(clampPriority(initialNote?.priority));
-  const [important, setImportant] = useState(Boolean(initialNote?.important));
-  const [isTodo, setIsTodo] = useState(Boolean(initialNote?.isTodo));
   const [error, setError] = useState('');
-
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [availableViewportHeight, setAvailableViewportHeight] = useState(null);
   const textareaRef = useRef(null);
@@ -79,9 +76,7 @@ export default function NoteEditForm({
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.visualViewport) return undefined;
-
     const viewport = window.visualViewport;
-
     const updateKeyboardInset = () => {
       const fullHeight = window.innerHeight || 0;
       const viewportHeight = Math.max(0, viewport.height || 0);
@@ -89,17 +84,13 @@ export default function NoteEditForm({
       const hasFocus = document.activeElement === textareaRef.current;
       setAvailableViewportHeight(Math.round(viewportHeight));
       setKeyboardInset(hasFocus ? keyboardHeight : 0);
-      if (hasFocus) {
-        window.requestAnimationFrame(() => scrollEditPanelIntoView(formRef.current, textareaRef.current));
-      }
+      if (hasFocus) window.requestAnimationFrame(() => scrollEditPanelIntoView(formRef.current, textareaRef.current));
     };
-
     updateKeyboardInset();
     viewport.addEventListener('resize', updateKeyboardInset);
     viewport.addEventListener('scroll', updateKeyboardInset);
     window.addEventListener('focusin', updateKeyboardInset);
     window.addEventListener('focusout', updateKeyboardInset);
-
     return () => {
       viewport.removeEventListener('resize', updateKeyboardInset);
       viewport.removeEventListener('scroll', updateKeyboardInset);
@@ -112,8 +103,6 @@ export default function NoteEditForm({
     setText(initialNote?.text || '');
     setDestination(destinationFromNote(initialNote));
     setPriority(clampPriority(initialNote?.priority));
-    setImportant(Boolean(initialNote?.important));
-    setIsTodo(Boolean(initialNote?.isTodo));
     setError('');
   }, [initialNote?.id, initialNote?.destination, initialNote?.projectId]);
 
@@ -149,20 +138,15 @@ export default function NoteEditForm({
       return;
     }
     const destinationType = destination === HMM_DESTINATION ? HMM_DESTINATION : PROJECT_DESTINATION;
-    const selectedActions = [
-      destinationType === HMM_DESTINATION ? 'save-to-plans' : 'add-to-project',
-      isTodo ? 'add-to-do-list' : null,
-      important ? 'mark-important' : null,
-    ].filter(Boolean);
     onSave({
       text: trimmed,
       destination: destinationType,
       projectId: destinationType === PROJECT_DESTINATION ? destination : null,
       priority: clampPriority(priority),
-      important,
-      isTodo,
+      important: false,
+      isTodo: false,
       pendingTodoIntent: false,
-      selectedActions,
+      selectedActions: [destinationType === HMM_DESTINATION ? 'save-to-plans' : 'add-to-project'],
     });
   };
 
@@ -210,24 +194,7 @@ export default function NoteEditForm({
           placeholder="Capture the idea quickly"
           rows={5}
         />
-        <div className="capture-secondary-row">
-          <button
-            type="button"
-            className={`important-toggle ${important ? 'is-active' : ''}`}
-            onClick={() => setImportant((value) => !value)}
-            aria-pressed={important}
-          >
-            Important
-          </button>
-          <button
-            type="button"
-            className={`important-toggle checklist-toggle ${isTodo ? 'is-active' : ''}`}
-            onClick={() => setIsTodo((value) => !value)}
-            aria-pressed={isTodo}
-            aria-label={destination === HMM_DESTINATION ? 'Add this note to the Plans checklist' : 'Add this note to the selected project list'}
-          >
-            Add to list
-          </button>
+        <div className="capture-secondary-row capture-destination-only">
           <select className="capture-destination-select" value={destination || HMM_DESTINATION} onChange={(event) => handleDestinationChange(event.target.value)}>
             <option value={HMM_DESTINATION}>Plans</option>
             {projects.map((project) => <option key={project.id} value={project.id}>{getProjectName(project)}</option>)}
