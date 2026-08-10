@@ -35,3 +35,17 @@ All other application files from the supplied source are included unchanged in t
 - Estimate range is Off to 8 hours in 15-minute steps.
 - The current slider value is shown beside each section heading, with Off at the left edge and the maximum at the right edge.
 - Slider movement keeps the existing local-first task-start persistence path unchanged.
+
+## 2026-08-10 adaptive history detail window
+- `TaskHistorySheet` now uses the same flexible sizing behavior as the task action window.
+- History details shrink to their content height when the content fits comfortably.
+- The maximum height is 70% of the currently usable app region; taller history content scrolls inside the window.
+- The usable region is measured from the live visual viewport between the header and persistent controls.
+- When a NOW/current-task bar exists, history details stop above it so NOW remains visible and interactive.
+- The history overlay is rendered through a React portal into `document.body` so animated/transformed page containers cannot distort fixed positioning on mobile browsers.
+- The sheet remeasures on visual viewport changes, orientation changes, and persistent UI resizes.
+
+Files changed for this update:
+- `src/components/TaskHistorySheet.jsx`
+- `src/styles.css`
+- `REWRITE_NOTES.md`

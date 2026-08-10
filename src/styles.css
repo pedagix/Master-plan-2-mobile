@@ -1223,3 +1223,44 @@ details > summary { color: var(--text-soft); cursor: pointer; font-size: 12px; }
     height: 22px;
   }
 }
+
+/* ---------- adaptive history detail module ---------- */
+.history-detail-backdrop {
+  /* Match the task action module: only occupy the usable app area between
+     the header and persistent NOW/navigation controls. */
+  inset: var(--history-detail-safe-top, calc(var(--header-h) + env(safe-area-inset-top) + 8px))
+         0
+         var(--history-detail-safe-bottom, calc(var(--nav-h) + env(safe-area-inset-bottom) + 8px))
+         0;
+  padding: 8px max(8px, env(safe-area-inset-right)) 8px max(8px, env(safe-area-inset-left));
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.history-detail-backdrop.with-now {
+  --history-detail-safe-bottom: calc(var(--nav-h) + var(--now-h) + env(safe-area-inset-bottom) + 12px);
+}
+
+.history-detail-sheet {
+  width: min(100%, 620px);
+  height: auto;
+  min-height: 0;
+  /* Content determines the actual height. The measured pixel ceiling is 70%
+     of the usable live app region; anything taller scrolls inside the sheet. */
+  max-height: min(var(--history-detail-max-height, 70dvh), calc(100% - 16px));
+  align-self: auto;
+  margin: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-padding-block: 12px 28px;
+}
+
+@media (max-width: 759px) {
+  .history-detail-sheet {
+    scrollbar-width: none;
+  }
+  .history-detail-sheet::-webkit-scrollbar { display: none; }
+}
