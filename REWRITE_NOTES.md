@@ -1,12 +1,12 @@
-# Master Plan rewrite notes — 2026-08-10
+# Master Plan rewrite notes — 2026-08-11
 
 This package is the complete application source, not a patch.
 
 ## Task action window
 
 - The task start/action window is now content-aware: it stays only as tall as its content needs.
-- Its maximum height is 70% of the currently usable app area.
-- If its contents need more room than the 70% ceiling, the panel stays capped and scrolls internally.
+- It may use the full currently usable app area, with a minimum 8 px gap to the fixed header above and to NOW/bottom navigation below.
+- If its contents need more room than that safe region, the panel fills the available height and scrolls internally.
 - The usable area is measured from the actual visible viewport rather than assuming a fixed phone height.
 - The panel reserves the real rendered space used by the header, bottom navigation, and NOW/current-task bar.
 - When NOW exists, the task action backdrop ends above NOW instead of covering it. NOW therefore remains visible and usable while the task window is open.
@@ -19,8 +19,18 @@ This package is the complete application source, not a patch.
 - `src/components/TaskActionSheet.jsx`
 - `src/styles.css`
 - `docs/work-sessions-plan.md`
+- `REWRITE_NOTES.md`
 
 All other application files from the supplied source are included unchanged in this full rewrite package.
+
+## 2026-08-11 task action window full-safe-region update
+- Removed the old 70% height ceiling from the task start/action window.
+- The panel can now grow to the full live region available between persistent UI modules.
+- A minimum 8 px visible gap is enforced below the fixed top header and above the NOW bar when present, otherwise above the bottom navigation.
+- The measured top edge of an expanded NOW bar is respected automatically, so the task window cannot cover it.
+- Vertical backdrop padding was removed because the 8 px safety margins are already included in the measured insets; this prevents accidental double-spacing and exposes more usable content.
+- If the panel content is still taller than the safe region, the task panel itself scrolls rather than passing underneath another module.
+- VisualViewport changes, rotation, and ResizeObserver updates continue to remeasure the safe region on mobile.
 
 ## 2026-08-10 task action sheet viewport fix
 - Render `TaskActionSheet` through a React portal into `document.body` so its fixed-position backdrop is never constrained by an animated/transformed page container.

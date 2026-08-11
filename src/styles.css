@@ -990,30 +990,33 @@ details > summary { color: var(--text-soft); cursor: pointer; font-size: 12px; }
 
 /* ---------- adaptive task action module ---------- */
 .task-action-backdrop {
-  /* The task window only owns the live app area. Header, NOW and bottom nav
-     stay outside this overlay, visible and usable while the panel is open. */
+  /* The task window owns all usable space between persistent modules. The
+     measured insets keep an 8px safety gap to the header and NOW/nav. */
   inset: var(--task-action-safe-top, calc(var(--header-h) + env(safe-area-inset-top) + 8px))
          0
          var(--task-action-safe-bottom, calc(var(--nav-h) + env(safe-area-inset-bottom) + 8px))
          0;
-  padding: 8px max(8px, env(safe-area-inset-right)) 8px max(8px, env(safe-area-inset-left));
+  /* Vertical spacing is already built into the measured insets. Do not add a
+     second top/bottom padding here or the panel becomes needlessly smaller. */
+  padding: 0 max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left));
   align-items: center;
   justify-content: center;
   overflow: hidden;
 }
 
 .task-action-backdrop.with-now {
-  --task-action-safe-bottom: calc(var(--nav-h) + var(--now-h) + env(safe-area-inset-bottom) + 12px);
+  /* Fallback before the first measurement: NOW sits 6px above the nav, then
+     the task panel leaves another 8px above NOW. */
+  --task-action-safe-bottom: calc(var(--nav-h) + var(--now-h) + env(safe-area-inset-bottom) + 14px);
 }
 
 .task-action-sheet {
   width: min(100%, 620px);
   height: auto;
   min-height: 0;
-  /* Content decides the real height. JS measures the actual live viewport
-     above NOW/nav and gives us a pixel ceiling. This avoids percentage-height
-     bugs when mobile browsers establish unexpected containing blocks. */
-  max-height: min(var(--task-action-max-height, 70dvh), calc(100% - 16px));
+  /* Use as much of the measured live region as the content needs. If content
+     is taller than that region, only the panel scrolls. */
+  max-height: min(var(--task-action-max-height, 100dvh), 100%);
   align-self: auto;
   margin: 0;
   overflow-x: hidden;

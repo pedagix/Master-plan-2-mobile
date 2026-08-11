@@ -115,11 +115,11 @@ Core rule: time tracking must never make it harder to capture notes and ideas or
 - Deletion is local-first. Tiny deletion tombstones prevent stale cloud/device data from resurrecting deliberately removed History/session records while Firestore sync catches up.
 
 ## Mobile task action module layout note
-The task action module must use the full safe vertical region between the fixed header and the NOW/bottom-navigation area on mobile. The module itself is the scroll container; do not vertically center an auto-height sheet inside that safe region, because that can collapse the usable scroll viewport on Android.
+The task action module uses the full safe vertical region between the fixed header and the highest persistent bottom UI. The panel remains content-sized when everything fits; if it becomes taller than the safe region, the panel itself becomes the scroll container. This keeps controls accessible without allowing the action window to pass behind fixed app modules on Android.
 
 
 ## Task action window sizing
 
-The task start/action window is content-sized with a hard maximum of 70% of the currently usable app area. It must never be forced to 70% when its content needs less room. If the content exceeds the 70% ceiling, the window remains capped and its own contents become vertically scrollable.
+The task start/action window has no percentage-based height ceiling. It can grow up to 100% of the currently usable live app region. The live region begins 8 px below the actual rendered bottom edge of the fixed header and ends 8 px above the actual rendered top edge of the NOW/current-task bar, or 8 px above the bottom navigation when NOW is absent. If the content exceeds that space, the window fills the safe region and its own contents scroll vertically.
 
-The usable app area is measured dynamically from the visible viewport between the fixed header and the highest persistent bottom UI. When a NOW/current-task bar exists, its actual rendered top edge is the lower boundary, so even an expanded NOW bar remains visible and usable while the task window is open. The bottom navigation is treated the same way when NOW is absent. The calculation responds to viewport changes, orientation changes, the mobile visual viewport/keyboard, and NOW bar resizing.
+The usable app area is measured dynamically from the visible viewport and live DOM geometry rather than fixed phone-height assumptions. When NOW expands, its actual top edge immediately becomes the lower boundary. The calculation responds to VisualViewport changes, orientation changes, normal window resizing, and ResizeObserver updates from the header/navigation/NOW modules.

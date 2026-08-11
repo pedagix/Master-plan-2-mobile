@@ -99,15 +99,20 @@ export default function TaskActionSheet({ api, task, projectName, onClose, onEdi
         ?? nav?.getBoundingClientRect().top
         ?? viewportBottom;
 
-      const safeTop = Math.max(viewportTop, headerBottom) + 8;
-      const safeBottom = Math.max(safeTop, Math.min(viewportBottom, persistentTop - 6));
-      const backdropPadding = 16; // 8px top + 8px bottom from CSS.
-      const availableHeight = Math.max(0, safeBottom - safeTop - backdropPadding);
-      const preferredMaxHeight = Math.max(180, Math.floor(availableHeight * 0.70));
+      // The action panel may use the entire live region, but it must always
+      // leave at least 8px to the fixed header above and to the first
+      // persistent module below (NOW when present, otherwise bottom nav).
+      // Using measured element edges instead of only CSS height variables also
+      // handles an expanded NOW bar and Android VisualViewport changes.
+      const edgeGap = 8;
+      const safeTop = Math.max(viewportTop, headerBottom + edgeGap);
+      const safeBottom = Math.max(safeTop, Math.min(viewportBottom, persistentTop - edgeGap));
+      const availableHeight = Math.max(0, safeBottom - safeTop);
+      const layoutViewportHeight = window.innerHeight || viewportBottom;
 
       backdrop.style.setProperty('--task-action-safe-top', `${Math.round(safeTop)}px`);
-      backdrop.style.setProperty('--task-action-safe-bottom', `${Math.round(Math.max(0, viewportBottom - safeBottom))}px`);
-      backdrop.style.setProperty('--task-action-max-height', `${preferredMaxHeight}px`);
+      backdrop.style.setProperty('--task-action-safe-bottom', `${Math.round(Math.max(0, layoutViewportHeight - safeBottom))}px`);
+      backdrop.style.setProperty('--task-action-max-height', `${Math.floor(availableHeight)}px`);
     };
 
     const scheduleMeasure = () => {
