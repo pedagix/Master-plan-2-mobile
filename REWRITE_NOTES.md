@@ -49,3 +49,18 @@ Files changed for this update:
 - `src/components/TaskHistorySheet.jsx`
 - `src/styles.css`
 - `REWRITE_NOTES.md`
+
+## 2026-08-11 adaptive note capture window
+- The main Notes capture window now measures the live visual viewport and the actual rendered header, NOW bar, and bottom navigation.
+- Its height automatically shrinks when the keyboard or another persistent app module reduces the usable area, so the capture window never extends underneath those modules.
+- The textarea is the flexible region: it grows when space is available and shrinks first when space becomes tight. If the phone is unusually short, the capture window scrolls internally instead of being covered.
+- The sizing is recalculated on keyboard/viewport changes, rotation, focus changes, and persistent module resizes.
+- Mobile edit scrolling now also treats the NOW bar as a bottom boundary instead of only reserving the bottom navigation.
+- Replaced the visible priority-scale wording “COLD / HOT” with the single label “PRIORITY”.
+
+Files changed for this update:
+- `src/pages/AhaPage.jsx`
+- `src/components/NoteEditForm.jsx`
+- `src/lib/mobileEditorFocus.js`
+- `src/styles.css`
+- `REWRITE_NOTES.md`

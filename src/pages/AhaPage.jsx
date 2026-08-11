@@ -44,6 +44,7 @@ export default function AhaPage({ api }) {
         submitLabel="Save Note"
         onSave={saveNote}
         autoFocus
+        fitAvailableSpace
       />
     </div>
   );

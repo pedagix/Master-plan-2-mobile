@@ -46,16 +46,16 @@ export default function NoteEditForm({
   onDelete,
   autoFocus = false,
   autoScrollOnMount = false,
+  fitAvailableSpace = false,
   registerSubmitHandler,
 }) {
   const [text, setText] = useState(initialNote?.text || '');
   const [destination, setDestination] = useState(destinationFromNote(initialNote));
   const [priority, setPriority] = useState(clampPriority(initialNote?.priority));
   const [error, setError] = useState('');
-  const [keyboardInset, setKeyboardInset] = useState(0);
-  const [availableViewportHeight, setAvailableViewportHeight] = useState(null);
   const textareaRef = useRef(null);
   const formRef = useRef(null);
+  const captureRef = useRef(null);
   const cursorStorageKey = useMemo(() => noteCursorStorageKey(initialNote?.id), [initialNote?.id]);
 
   useEffect(() => {
@@ -75,29 +75,89 @@ export default function NoteEditForm({
   }, [registerSubmitHandler]);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.visualViewport) return undefined;
+    if (!fitAvailableSpace || typeof window === 'undefined') return undefined;
+
+    const form = formRef.current;
+    const capture = captureRef.current;
+    if (!form || !capture) return undefined;
+
+    let frame = 0;
+    const observed = new Set();
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => scheduleMeasure())
+      : null;
+
+    const observe = (element) => {
+      if (!resizeObserver || !element || observed.has(element)) return;
+      observed.add(element);
+      resizeObserver.observe(element);
+    };
+
+    const measureAvailableSpace = () => {
+      frame = 0;
+      const viewport = window.visualViewport;
+      const viewportTop = viewport?.offsetTop ?? 0;
+      const viewportHeight = viewport?.height ?? window.innerHeight ?? document.documentElement.clientHeight ?? 0;
+      const viewportBottom = viewportTop + viewportHeight;
+      const header = document.querySelector('.top-header');
+      const nav = document.querySelector('.bottom-nav');
+      const nowBar = document.querySelector('.now-bar');
+
+      observe(form);
+      observe(capture);
+      observe(header);
+      observe(nav);
+      observe(nowBar);
+
+      const formRect = form.getBoundingClientRect();
+      const captureRect = capture.getBoundingClientRect();
+      const headerBottom = header?.getBoundingClientRect().bottom ?? viewportTop;
+      const bottomModuleTop = nowBar?.getBoundingClientRect().top
+        ?? nav?.getBoundingClientRect().top
+        ?? viewportBottom;
+
+      const safeTop = Math.max(viewportTop + 8, headerBottom + 8);
+      const safeBottom = Math.max(safeTop, Math.min(viewportBottom - 8, bottomModuleTop - 8));
+
+      // Keep room for any validation/actions rendered below the capture window.
+      // The capture itself is the only flexible part of this form.
+      const outsideCaptureHeight = Math.max(0, formRect.height - captureRect.height);
+      const captureTop = Math.max(captureRect.top, safeTop);
+      const availableHeight = Math.max(0, Math.floor(safeBottom - captureTop - outsideCaptureHeight));
+
+      form.style.setProperty('--note-capture-max-height', `${availableHeight}px`);
+
+      if (document.activeElement === textareaRef.current) {
+        window.requestAnimationFrame(() => scrollEditPanelIntoView(form, textareaRef.current));
+      }
+    };
+
+    const scheduleMeasure = () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(measureAvailableSpace);
+    };
+
+    scheduleMeasure();
     const viewport = window.visualViewport;
-    const updateKeyboardInset = () => {
-      const fullHeight = window.innerHeight || 0;
-      const viewportHeight = Math.max(0, viewport.height || 0);
-      const keyboardHeight = Math.max(0, fullHeight - viewportHeight - viewport.offsetTop);
-      const hasFocus = document.activeElement === textareaRef.current;
-      setAvailableViewportHeight(Math.round(viewportHeight));
-      setKeyboardInset(hasFocus ? keyboardHeight : 0);
-      if (hasFocus) window.requestAnimationFrame(() => scrollEditPanelIntoView(formRef.current, textareaRef.current));
-    };
-    updateKeyboardInset();
-    viewport.addEventListener('resize', updateKeyboardInset);
-    viewport.addEventListener('scroll', updateKeyboardInset);
-    window.addEventListener('focusin', updateKeyboardInset);
-    window.addEventListener('focusout', updateKeyboardInset);
+    viewport?.addEventListener('resize', scheduleMeasure);
+    viewport?.addEventListener('scroll', scheduleMeasure);
+    window.addEventListener('resize', scheduleMeasure);
+    window.addEventListener('orientationchange', scheduleMeasure);
+    window.addEventListener('focusin', scheduleMeasure);
+    window.addEventListener('focusout', scheduleMeasure);
+
     return () => {
-      viewport.removeEventListener('resize', updateKeyboardInset);
-      viewport.removeEventListener('scroll', updateKeyboardInset);
-      window.removeEventListener('focusin', updateKeyboardInset);
-      window.removeEventListener('focusout', updateKeyboardInset);
+      if (frame) window.cancelAnimationFrame(frame);
+      resizeObserver?.disconnect();
+      viewport?.removeEventListener('resize', scheduleMeasure);
+      viewport?.removeEventListener('scroll', scheduleMeasure);
+      window.removeEventListener('resize', scheduleMeasure);
+      window.removeEventListener('orientationchange', scheduleMeasure);
+      window.removeEventListener('focusin', scheduleMeasure);
+      window.removeEventListener('focusout', scheduleMeasure);
+      form.style.removeProperty('--note-capture-max-height');
     };
-  }, []);
+  }, [fitAvailableSpace, Boolean(api.data.activeTask)]);
 
   useEffect(() => {
     setText(initialNote?.text || '');
@@ -153,17 +213,13 @@ export default function NoteEditForm({
   return (
     <form
       ref={formRef}
-      className="note-form stack"
+      className={`note-form stack ${fitAvailableSpace ? 'note-form-fit-viewport' : ''}`.trim()}
       onSubmit={submit}
-      style={{
-        '--keyboard-inset': `${keyboardInset}px`,
-        '--available-vh': availableViewportHeight ? `${availableViewportHeight}px` : '100dvh',
-      }}
     >
-      <div className="capture-input-wrap">
+      <div ref={captureRef} className="capture-input-wrap">
         <div className="capture-top-controls" style={{ '--priority-color': getPriorityColor(priority) }}>
           <div className="priority-picker priority-picker-inline">
-            <span className="priority-scale-label">cold</span>
+            <span className="priority-scale-label">priority</span>
             <input
               className="priority-slider"
               type="range"
@@ -174,7 +230,6 @@ export default function NoteEditForm({
               aria-label="Priority level"
               onChange={(event) => setPriority(clampPriority(Number(event.target.value)))}
             />
-            <span className="priority-scale-label">hot</span>
           </div>
           <div className="capture-top-actions">
             <button type="submit" className="capture-save-pill">{submitLabel}</button>
@@ -182,6 +237,7 @@ export default function NoteEditForm({
         </div>
         <textarea
           ref={textareaRef}
+          className="note-capture-textarea"
           autoFocus={autoFocus}
           value={text}
           onChange={(event) => {

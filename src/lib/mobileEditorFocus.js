@@ -71,10 +71,13 @@ export function scrollEditPanelIntoView(formElement, preferredElement = null) {
   const panelRect = panel.getBoundingClientRect();
   const focusRect = (preferredElement || formElement).getBoundingClientRect();
   const headerHeight = getVisibleElementHeight('.top-header');
-  const bottomNavHeight = getVisibleElementHeight('.bottom-nav');
+  const bottomNav = document.querySelector('.bottom-nav');
+  const nowBar = document.querySelector('.now-bar');
   const topOffset = Math.ceil(viewport.top + headerHeight + 12);
-  const bottomOffset = Math.ceil(bottomNavHeight + 18);
-  const visibleBottom = viewport.bottom - bottomOffset;
+  const bottomNavTop = bottomNav?.getBoundingClientRect().top ?? viewport.bottom;
+  const nowBarTop = nowBar?.getBoundingClientRect().top ?? viewport.bottom;
+  const persistentModuleTop = Math.min(viewport.bottom, bottomNavTop, nowBarTop);
+  const visibleBottom = Math.floor(persistentModuleTop - 18);
   const availableHeight = Math.max(0, visibleBottom - topOffset);
   const currentScrollY = window.scrollY || window.pageYOffset || 0;
 

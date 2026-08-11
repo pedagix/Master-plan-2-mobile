@@ -361,7 +361,7 @@ select:-webkit-autofill {
   gap: 10px;
 }
 .priority-picker { display: flex; align-items: center; gap: 7px; min-width: 0; }
-.priority-picker-inline { flex: 1; max-width: 210px; }
+.priority-picker-inline { flex: 1; max-width: 230px; }
 .priority-scale-label {
   color: var(--text-dim);
   font: 600 9px/1 "Cascadia Code", Consolas, monospace;
@@ -421,6 +421,31 @@ select:-webkit-autofill {
 .form-error { margin: 0; color: var(--danger); font-size: 12px; }
 .note-edit-actions-row { justify-content: space-between; }
 .capture-delete-pill { background: transparent; border-color: transparent; color: var(--danger); }
+
+/* The main Notes capture window is bounded by the live space between the
+   header and whichever persistent module is currently lowest on screen
+   (NOW, bottom navigation, or the software-keyboard-shifted navigation). */
+.note-form-fit-viewport .capture-input-wrap {
+  display: flex;
+  flex-direction: column;
+  max-height: var(--note-capture-max-height, calc(100dvh - var(--header-h) - var(--nav-h) - 52px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.note-form-fit-viewport .capture-top-controls,
+.note-form-fit-viewport .capture-secondary-row {
+  flex: 0 0 auto;
+}
+.note-form-fit-viewport .note-capture-textarea {
+  flex: 1 1 clamp(150px, 28dvh, 300px);
+  min-height: 82px;
+  max-height: none;
+  resize: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 
 .note-card-list { gap: 3px; }
 .note-card {
