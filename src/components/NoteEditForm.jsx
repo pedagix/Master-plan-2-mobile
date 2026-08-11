@@ -112,12 +112,42 @@ export default function NoteEditForm({
       const formRect = form.getBoundingClientRect();
       const captureRect = capture.getBoundingClientRect();
       const headerBottom = header?.getBoundingClientRect().bottom ?? viewportTop;
-      const bottomModuleTop = nowBar?.getBoundingClientRect().top
-        ?? nav?.getBoundingClientRect().top
-        ?? viewportBottom;
+      const moduleGap = 8; // Never let the note module touch/slide under persistent UI. User minimum is 5 px.
 
-      const safeTop = Math.max(viewportTop + 8, headerBottom + 8);
-      const safeBottom = Math.max(safeTop, Math.min(viewportBottom - 8, bottomModuleTop - 8));
+      const visibleTop = (element) => {
+        if (!element) return null;
+        const style = window.getComputedStyle(element);
+        if (style.display === 'none' || style.visibility === 'hidden') return null;
+        const rect = element.getBoundingClientRect();
+        if (rect.height <= 0) return null;
+        return rect.top;
+      };
+
+      const navRect = nav?.getBoundingClientRect();
+      let navTop = visibleTop(nav);
+
+      // Android browsers can report fixed-element coordinates against the layout
+      // viewport while visualViewport is already reduced by the keyboard. When the
+      // keyboard is open the nav is intentionally lifted to the bottom of the visual
+      // viewport, so use that position as an additional conservative boundary.
+      const shell = form.closest('.app-shell');
+      if (navRect && shell?.classList.contains('keyboard-open')) {
+        navTop = Math.min(navTop ?? viewportBottom, viewportBottom - navRect.height);
+      }
+
+      const nowTop = visibleTop(nowBar);
+      const persistentModuleTops = [navTop, nowTop]
+        .filter((value) => Number.isFinite(value))
+        .map((value) => Math.max(viewportTop, value));
+      const bottomModuleTop = persistentModuleTops.length
+        ? Math.min(...persistentModuleTops)
+        : viewportBottom;
+
+      const safeTop = Math.max(viewportTop + moduleGap, headerBottom + moduleGap);
+      const safeBottom = Math.max(
+        safeTop,
+        Math.min(viewportBottom - moduleGap, bottomModuleTop - moduleGap),
+      );
 
       // Keep room for any validation/actions rendered below the capture window.
       // The capture itself is the only flexible part of this form.

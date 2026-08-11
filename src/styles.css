@@ -25,6 +25,7 @@
   --nav-h: 58px;
   --now-h: 48px;
   --keyboard-offset: 0px;
+  --persistent-module-gap: 8px;
   font-family: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--bg);
   color: var(--text);
@@ -428,7 +429,7 @@ select:-webkit-autofill {
 .note-form-fit-viewport .capture-input-wrap {
   display: flex;
   flex-direction: column;
-  max-height: var(--note-capture-max-height, calc(100dvh - var(--header-h) - var(--nav-h) - 52px));
+  max-height: var(--note-capture-max-height, calc(100dvh - var(--header-h) - var(--nav-h) - 52px - var(--persistent-module-gap)));
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;

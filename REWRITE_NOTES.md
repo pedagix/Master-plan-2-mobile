@@ -64,3 +64,8 @@ Files changed for this update:
 - `src/lib/mobileEditorFocus.js`
 - `src/styles.css`
 - `REWRITE_NOTES.md`
+
+## 2026-08-11 — Notes/bottom-nav spacing guard
+- Notes capture now reserves an 8 px safety gap (minimum requested: 5 px) above persistent bottom UI.
+- The available-height calculation now uses the nearest visible persistent module instead of assuming a single fixed boundary.
+- Added an Android keyboard safeguard for VisualViewport/fixed-element coordinate mismatches so the lifted bottom nav cannot cover the note capture module.
