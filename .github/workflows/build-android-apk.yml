@@ -1,0 +1,64 @@
+name: Build Master Plan APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: master-plan-android-test
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-android:
+    name: Build Android test APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get Master Plan source
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install project packages
+        run: npm install --no-audit --no-fund
+
+      - name: Generate and sync Android project
+        run: npm run android:cloud:prepare
+
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk MasterPlan-test.apk
+
+      - name: Save APK in Actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: MasterPlan-test-${{ github.run_number }}
+          path: MasterPlan-test.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish direct-download test release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "test-${GITHUB_RUN_NUMBER}" MasterPlan-test.apk --target "${GITHUB_SHA}" --title "Master Plan test #${GITHUB_RUN_NUMBER}" --notes "Phone test build. Download MasterPlan-test.apk and install/update it on Android." --prerelease
