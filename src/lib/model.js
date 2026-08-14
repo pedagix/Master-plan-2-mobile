@@ -297,8 +297,18 @@ function migrateNotesFromLegacy(input = {}, projects = []) {
 export function buildDefaultData() {
   const now = Date.now();
   return {
-    meta: { appName: 'Master Plan', schemaVersion: 8, exportType: 'full-backup', exportedAt: new Date(now).toISOString() },
-    settings: { lastDestination: HMM_DESTINATION, lastSelectedProjectId: null, hasCompletedInitialSetup: true, defaultCheckInMinutes: 30 },
+    meta: { appName: 'Master Plan', schemaVersion: 9, exportType: 'full-backup', exportedAt: new Date(now).toISOString() },
+    settings: {
+      lastDestination: HMM_DESTINATION,
+      lastSelectedProjectId: null,
+      hasCompletedInitialSetup: true,
+      defaultCheckInMinutes: 30,
+      notificationsEnabled: true,
+      checkInNotificationsEnabled: true,
+      breakNotificationsEnabled: true,
+      estimateNotificationsEnabled: true,
+      notificationSoundEnabled: true,
+    },
     projects: [],
     notes: [],
     completedTasks: [],
@@ -386,7 +396,7 @@ export function buildGlobalNoteCleanupData(input, now = Date.now()) {
 
 export function migrateData(input) {
   const base = buildDefaultData(); const data = { ...base, ...(input || {}) };
-  data.meta = { ...base.meta, ...(input?.meta || {}), schemaVersion: 8, appName: 'Master Plan' };
+  data.meta = { ...base.meta, ...(input?.meta || {}), schemaVersion: 9, appName: 'Master Plan' };
   data.projects = (Array.isArray(input?.projects) ? input.projects : []).map(normalizeProject).filter((project) => project.id !== HMM_PROJECT_ID);
   const projectIds = new Set(data.projects.map((project) => project.id));
   data.captures = (Array.isArray(input?.captures) ? input.captures : []).map(normalizeCapture);
@@ -470,6 +480,11 @@ export function migrateData(input) {
   } = input?.settings || {};
   data.settings = { ...base.settings, lastSelectedProjectId: null, lastDestination: HMM_DESTINATION, ...cleanInputSettings };
   data.settings.defaultCheckInMinutes = data.settings.defaultCheckInMinutes === 0 ? 0 : Math.max(5, Math.min(240, Number(data.settings.defaultCheckInMinutes) || 30));
+  data.settings.notificationsEnabled = data.settings.notificationsEnabled !== false;
+  data.settings.checkInNotificationsEnabled = data.settings.checkInNotificationsEnabled !== false;
+  data.settings.breakNotificationsEnabled = data.settings.breakNotificationsEnabled !== false;
+  data.settings.estimateNotificationsEnabled = data.settings.estimateNotificationsEnabled !== false;
+  data.settings.notificationSoundEnabled = data.settings.notificationSoundEnabled !== false;
   if (data.settings.lastSelectedProjectId && !data.projects.some((p) => p.id === data.settings.lastSelectedProjectId && p.status !== 'archived' && p.status !== 'hidden')) {
     data.settings.lastSelectedProjectId = data.projects.find((p) => p.status === 'active')?.id || null;
   }

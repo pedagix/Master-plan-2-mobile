@@ -9,6 +9,7 @@ import {
   resumeActiveTaskData,
   startBreakData,
 } from '../lib/taskTracking';
+import { isNativeNotificationRuntime } from '../services/notificationScheduler';
 
 function playCheckInTone() {
   try {
@@ -58,7 +59,10 @@ export default function CurrentTaskBar({ api, keyboardOpen = false }) {
     if (now < active.nextCheckInAt || lastPromptedAtRef.current === active.nextCheckInAt) return;
     lastPromptedAtRef.current = active.nextCheckInAt;
     setCheckInOpen(true);
-    playCheckInTone();
+    const nativeAlertsEnabled = isNativeNotificationRuntime()
+      && api?.data?.settings?.notificationsEnabled !== false
+      && api?.data?.settings?.checkInNotificationsEnabled !== false;
+    if (!nativeAlertsEnabled) playCheckInTone();
   }, [active, now]);
 
   const trackedMs = useMemo(() => active ? getTaskTrackedMs(api.data, active.taskNoteId, now) : 0, [active, api.data, now]);

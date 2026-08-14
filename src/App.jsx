@@ -17,6 +17,7 @@ import ProjectDetailPage from './pages/ProjectDetailPage';
 import SettingsPage from './pages/SettingsPage';
 import ReportsPage from './pages/ReportsPage';
 import { buildResetData, migrateData } from './lib/model';
+import { syncTaskNotifications } from './services/notificationScheduler';
 
 const DEBUG_DATA_FLOW = typeof window !== 'undefined' && window.localStorage?.getItem('mp_debug_data_flow') === '1';
 
@@ -386,6 +387,23 @@ export default function App() {
     debugDataCounts('saveUserData:payload', data);
     enqueueRemoteSave(user.uid, data).catch((error) => console.warn('Failed to sync to Firestore, local copy kept.', error));
   }, [data, enqueueRemoteSave, isRemoteHydrationComplete, user?.uid]);
+
+  useEffect(() => {
+    syncTaskNotifications(data).catch((error) => console.warn('Failed to sync native task notifications.', error));
+  }, [
+    data.activeTask?.id,
+    data.activeTask?.status,
+    data.activeTask?.updatedAt,
+    data.activeTask?.nextCheckInAt,
+    data.activeTask?.breakEndsAt,
+    data.activeTask?.estimateMinutes,
+    data.taskSessions?.length,
+    data.settings?.notificationsEnabled,
+    data.settings?.checkInNotificationsEnabled,
+    data.settings?.breakNotificationsEnabled,
+    data.settings?.estimateNotificationsEnabled,
+    data.settings?.notificationSoundEnabled,
+  ]);
 
   const importLocalDataToFirebase = useCallback(async () => {
     if (!user?.uid) return;

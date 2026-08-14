@@ -1,7 +1,29 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { isFirebaseConfigured, signOutUser } from '../services/firebase';
 import { buildImportPreview } from '../lib/importAnalysis';
 import { HMM_DESTINATION, migrateData } from '../lib/model';
+import {
+  ensureNotificationPermission,
+  getNotificationStatus,
+  isNativeNotificationRuntime,
+  openExactAlarmSettings,
+  sendTestNotification,
+  syncTaskNotifications,
+} from '../services/notificationScheduler';
+
+
+function NotificationToggle({ label, description, checked, disabled = false, onChange }) {
+  return (
+    <label className={`notification-toggle-row ${disabled ? 'is-disabled' : ''}`.trim()}>
+      <span>
+        <strong>{label}</strong>
+        {description && <small>{description}</small>}
+      </span>
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} />
+      <span className="notification-switch" aria-hidden="true"><span /></span>
+    </label>
+  );
+}
 
 export default function SettingsPage({ api }) {
   const user = api.user;
@@ -12,9 +34,96 @@ export default function SettingsPage({ api }) {
   const [cleanupReport, setCleanupReport] = useState(null);
   const [cleanupBusy, setCleanupBusy] = useState(false);
   const [rollbackInfoOpen, setRollbackInfoOpen] = useState(false);
+  const [notificationStatus, setNotificationStatus] = useState({ native: isNativeNotificationRuntime(), displayPermission: 'unknown', exactAlarm: 'unknown' });
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [notificationBusy, setNotificationBusy] = useState(false);
 
   const rollbackSnapshots = useMemo(() => api.getRollbacks?.() || [], [api.data]);
   const latestRollback = rollbackSnapshots[0] || null;
+
+  const notificationSettings = api.data.settings || {};
+  const notificationsEnabled = notificationSettings.notificationsEnabled !== false;
+  const nativeNotifications = notificationStatus.native;
+
+  const refreshNotificationStatus = async () => {
+    try {
+      setNotificationStatus(await getNotificationStatus());
+    } catch (error) {
+      console.warn('Could not refresh notification status.', error);
+    }
+  };
+
+  useEffect(() => {
+    refreshNotificationStatus();
+  }, []);
+
+  const updateNotificationSetting = (key, value) => {
+    api.setData((prev) => ({
+      ...prev,
+      settings: { ...(prev.settings || {}), [key]: value },
+    }));
+  };
+
+  const toggleNotifications = async (enabled) => {
+    updateNotificationSetting('notificationsEnabled', enabled);
+    setNotificationMessage('');
+    if (!enabled) return;
+    if (!nativeNotifications) {
+      setNotificationMessage('Background sound notifications require the Android app build. Browser mode keeps the in-app alert only.');
+      return;
+    }
+    setNotificationBusy(true);
+    try {
+      const permission = await ensureNotificationPermission();
+      await refreshNotificationStatus();
+      if (permission.display === 'granted') {
+        const nextData = { ...api.data, settings: { ...(api.data.settings || {}), notificationsEnabled: true } };
+        await syncTaskNotifications(nextData);
+        setNotificationMessage('Notifications enabled.');
+      } else {
+        setNotificationMessage('Android notification permission is not enabled.');
+      }
+    } catch (error) {
+      console.warn('Could not enable notifications.', error);
+      setNotificationMessage('Could not enable Android notifications.');
+    } finally {
+      setNotificationBusy(false);
+    }
+  };
+
+  const enablePreciseAlarms = async () => {
+    if (!nativeNotifications) return;
+    setNotificationBusy(true);
+    setNotificationMessage('Opening Android alarm settings…');
+    try {
+      await openExactAlarmSettings();
+      await refreshNotificationStatus();
+    } catch (error) {
+      console.warn('Could not open exact-alarm settings.', error);
+      setNotificationMessage('Could not open Android alarm settings.');
+    } finally {
+      setNotificationBusy(false);
+    }
+  };
+
+  const testNotification = async () => {
+    if (!nativeNotifications) {
+      setNotificationMessage('Install/run the Android build to test background notifications.');
+      return;
+    }
+    setNotificationBusy(true);
+    setNotificationMessage('Scheduling a test notification in a few seconds…');
+    try {
+      const result = await sendTestNotification(api.data);
+      await refreshNotificationStatus();
+      setNotificationMessage(result.sent ? 'Test scheduled. Lock the screen or switch apps now.' : 'Notification permission is not enabled.');
+    } catch (error) {
+      console.warn('Could not schedule test notification.', error);
+      setNotificationMessage('Could not schedule the test notification.');
+    } finally {
+      setNotificationBusy(false);
+    }
+  };
 
   const confirmAction = (message, action) => {
     if (!window.confirm(message)) return;
@@ -112,6 +221,71 @@ export default function SettingsPage({ api }) {
 
   return (
     <div className="stack page-screen settings-page">
+      <section className="system-panel notification-settings-panel">
+        <div className="system-panel-heading">
+          <span>NOTIFICATIONS</span>
+          <small>{nativeNotifications ? 'Android local' : 'Browser mode'}</small>
+        </div>
+        <p className="helper-text">Task alerts are scheduled on the phone itself. On Android they can sound with the screen locked and while Master Plan is in the background.</p>
+
+        <div className="notification-status-grid">
+          <div>
+            <small>NOTIFICATIONS</small>
+            <strong>{nativeNotifications ? (notificationStatus.displayPermission === 'granted' ? 'READY' : String(notificationStatus.displayPermission || 'UNKNOWN').toUpperCase()) : 'WEB ONLY'}</strong>
+          </div>
+          <div>
+            <small>PRECISE ALARMS</small>
+            <strong>{nativeNotifications ? (notificationStatus.exactAlarm === 'granted' ? 'READY' : String(notificationStatus.exactAlarm || 'UNKNOWN').toUpperCase()) : 'N/A'}</strong>
+          </div>
+        </div>
+
+        <div className="notification-toggle-list">
+          <NotificationToggle
+            label="Background notifications"
+            description="Master switch for task alerts."
+            checked={notificationsEnabled}
+            onChange={toggleNotifications}
+          />
+          <NotificationToggle
+            label="Check-ins"
+            description="Ask if you are still working when the check-in interval is reached."
+            checked={notificationSettings.checkInNotificationsEnabled !== false}
+            disabled={!notificationsEnabled}
+            onChange={(value) => updateNotificationSetting('checkInNotificationsEnabled', value)}
+          />
+          <NotificationToggle
+            label="Break complete"
+            description="Alert when a 5 or 10 minute break ends."
+            checked={notificationSettings.breakNotificationsEnabled !== false}
+            disabled={!notificationsEnabled}
+            onChange={(value) => updateNotificationSetting('breakNotificationsEnabled', value)}
+          />
+          <NotificationToggle
+            label="Estimate reached"
+            description="Alert when the task's estimated working time has been used. Pauses and breaks pause this timer."
+            checked={notificationSettings.estimateNotificationsEnabled !== false}
+            disabled={!notificationsEnabled}
+            onChange={(value) => updateNotificationSetting('estimateNotificationsEnabled', value)}
+          />
+          <NotificationToggle
+            label="Sound"
+            description="Use the Master Plan alert sound. Android system settings can override this."
+            checked={notificationSettings.notificationSoundEnabled !== false}
+            disabled={!notificationsEnabled}
+            onChange={(value) => updateNotificationSetting('notificationSoundEnabled', value)}
+          />
+        </div>
+
+        <div className="settings-button-grid notification-actions">
+          <button type="button" disabled={notificationBusy || !notificationsEnabled} onClick={testNotification}>Test notification</button>
+          <button type="button" className="secondary-button" disabled={notificationBusy || !nativeNotifications} onClick={enablePreciseAlarms}>Precise alarm settings</button>
+        </div>
+        {!nativeNotifications && <p className="system-message">The web/PWA version still shows in-app check-ins, but Android background sound requires the native Android build generated from this project.</p>}
+        {nativeNotifications && notificationStatus.displayPermission !== 'granted' && <p className="system-message">Allow Master Plan notifications in Android so background alerts can appear and sound.</p>}
+        {nativeNotifications && notificationStatus.exactAlarm !== 'granted' && <p className="system-message">Enable Alarms &amp; reminders for the most precise check-in and break timing while the phone is idle.</p>}
+        {notificationMessage && <p className="system-message">{notificationMessage}</p>}
+      </section>
+
       <section className="system-panel">
         <div className="system-panel-heading">
           <span>BACKUP</span>

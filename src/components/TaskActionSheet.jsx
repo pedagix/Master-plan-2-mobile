@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { clampCheckInMinutes, clampEstimateMinutes, formatDuration, getTaskTrackedMs, startTaskData } from '../lib/taskTracking';
+import { ensureNotificationPermission, syncTaskNotifications } from '../services/notificationScheduler';
 
 const CHECK_IN_MAX_MINUTES = 120;
 const CHECK_IN_STEP_MINUTES = 5;
@@ -144,8 +145,18 @@ export default function TaskActionSheet({ api, task, projectName, onClose, onEdi
     }
     const interval = checkInMinutes === 0 ? 0 : clampCheckInMinutes(checkInMinutes);
     const estimate = estimateMinutes === 0 ? null : clampEstimateMinutes(estimateMinutes);
-    api.setData((prev) => startTaskData(prev, task, { checkInMinutes: interval, estimateMinutes: estimate }));
+    const next = startTaskData(api.data, task, { checkInMinutes: interval, estimateMinutes: estimate });
+    api.setData(next);
     onClose();
+
+    // Starting a task is a deliberate user action, so this is the right time
+    // to request Android's notification permission if it has not been decided.
+    // The task starts immediately either way; native scheduling never blocks it.
+    if (next.settings?.notificationsEnabled !== false) {
+      ensureNotificationPermission()
+        .then(() => syncTaskNotifications(next))
+        .catch((error) => console.warn('Could not prepare task notifications.', error));
+    }
   };
 
   const sheet = (

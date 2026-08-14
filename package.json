@@ -1,21 +1,33 @@
 {
   "name": "master-plan",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "android:init": "npm run build && npx cap add android && node scripts/configure-android.mjs && npx cap sync android",
+    "android:sync": "npm run build && node scripts/configure-android.mjs && npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:cloud:prepare": "npm run build && rm -rf android && npx cap add android && node scripts/configure-android.mjs && npx cap sync android",
+    "android:cloud:build": "npm run android:cloud:prepare && chmod +x android/gradlew && cd android && ./gradlew assembleDebug"
   },
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0",
-    "firebase": "^11.0.0"
+    "firebase": "^11.0.0",
+    "@capacitor/core": "8.5.0",
+    "@capacitor/android": "8.5.0",
+    "@capacitor/local-notifications": "8.2.1"
   },
   "devDependencies": {
     "vite": "^5.4.10",
-    "@vitejs/plugin-react": "^4.3.2"
+    "@vitejs/plugin-react": "^4.3.2",
+    "@capacitor/cli": "8.5.0"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

@@ -1,3 +1,18 @@
+# 2026-08-14 — Phone-only Android cloud-build workflow
+
+- Added `.github/workflows/build-android-apk.yml`.
+- Every push to `main` can now build the Android APK entirely in GitHub Actions.
+- Added a manual `workflow_dispatch` trigger for rebuilding from a phone.
+- Successful `main` builds publish `MasterPlan-test.apk` as a GitHub prerelease for direct download.
+- Added a stable development-only signing keystore so successive cloud APKs can update the installed test app without uninstalling it.
+- Development Android identity is now `app.masterplan.mobile.dev`; production will use a separate identity/signing setup.
+- GitHub workflow run number becomes Android `versionCode`, guaranteeing newer test builds have increasing versions.
+- Capacitor core/Android/CLI pinned to 8.5.0 and Local Notifications pinned to 8.2.1.
+- Added `PHONE_ONLY_WORKFLOW.md` and a new root `README.md`.
+- Generated Android build folders are intentionally ignored; GitHub generates a clean Android project reproducibly in the cloud.
+- Existing local notification scheduling remains unchanged and is applied to the generated Android project during each build.
+
+
 # Master Plan rewrite notes — 2026-08-11
 
 This package is the complete application source, not a patch.
@@ -79,3 +94,36 @@ Files changed for this update:
 - Notes capture now reserves an 8 px safety gap (minimum requested: 5 px) above persistent bottom UI.
 - The available-height calculation now uses the nearest visible persistent module instead of assuming a single fixed boundary.
 - Added an Android keyboard safeguard for VisualViewport/fixed-element coordinate mismatches so the lifted bottom nav cannot cover the note capture module.
+
+## 2026-08-14 — Native Android local notifications
+- Added Capacitor 8 Android support without replacing the existing Vite/React web/PWA target.
+- Added `@capacitor/local-notifications` and a local notification scheduler driven by the canonical `activeTask` timestamps.
+- Check-ins now schedule a real Android notification that can fire while Master Plan is backgrounded or the phone screen is locked.
+- Break completion (5/10 minute breaks) now schedules an Android notification.
+- Task estimates can now notify when the estimated tracked working time is reached. Pausing or taking a break pauses this estimate alarm and resume schedules only the remaining working time.
+- Native alarms are cancelled/reconciled whenever task state changes, so stale check-ins do not remain after pause, finish, break, or task switching.
+- Added an Android alert notification channel with a bundled custom Master Plan WAV sound and a separate silent channel used when Sound is disabled.
+- Added `allowWhileIdle` scheduling for Doze/background operation.
+- Added Android exact-alarm support through `SCHEDULE_EXACT_ALARM`; the app exposes a button that opens Android's Alarms & reminders setting.
+- Starting a task requests notification permission when Android has not decided it yet; task start itself remains local-first and does not depend on the permission result.
+- Added SYS → Notifications with switches for Background notifications, Check-ins, Break complete, Estimate reached, and Sound.
+- Added native status indicators for notification permission and precise alarms, plus a Test notification action.
+- Browser/PWA mode retains the existing in-app check-in modal/tone as fallback. Native Android mode avoids the duplicate Web Audio beep when native check-in alerts are enabled.
+- Data schema updated to v9 with notification preferences preserved in local storage/backups/sync.
+- Added `capacitor.config.js`, Android setup/sync npm scripts, native sound asset, and an Android configuration script.
+
+Files added/changed for this update:
+- `package.json`
+- `capacitor.config.js`
+- `scripts/configure-android.mjs`
+- `native-assets/android/res/raw/master_plan_alert.wav`
+- `src/services/notificationScheduler.js`
+- `src/App.jsx`
+- `src/components/TaskActionSheet.jsx`
+- `src/components/CurrentTaskBar.jsx`
+- `src/pages/SettingsPage.jsx`
+- `src/lib/model.js`
+- `src/services/localDataStore.ts`
+- `src/styles.css`
+- `DEPLOYMENT.md`
+- `REWRITE_NOTES.md`
