@@ -24,7 +24,8 @@ export default function TaskCompletionSheet({ api, task, projectName, onClose, o
   }, [onClose]);
 
   const finish = (ratingOverride = valueRating) => {
-    api.setData((prev) => completeTaskData(prev, task, { valueRating: ratingOverride }));
+    if (api.completeTask) api.completeTask(task, { valueRating: ratingOverride });
+    else api.setData((prev) => completeTaskData(prev, task, { valueRating: ratingOverride }));
     onCompleted?.();
     onClose();
   };

@@ -84,8 +84,9 @@ let gradle = fs.readFileSync(appGradlePath, 'utf8');
 
 const runNumberRaw = process.env.GITHUB_RUN_NUMBER || process.env.MASTERPLAN_VERSION_CODE || '1';
 const parsedRun = Number.parseInt(runNumberRaw, 10);
-const versionCode = Number.isFinite(parsedRun) && parsedRun > 0 ? parsedRun : 1;
-const versionName = `0.3.${versionCode}`;
+const buildRun = Number.isFinite(parsedRun) && parsedRun > 0 ? parsedRun : 1;
+const versionCode = 400000 + buildRun;
+const versionName = `0.4.${buildRun}`;
 
 gradle = gradle.replace(/versionCode\s+\d+/, `versionCode ${versionCode}`);
 gradle = gradle.replace(/versionName\s+"[^"]+"/, `versionName "${versionName}"`);

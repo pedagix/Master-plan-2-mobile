@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import NoteCard from '../components/NoteCard';
 import NoteEditForm from '../components/NoteEditForm';
 import ImageViewer from '../components/ImageViewer';
@@ -7,12 +7,16 @@ import TaskActionSheet from '../components/TaskActionSheet';
 import TaskCompletionSheet from '../components/TaskCompletionSheet';
 import HistoryTimeline from '../components/HistoryTimeline';
 import TaskHistorySheet from '../components/TaskHistorySheet';
+import ProjectMomentumIndicator from '../components/ProjectMomentumIndicator';
+import ProjectCompletionSheet from '../components/ProjectCompletionSheet';
 import { fileToDataUrl } from '../lib/storage';
 import { HMM_PROJECT_ID, PROJECT_DESTINATION, getProjectName, sortByPriorityThenNewest } from '../lib/model';
-import { deleteNoteData } from '../lib/taskTracking';
+import { deleteNoteData, formatHistoryDuration } from '../lib/taskTracking';
+import { buildProjectCompletionSummary, buildProjectReturnPulse } from '../lib/projectMomentum';
 
 export default function ProjectDetailPage({ api }) {
   const { projectId } = useParams();
+  const [searchParams] = useSearchParams();
   const project = useMemo(() => api.data.projects.find((item) => item.id === projectId), [api.data.projects, projectId]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsDraft, setSettingsDraft] = useState({ name: '', description: '' });
@@ -24,6 +28,9 @@ export default function ProjectDetailPage({ api }) {
   const [newFormKey, setNewFormKey] = useState(0);
   const [newNoteOpen, setNewNoteOpen] = useState(false);
   const [selectedGalleryImage, setSelectedGalleryImage] = useState(null);
+  const [returnPulse, setReturnPulse] = useState(null);
+  const [pulseVisible, setPulseVisible] = useState(false);
+  const [projectCompletionSummary, setProjectCompletionSummary] = useState(null);
 
   useEffect(() => {
     if (!project) return;
@@ -32,6 +39,10 @@ export default function ProjectDetailPage({ api }) {
 
   useEffect(() => {
     if (!projectId || projectId === HMM_PROJECT_ID) return;
+    const pulse = buildProjectReturnPulse(api.data, projectId, Date.now());
+    setReturnPulse(pulse);
+    setPulseVisible(Boolean(pulse));
+    if (searchParams.get('edit') === '1') setSettingsOpen(true);
     api.setData((prev) => ({
       ...prev,
       projects: prev.projects.map((item) => {
@@ -51,6 +62,9 @@ export default function ProjectDetailPage({ api }) {
   const editingNote = currentItems.find((note) => note.id === editingNoteId) || null;
   const selectedItem = currentItems.find((note) => note.id === selectedItemId) || null;
   const completedProjectTasks = (api.data.completedTasks || []).filter((task) => !task.deleted && task.projectId === projectId);
+  const finishedSummary = (project.status === 'finished' || project.finishedAt)
+    ? buildProjectCompletionSummary(api.data, projectId, Number(project.finishedAt) || Date.now())
+    : null;
 
   const patchProject = (patch) => api.setData((prev) => ({
     ...prev,
@@ -68,6 +82,29 @@ export default function ProjectDetailPage({ api }) {
     const label = status === 'archived' ? 'Archive' : 'Hide';
     if (!window.confirm(`${label} this project?`)) return;
     patchProject({ status, archived: status === 'archived', hidden: status === 'hidden' });
+  };
+
+  const finishProject = () => {
+    if (api.data.activeTask?.projectId === projectId) {
+      window.alert('Finish the current NOW task before marking this project finished.');
+      return;
+    }
+    if (!window.confirm(`Mark “${getProjectName(project)}” as finished? The project and its full history will be kept.`)) return;
+    const now = Date.now();
+    const summary = buildProjectCompletionSummary(api.data, projectId, now);
+    api.setData((prev) => ({
+      ...prev,
+      projects: prev.projects.map((item) => item.id === projectId
+        ? { ...item, status: 'finished', finishedAt: now, archived: false, hidden: false, updatedAt: now, lastInteractedAt: now }
+        : item),
+    }));
+    setSettingsOpen(false);
+    setProjectCompletionSummary(summary);
+  };
+
+  const reopenProject = () => {
+    if (!window.confirm(`Reopen “${getProjectName(project)}” as an active project?`)) return;
+    patchProject({ status: 'active', finishedAt: null, archived: false, hidden: false, lastInteractedAt: Date.now() });
   };
 
   const addNote = (patch) => {
@@ -160,11 +197,38 @@ export default function ProjectDetailPage({ api }) {
           <h2>{getProjectName(project)}</h2>
         </div>
         <div className="header-actions">
-          <button type="button" className="secondary-button" onClick={() => { setProjectView('current'); setNewNoteOpen(true); }}>+ Note</button>
+          {project.status !== 'finished' && !project.finishedAt && <button type="button" className="secondary-button" onClick={() => { setProjectView('current'); setNewNoteOpen(true); }}>+ Note</button>}
           <button type="button" className="secondary-button" onClick={() => { setProjectView('current'); setSettingsOpen((value) => !value); }}>Edit</button>
         </div>
       </div>
       {project.description && <p className="project-description">{project.description}</p>}
+      <div className="project-state-line">
+        {project.status !== 'finished' && !project.finishedAt && <ProjectMomentumIndicator data={api.data} projectId={projectId} />}
+        {(project.status === 'finished' || project.finishedAt) && <span className="project-finished-chip">FINISHED</span>}
+        {project.status === 'paused' && <span className="project-paused-chip">PAUSED</span>}
+      </div>
+
+      {finishedSummary && (
+        <section className="finished-project-summary-card">
+          <div><small>FINISHED</small><strong>{project.finishedAt ? new Date(project.finishedAt).toLocaleDateString() : 'Completed project'}</strong></div>
+          <div><small>FOCUSED</small><strong>{formatHistoryDuration(finishedSummary.trackedMs)}</strong></div>
+          <div><small>SESSIONS</small><strong>{finishedSummary.sessionCount}</strong></div>
+          <div><small>STEPS</small><strong>{finishedSummary.completedCount}</strong></div>
+        </section>
+      )}
+
+      {pulseVisible && returnPulse && project.status !== 'finished' && (
+        <section className="project-return-pulse">
+          <div className="project-return-pulse-heading"><small>PROJECT PULSE</small><button type="button" className="icon-button" onClick={() => setPulseVisible(false)} aria-label="Dismiss project pulse">×</button></div>
+          <strong>Pick up the thread.</strong>
+          <div className="project-return-pulse-grid">
+            {returnPulse.latestSession && <div><small>LAST SESSION</small><span>{formatHistoryDuration(returnPulse.latestSession.durationMs)}</span></div>}
+            {returnPulse.latestCompleted && <div><small>COMPLETED</small><span>{returnPulse.latestCompleted.text}</span></div>}
+            {returnPulse.nextTask && <div><small>NEXT</small><span>{returnPulse.nextTask.text}</span></div>}
+            {returnPulse.latestNote && <div><small>LAST NOTE</small><span>{returnPulse.latestNote.text}</span></div>}
+          </div>
+        </section>
+      )}
 
       <div className="history-view-switch" role="tablist" aria-label="Project view">
         <button type="button" role="tab" aria-selected={projectView === 'current'} className={projectView === 'current' ? 'selected' : ''} onClick={() => setProjectView('current')}>Current</button>
@@ -179,13 +243,20 @@ export default function ProjectDetailPage({ api }) {
             <div className="actions">
               <button type="button" onClick={saveProjectSettings}>Save settings</button>
               <button type="button" className="secondary-button" onClick={() => setSettingsOpen(false)}>Cancel</button>
-              <button type="button" className="secondary-button" onClick={() => setProjectStatus('hidden')}>Hide</button>
-              <button type="button" className="danger-button" onClick={() => setProjectStatus('archived')}>Archive</button>
+              {(project.status === 'finished' || project.finishedAt) ? (
+                <button type="button" onClick={reopenProject}>Reopen project</button>
+              ) : (
+                <>
+                  <button type="button" className="project-finish-button" onClick={finishProject}>✓ Mark finished</button>
+                  <button type="button" className="secondary-button" onClick={() => setProjectStatus('hidden')}>Hide</button>
+                  <button type="button" className="danger-button" onClick={() => setProjectStatus('archived')}>Archive</button>
+                </>
+              )}
             </div>
           </section>
         )}
 
-        {newNoteOpen && (
+        {newNoteOpen && project.status !== 'finished' && !project.finishedAt && (
           <section className="stack edit-panel new-aha-panel">
             <div className="section-title-row"><h3>New Note</h3></div>
             <NoteEditForm
@@ -203,7 +274,7 @@ export default function ProjectDetailPage({ api }) {
         <section className="stack note-card-list unified-item-list">
           {!currentItems.length && <p className="empty-state">No current items.</p>}
           {currentItems.map((note) => (
-            <NoteCard key={note.id} note={note} onOpen={() => setSelectedItemId(note.id)}>
+            <NoteCard key={note.id} note={note} onOpen={(project.status === 'finished' || project.finishedAt) ? undefined : () => setSelectedItemId(note.id)}>
               {editingNoteId === note.id && (
                 <div className="edit-panel">
                   <NoteEditForm
@@ -221,7 +292,7 @@ export default function ProjectDetailPage({ api }) {
           ))}
         </section>
 
-        {selectedItem && (
+        {selectedItem && project.status !== 'finished' && !project.finishedAt && (
           <TaskActionSheet
             api={api}
             task={selectedItem}
@@ -235,10 +306,12 @@ export default function ProjectDetailPage({ api }) {
 
         <details className="stack">
           <summary>Gallery</summary>
-          <label className="gallery-upload-button">
-            <span>Upload picture</span>
-            <input className="gallery-upload-input" type="file" accept="image/*" onChange={upload} />
-          </label>
+          {project.status !== 'finished' && !project.finishedAt && (
+            <label className="gallery-upload-button">
+              <span>Upload picture</span>
+              <input className="gallery-upload-input" type="file" accept="image/*" onChange={upload} />
+            </label>
+          )}
           <div className="gallery">{[...(project.gallery || [])].sort((a, b) => a.createdAt - b.createdAt).map((img) => (
             <button type="button" className="img-card" key={img.id} onClick={() => setSelectedGalleryImage(img)} aria-label={`Open ${img.name || 'project photo'} in full-resolution viewer`}>
               <span className="img-card-frame">
@@ -253,8 +326,8 @@ export default function ProjectDetailPage({ api }) {
           <ImageViewer
             image={selectedGalleryImage}
             onClose={() => setSelectedGalleryImage(null)}
-            onRotate={() => rotateGalleryImage(selectedGalleryImage)}
-            onDelete={() => deleteGalleryImage(selectedGalleryImage)}
+            onRotate={(project.status === 'finished' || project.finishedAt) ? undefined : () => rotateGalleryImage(selectedGalleryImage)}
+            onDelete={(project.status === 'finished' || project.finishedAt) ? undefined : () => deleteGalleryImage(selectedGalleryImage)}
           />
         )}
       </>)}
@@ -288,6 +361,10 @@ export default function ProjectDetailPage({ api }) {
           projectName={getProjectName(project)}
           onClose={() => setHistoryTask(null)}
         />
+      )}
+
+      {projectCompletionSummary && (
+        <ProjectCompletionSheet summary={projectCompletionSummary} onClose={() => setProjectCompletionSummary(null)} />
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-export const STATUSES = ['active', 'paused', 'hidden', 'archived'];
+export const STATUSES = ['active', 'paused', 'hidden', 'archived', 'finished'];
 export const HMM_DESTINATION = 'hmm';
 export const PROJECT_DESTINATION = 'project';
 export const HMM_PROJECT_ID = 'hmm';
@@ -38,7 +38,7 @@ export function getProjectName(project = {}) {
 
 export function normalizeProject(project = {}) {
   const now = Date.now();
-  const status = project.status || (project.archived ? 'archived' : project.hidden ? 'hidden' : 'active');
+  const status = project.status || (project.finishedAt ? 'finished' : project.archived ? 'archived' : project.hidden ? 'hidden' : 'active');
   const name = getProjectName(project);
   return {
     ...project,
@@ -50,6 +50,7 @@ export function normalizeProject(project = {}) {
     tasksDone: Number.isFinite(Number(project.tasksDone)) ? Number(project.tasksDone) : 0,
     archived: project.archived ?? status === 'archived',
     hidden: project.hidden ?? status === 'hidden',
+    finishedAt: project.finishedAt == null ? null : Number(project.finishedAt) || null,
     createdAt: project.createdAt || now,
     updatedAt: project.updatedAt || project.createdAt || now,
     lastInteractedAt: project.lastInteractedAt ?? null,
@@ -141,7 +142,7 @@ export function sortByPriorityThenNewest(a, b) {
 
 export function isRealProject(project) {
   if (!project || project.id === HMM_PROJECT_ID) return false;
-  return project.status !== 'archived' && project.status !== 'hidden' && !project.archived && !project.hidden;
+  return project.status !== 'archived' && project.status !== 'hidden' && project.status !== 'finished' && !project.archived && !project.hidden && !project.finishedAt;
 }
 
 export function getRealProjects(projects = []) {
@@ -297,7 +298,7 @@ function migrateNotesFromLegacy(input = {}, projects = []) {
 export function buildDefaultData() {
   const now = Date.now();
   return {
-    meta: { appName: 'Master Plan', schemaVersion: 10, exportType: 'full-backup', exportedAt: new Date(now).toISOString() },
+    meta: { appName: 'Master Plan', schemaVersion: 11, exportType: 'full-backup', exportedAt: new Date(now).toISOString() },
     settings: {
       lastDestination: HMM_DESTINATION,
       lastSelectedProjectId: null,
@@ -312,6 +313,7 @@ export function buildDefaultData() {
       backupReminderAnchorAt: now,
       lastSuccessfulBackupAt: null,
       backupReminderSnoozeUntil: null,
+      focusModeEnabled: true,
     },
     projects: [],
     notes: [],
@@ -400,7 +402,7 @@ export function buildGlobalNoteCleanupData(input, now = Date.now()) {
 
 export function migrateData(input) {
   const base = buildDefaultData(); const data = { ...base, ...(input || {}) };
-  data.meta = { ...base.meta, ...(input?.meta || {}), schemaVersion: 10, appName: 'Master Plan' };
+  data.meta = { ...base.meta, ...(input?.meta || {}), schemaVersion: 11, appName: 'Master Plan' };
   data.projects = (Array.isArray(input?.projects) ? input.projects : []).map(normalizeProject).filter((project) => project.id !== HMM_PROJECT_ID);
   const projectIds = new Set(data.projects.map((project) => project.id));
   data.captures = (Array.isArray(input?.captures) ? input.captures : []).map(normalizeCapture);
@@ -493,7 +495,8 @@ export function migrateData(input) {
   data.settings.backupReminderAnchorAt = Number(data.settings.backupReminderAnchorAt) || Date.now();
   data.settings.lastSuccessfulBackupAt = data.settings.lastSuccessfulBackupAt == null ? null : Number(data.settings.lastSuccessfulBackupAt) || null;
   data.settings.backupReminderSnoozeUntil = data.settings.backupReminderSnoozeUntil == null ? null : Number(data.settings.backupReminderSnoozeUntil) || null;
-  if (data.settings.lastSelectedProjectId && !data.projects.some((p) => p.id === data.settings.lastSelectedProjectId && p.status !== 'archived' && p.status !== 'hidden')) {
+  data.settings.focusModeEnabled = data.settings.focusModeEnabled !== false;
+  if (data.settings.lastSelectedProjectId && !data.projects.some((p) => p.id === data.settings.lastSelectedProjectId && p.status !== 'archived' && p.status !== 'hidden' && p.status !== 'finished' && !p.finishedAt)) {
     data.settings.lastSelectedProjectId = data.projects.find((p) => p.status === 'active')?.id || null;
   }
   if (!data.settings.lastDestination || (data.settings.lastDestination !== HMM_DESTINATION && !projectIds.has(data.settings.lastDestination))) {

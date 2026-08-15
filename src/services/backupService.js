@@ -4,7 +4,7 @@ import { migrateData } from '../lib/model';
 const MasterPlanBackup = registerPlugin('MasterPlanBackup');
 const BACKUP_FORMAT = 'master-plan-backup';
 const BACKUP_FORMAT_VERSION = 1;
-const APP_VERSION = '0.3.0';
+const APP_VERSION = '0.4.0';
 const MAX_DRIVE_BACKUPS = 3;
 
 function isAndroidNative() {
@@ -57,7 +57,7 @@ export async function createBackupPackage(data) {
     meta: {
       ...(data?.meta || {}),
       appName: 'Master Plan',
-      schemaVersion: 10,
+      schemaVersion: 11,
       exportType: 'full-backup',
       exportedAt: createdAt,
     },
@@ -69,7 +69,7 @@ export async function createBackupPackage(data) {
     formatVersion: BACKUP_FORMAT_VERSION,
     appName: 'Master Plan',
     appVersion: APP_VERSION,
-    schemaVersion: 10,
+    schemaVersion: 11,
     createdAt,
     counts: getCounts(state),
     integrity: stateDigest ? { algorithm: 'SHA-256', stateDigest } : null,

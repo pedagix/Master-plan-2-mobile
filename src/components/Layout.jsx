@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import CurrentTaskBar from './CurrentTaskBar';
+import FocusModePanel from './FocusModePanel';
 
 const links = [
   ['/aha', 'Notes'],
@@ -11,7 +12,16 @@ const links = [
 export default function Layout({ children, api, noteSaveConfirmation = { visible: false, id: 0 } }) {
   const location = useLocation();
   const [keyboardOpen, setKeyboardOpen] = useState(false);
-  const activeHeaderTitle = location.pathname.startsWith('/reports')
+  const [focusDismissedTaskId, setFocusDismissedTaskId] = useState(null);
+  const activeTask = api?.data?.activeTask;
+  const focusModeActive = Boolean(
+    api
+    && api.data.settings?.focusModeEnabled !== false
+    && activeTask
+    && ['running', 'break'].includes(activeTask.status)
+    && focusDismissedTaskId !== activeTask.id
+  );
+  const activeHeaderTitle = focusModeActive ? 'Focus' : location.pathname.startsWith('/reports')
     ? 'Reports'
     : location.pathname.startsWith('/settings')
       ? 'System'
@@ -22,6 +32,10 @@ export default function Layout({ children, api, noteSaveConfirmation = { visible
           : location.pathname.startsWith('/aha')
             ? 'Notes'
             : 'Master Plan';
+
+  useEffect(() => {
+    if (!activeTask?.id) setFocusDismissedTaskId(null);
+  }, [activeTask?.id]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -78,7 +92,7 @@ export default function Layout({ children, api, noteSaveConfirmation = { visible
         : 'section-neutral';
 
   return (
-    <div className={`app-shell ${sectionClass} ${keyboardOpen ? 'keyboard-open' : ''} ${api?.data?.activeTask ? 'has-now-bar' : ''} ${noteSaveConfirmation.visible ? 'save-signal-active' : ''}`}>
+    <div className={`app-shell ${sectionClass} ${keyboardOpen ? 'keyboard-open' : ''} ${api?.data?.activeTask ? 'has-now-bar' : ''} ${focusModeActive ? 'focus-mode-active' : ''} ${noteSaveConfirmation.visible ? 'save-signal-active' : ''}`}>
       <header className="top-header">
         <div className="header-identity">
           <span className="header-status-dot" aria-hidden="true" />
@@ -93,14 +107,14 @@ export default function Layout({ children, api, noteSaveConfirmation = { visible
           </div>
         )}
 
-        {api && <NavLink to="/settings" className="header-settings-link" aria-label="Open system settings">SYS</NavLink>}
+        {api && <NavLink to="/settings" className="header-settings-link" aria-label="Open system settings" onClick={() => { if (focusModeActive) setFocusDismissedTaskId(activeTask.id); }}>SYS</NavLink>}
       </header>
 
-      <main className="app-main">{children}</main>
+      <main className="app-main">{focusModeActive ? <FocusModePanel api={api} onShowApp={() => setFocusDismissedTaskId(activeTask.id)} /> : children}</main>
 
       {api && <CurrentTaskBar api={api} keyboardOpen={keyboardOpen} />}
 
-      {api && (
+      {api && !focusModeActive && (
         <nav className="bottom-nav" aria-label="Main navigation">
           {links.map(([to, label]) => (
             <NavLink

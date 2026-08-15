@@ -1,3 +1,18 @@
+# 2026-08-15 — Momentum, focus and continuation layer (v0.4)
+
+- Data schema advanced to v11. Existing v10 local data/backups migrate forward in place.
+- Added highest-priority next-task suggestions from the most recently worked active project after a task completes and once on app startup when NOW is empty.
+- Added Project Pulse for fast context reconstruction after at least six hours away from a project.
+- Added optional automatic Focus view, enabled by default and switchable in SYS → Focus.
+- Added Capture thought from both Focus view and the expanded NOW bar; capture is saved to Plans without disturbing the active task.
+- Added subtle project momentum states (FLOW / MOVING / WARM / COOL / QUIET) based on meaningful recent work rather than streaks or points.
+- Added dormant-project rescue after 14 days without meaningful movement, with Continue, Redefine, Pause and Archive actions.
+- Added subtle task-completion feedback before the next-task suggestion appears.
+- Added a daily Projects summary for focused time, completed steps and projects advanced.
+- Added explicit Finished project state, Mark finished / Reopen controls, a completion moment, persistent completion stats, and a Finished projects section.
+- Focus/continuation features are local-only and are included automatically in Drive/portable backups.
+- Android test version codes now use the v0.4 range (`400000 + GitHub run number`) so the APK reliably updates older v0.3 test builds.
+
 # 2026-08-15 — Local-only persistence + manual Google Drive backups
 
 - Removed Firebase/Firestore/Auth code and the Firebase package from the active project. Master Plan now has one live source of truth: the on-device local database.
@@ -43,7 +58,7 @@ Files added/changed include:
 - Successful `main` builds publish `MasterPlan-test.apk` as a GitHub prerelease for direct download.
 - Added a stable development-only signing keystore so successive cloud APKs can update the installed test app without uninstalling it.
 - Development Android identity is now `app.masterplan.mobile.dev`; production will use a separate identity/signing setup.
-- GitHub workflow run number becomes Android `versionCode`, guaranteeing newer test builds have increasing versions.
+- GitHub workflow run number contributes to an increasing Android `versionCode` within the release range.
 - Capacitor core/Android/CLI pinned to 8.5.0 and Local Notifications pinned to 8.2.1.
 - Added `PHONE_ONLY_WORKFLOW.md` and a new root `README.md`.
 - Generated Android build folders are intentionally ignored; GitHub generates a clean Android project reproducibly in the cloud.

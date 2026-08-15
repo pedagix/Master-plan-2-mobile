@@ -439,6 +439,17 @@ export default function SettingsPage({ api }) {
 
   return (
     <div className="stack page-screen settings-page">
+      <section className="system-panel focus-settings-panel">
+        <div className="system-panel-heading">
+          <span>FOCUS</span>
+          <small>Reduce friction</small>
+        </div>
+        <p className="helper-text">When a task is running, Master Plan can replace the normal app view with a minimal focus screen. Pause or finish controls remain in the NOW bar.</p>
+        <div className="notification-toggle-list">
+          <NotificationToggle label="Automatic focus view" description="Enter the stripped-down focus screen when a task starts. You can temporarily show the full app from the focus screen." checked={notificationSettings.focusModeEnabled !== false} onChange={(value) => updateSetting('focusModeEnabled', value)} />
+        </div>
+      </section>
+
       <section className="system-panel notification-settings-panel">
         <div className="system-panel-heading">
           <span>NOTIFICATIONS</span>

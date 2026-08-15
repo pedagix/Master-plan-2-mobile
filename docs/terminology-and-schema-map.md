@@ -14,7 +14,7 @@ Older Aha / Hmm / Ta-da names can still appear in internal filenames/routes for 
 
 - Main state key: `master_plan_v1`
 - Recovery snapshots: `master_plan_rollbacks_v1`
-- Current schema: v10
+- Current schema: v11
 
 The complete canonical state is one local object normalized by `migrateData(...)`.
 
@@ -31,7 +31,7 @@ The complete canonical state is one local object normalized by `migrateData(...)
 | `settings` | App preferences | Notifications plus backup reminder timestamps. |
 | `captures[]`, `suggestions[]`, `tasks[]`, `checklists[]`, `questions[]` | Legacy-compatible structures | Preserved/migrated so older backups can still load. |
 
-## Backup-related settings (schema v10)
+## Backup-related settings (introduced in schema v10)
 
 - `backupReminderEnabled`
 - `backupReminderAnchorAt`
@@ -47,3 +47,8 @@ Current external backup files use `.mpbackup` and contain the full migrated stat
 ## Rename safety
 
 Internal route/component filenames such as `AhaPage`, `HmmPage`, and `TaDaPage` are compatibility details. Renaming those is lower priority than preserving schema and upgrade compatibility. User-facing copy should consistently use Notes / Plans / Projects.
+
+
+## Momentum/focus settings (schema v11)
+- `focusModeEnabled`: whether running tasks automatically enter the minimal Focus view.
+- Projects may use `status: "finished"` with `finishedAt` to preserve completed projects without archiving them.

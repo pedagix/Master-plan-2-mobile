@@ -8,7 +8,11 @@ import TaDaPage from './pages/TaDaPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import SettingsPage from './pages/SettingsPage';
 import ReportsPage from './pages/ReportsPage';
-import { buildResetData, migrateData } from './lib/model';
+import NextTaskSuggestionSheet from './components/NextTaskSuggestionSheet';
+import AccomplishmentToast from './components/AccomplishmentToast';
+import { buildResetData, getProjectName, migrateData } from './lib/model';
+import { completeTaskData } from './lib/taskTracking';
+import { buildNextTaskSuggestion } from './lib/projectMomentum';
 import {
   addMasterPlanNotificationActionListener,
   syncBackupReminderNotifications,
@@ -44,6 +48,13 @@ export default function App() {
   dataRef.current = data;
   const [noteSaveConfirmation, setNoteSaveConfirmation] = useState({ visible: false, id: 0 });
   const noteSaveConfirmationTimerRef = useRef(null);
+  const [nextTaskSuggestion, setNextTaskSuggestion] = useState(null);
+  const nextTaskSuggestionRef = useRef(nextTaskSuggestion);
+  nextTaskSuggestionRef.current = nextTaskSuggestion;
+  const [accomplishment, setAccomplishment] = useState(null);
+  const startupSuggestionCheckedRef = useRef(false);
+  const accomplishmentTimerRef = useRef(null);
+  const suggestionTimerRef = useRef(null);
 
   const setDataPersisted = useCallback((nextOrUpdater) => {
     const previous = dataRef.current;
@@ -62,7 +73,34 @@ export default function App() {
     }, 1500);
   }, []);
 
-  useEffect(() => () => window.clearTimeout(noteSaveConfirmationTimerRef.current), []);
+  useEffect(() => () => {
+    window.clearTimeout(noteSaveConfirmationTimerRef.current);
+    window.clearTimeout(accomplishmentTimerRef.current);
+    window.clearTimeout(suggestionTimerRef.current);
+  }, []);
+
+  useEffect(() => {
+    if (startupSuggestionCheckedRef.current) return;
+    startupSuggestionCheckedRef.current = true;
+    if (dataRef.current.activeTask) return;
+    const suggestion = buildNextTaskSuggestion(dataRef.current);
+    if (suggestion) window.setTimeout(() => setNextTaskSuggestion(suggestion), 450);
+  }, []);
+
+  // A native Android app can remain mounted while it sits in the background.
+  // Treat returning to the foreground like opening the app: if NOW is empty,
+  // offer the highest-priority continuation from the last worked project.
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState !== 'visible' || dataRef.current.activeTask || nextTaskSuggestionRef.current) return;
+      const suggestion = buildNextTaskSuggestion(dataRef.current);
+      if (suggestion) window.setTimeout(() => {
+        if (!dataRef.current.activeTask && !nextTaskSuggestionRef.current) setNextTaskSuggestion(suggestion);
+      }, 300);
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
 
   // Persist migrated data once on startup. This also records newly introduced
   // local-only settings without relying on any network service.
@@ -145,6 +183,35 @@ export default function App() {
     return () => { listener?.remove?.(); };
   }, [navigate, setDataPersisted]);
 
+
+  const completeTask = useCallback((task, { valueRating = null } = {}) => {
+    let completedState = dataRef.current;
+    setDataPersisted((previous) => {
+      completedState = completeTaskData(previous, task, { valueRating });
+      return completedState;
+    });
+
+    const completed = completedState.completedTasks?.[0];
+    const project = task?.projectId ? completedState.projects?.find((item) => item.id === task.projectId) : null;
+    setAccomplishment({
+      id: completed?.id || `${task?.id || 'task'}-${Date.now()}`,
+      taskText: task?.text || completed?.text || 'Task complete',
+      trackedMs: Number(completed?.trackedMs) || 0,
+      projectName: project ? getProjectName(project) : null,
+    });
+    window.clearTimeout(accomplishmentTimerRef.current);
+    accomplishmentTimerRef.current = window.setTimeout(() => setAccomplishment(null), 2200);
+
+    window.clearTimeout(suggestionTimerRef.current);
+    if (!completedState.activeTask) {
+      const suggestion = buildNextTaskSuggestion(completedState, task?.projectId || null);
+      if (suggestion) {
+        suggestionTimerRef.current = window.setTimeout(() => setNextTaskSuggestion(suggestion), 2350);
+      }
+    }
+    return completedState;
+  }, [setDataPersisted]);
+
   const resetAppData = useCallback(async () => {
     const resetData = buildResetData();
     localDataStore.save(resetData);
@@ -200,26 +267,31 @@ export default function App() {
     deleteRollbackById: (id) => localDataStore.deleteRollbackById?.(id),
     restoreBackupState,
     markBackupSuccessful,
+    completeTask,
     resetAppData,
     deleteAllAppData,
-  }), [data, deleteAllAppData, markBackupSuccessful, resetAppData, restoreBackupState, setDataPersisted, showNoteSavedConfirmation]);
+  }), [completeTask, data, deleteAllAppData, markBackupSuccessful, resetAppData, restoreBackupState, setDataPersisted, showNoteSavedConfirmation]);
 
-  return <Layout api={api} noteSaveConfirmation={noteSaveConfirmation}><Routes>
-    <Route path="/" element={<Navigate to="/aha" replace />} />
-    <Route path="/notes" element={<Navigate to="/aha" replace />} />
-    <Route path="/plans" element={<Navigate to="/hmm" replace />} />
-    <Route path="/projects" element={<Navigate to="/ta-da" replace />} />
-    <Route path="/aha" element={<AhaPage api={api} />} />
-    <Route path="/hmm" element={<HmmPage api={api} />} />
-    <Route path="/ta-da" element={<TaDaPage api={api} />} />
-    <Route path="/projects/:projectId" element={<ProjectDetailPage api={api} />} />
-    <Route path="/capture" element={<Navigate to="/aha" replace />} />
-    <Route path="/notes-processor" element={<Navigate to="/hmm" replace />} />
-    <Route path="/inbox" element={<Navigate to="/hmm" replace />} />
-    <Route path="/ideas" element={<Navigate to="/hmm" replace />} />
-    <Route path="/raw-notes" element={<Navigate to="/hmm" replace />} />
-    <Route path="/settings" element={<SettingsPage api={api} />} />
-    <Route path="/reports" element={<ReportsPage api={api} />} />
-    <Route path="*" element={<Navigate to="/aha" replace />} />
-  </Routes></Layout>;
+  return <>
+    <Layout api={api} noteSaveConfirmation={noteSaveConfirmation}><Routes>
+      <Route path="/" element={<Navigate to="/aha" replace />} />
+      <Route path="/notes" element={<Navigate to="/aha" replace />} />
+      <Route path="/plans" element={<Navigate to="/hmm" replace />} />
+      <Route path="/projects" element={<Navigate to="/ta-da" replace />} />
+      <Route path="/aha" element={<AhaPage api={api} />} />
+      <Route path="/hmm" element={<HmmPage api={api} />} />
+      <Route path="/ta-da" element={<TaDaPage api={api} />} />
+      <Route path="/projects/:projectId" element={<ProjectDetailPage api={api} />} />
+      <Route path="/capture" element={<Navigate to="/aha" replace />} />
+      <Route path="/notes-processor" element={<Navigate to="/hmm" replace />} />
+      <Route path="/inbox" element={<Navigate to="/hmm" replace />} />
+      <Route path="/ideas" element={<Navigate to="/hmm" replace />} />
+      <Route path="/raw-notes" element={<Navigate to="/hmm" replace />} />
+      <Route path="/settings" element={<SettingsPage api={api} />} />
+      <Route path="/reports" element={<ReportsPage api={api} />} />
+      <Route path="*" element={<Navigate to="/aha" replace />} />
+    </Routes></Layout>
+    <AccomplishmentToast accomplishment={accomplishment} />
+    <NextTaskSuggestionSheet api={api} suggestion={nextTaskSuggestion} onDismiss={() => setNextTaskSuggestion(null)} />
+  </>;
 }

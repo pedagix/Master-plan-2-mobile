@@ -37,6 +37,20 @@ Then open **SYS → Backup**:
 
 Master Plan keeps the live database on the device. Drive stores manual recovery copies only, with the three newest Master Plan backups retained when the provider allows old-file deletion. A separate **Export backup file** option creates the same complete backup and lets the user choose the destination.
 
+
+## Momentum and focus layer (v0.4)
+
+The current build adds continuation-focused features without changing the local-first/Drive backup architecture:
+- highest-priority next-task suggestions after completion, app startup, and foreground return when NOW is empty;
+- Project Pulse when returning after time away;
+- optional automatic Focus view (SYS → Focus);
+- distraction capture without leaving NOW;
+- subtle project momentum indicators and dormant-project rescue;
+- quiet task-completion feedback and a daily progress strip;
+- explicit Finished project state with persistent completion summaries.
+
+See `docs/momentum-and-focus.md` for the behavioral rules.
+
 ## If the automatic build does not start
 
 On GitHub:

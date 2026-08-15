@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import TaskCompletionSheet from './TaskCompletionSheet';
+import QuickCaptureSheet from './QuickCaptureSheet';
 import {
   continueAfterCheckInData,
   correctAndPauseActiveTaskData,
@@ -40,6 +41,7 @@ export default function CurrentTaskBar({ api, keyboardOpen = false }) {
   const [correctionOpen, setCorrectionOpen] = useState(false);
   const [customCorrection, setCustomCorrection] = useState('');
   const [completionTask, setCompletionTask] = useState(null);
+  const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
   const lastPromptedAtRef = useRef(null);
 
   useEffect(() => {
@@ -115,6 +117,7 @@ export default function CurrentTaskBar({ api, keyboardOpen = false }) {
             {active.status === 'running' && active.checkInMinutes > 0 && <small>Check-in every {active.checkInMinutes} min</small>}
             {breakDone && <div className="now-break-ready">Break complete — ready when you are.</div>}
             <div className="actions">
+              <button type="button" className="secondary-button" onClick={() => setQuickCaptureOpen(true)}>Capture thought</button>
               {active.status === 'running' && <button type="button" className="secondary-button" onClick={() => api.setData((prev) => startBreakData(prev, 5))}>5 min break</button>}
               <button type="button" className="secondary-button" onClick={pauseResume}>{active.status === 'running' ? 'Pause' : 'Resume'}</button>
               <button type="button" onClick={finish}>Finish task</button>
@@ -122,6 +125,8 @@ export default function CurrentTaskBar({ api, keyboardOpen = false }) {
           </div>
         )}
       </section>
+
+      {quickCaptureOpen && <QuickCaptureSheet api={api} activeTask={active} onClose={() => setQuickCaptureOpen(false)} />}
 
       {completionTask && (
         <TaskCompletionSheet
