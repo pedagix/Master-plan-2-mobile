@@ -1,3 +1,40 @@
+# 2026-08-15 — Local-only persistence + manual Google Drive backups
+
+- Removed Firebase/Firestore/Auth code and the Firebase package from the active project. Master Plan now has one live source of truth: the on-device local database.
+- Updated the data schema to v10 with backup reminder settings (`backupReminderEnabled`, `backupReminderAnchorAt`, `lastSuccessfulBackupAt`).
+- Added a complete `.mpbackup` format containing migrated app state, metadata, record counts, and SHA-256 integrity data when Web Crypto is available.
+- Added restore compatibility for earlier Master Plan full JSON backups.
+- Added a native Android `MasterPlanBackup` Capacitor plugin built on the Android system document/folder picker.
+- Added **Connect Google Drive**: the user chooses a Drive folder once and Android persists access to that folder across app restarts/updates.
+- Added one-tap **Back up now** after connection. A new backup is written successfully before rotation; Master Plan keeps the three newest matching Drive backups when old-file deletion is allowed.
+- Added Drive backup listing and restore from any of the three retained copies.
+- Restore validates the selected backup and creates a local recovery snapshot before replacing live data, with an immediate **Undo last restore** action in Settings.
+- Added **Export backup file** as the only secondary backup path. It creates the same full backup and opens Android's system save destination chooser.
+- A successful Drive backup or portable export resets the backup reminder clock.
+- Added weekly Android backup reminders based on the last successful complete backup, with **Back up** and **Remind tomorrow** notification actions. A successful one-tap backup resets the clock; snooze reschedules it one day later.
+- Disconnecting a Drive folder only removes Master Plan's remembered folder access; existing cloud backup files are left untouched.
+- Local delete/reset operations do not delete Drive or exported backup files.
+- Added the custom backup plugin to the GitHub cloud APK generation script/workflow so the existing phone-only GitHub → APK process remains unchanged.
+- Updated current-state storage, security, deployment, terminology, and work-session documentation to reflect the local-only architecture.
+
+Files added/changed include:
+- `package.json`
+- `.github/workflows/build-android-apk.yml`
+- `.gitignore`
+- `scripts/configure-android.mjs`
+- `native-assets/android/MasterPlanBackupPlugin.java`
+- `src/services/backupService.js`
+- `src/services/notificationScheduler.js`
+- `src/services/localDataStore.ts`
+- `src/services/dataStore.ts`
+- `src/App.jsx`
+- `src/pages/SettingsPage.jsx`
+- `src/components/TaskActionSheet.jsx`
+- `src/components/TaskHistorySheet.jsx`
+- `src/lib/model.js`
+- `src/styles.css`
+- current project documentation.
+
 # 2026-08-14 — Phone-only Android cloud-build workflow
 
 - Added `.github/workflows/build-android-apk.yml`.

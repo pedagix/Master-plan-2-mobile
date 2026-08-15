@@ -2,62 +2,63 @@
 
 ## Phone-first Android development
 
-The recommended Master Plan test workflow is **GitHub Actions cloud building**. No Android development tools are required on the phone.
+The primary test workflow is GitHub Actions cloud building. `.github/workflows/build-android-apk.yml` runs on pushes to `main` and can also be started manually.
 
-The workflow is:
+A successful main-branch build produces:
 
-`.github/workflows/build-android-apk.yml`
-
-It runs automatically on every push to `main` and can also be started manually from GitHub Actions.
-
-Each successful `main` build creates:
 - an Actions artifact retained for 30 days; and
-- a GitHub prerelease containing **MasterPlan-test.apk** for direct phone download.
+- a GitHub prerelease containing `MasterPlan-test.apk` for direct phone installation.
 
-See `PHONE_ONLY_WORKFLOW.md` for the user-facing process.
+The workflow installs Node 22, builds Vite, generates a clean Capacitor Android project, applies `scripts/configure-android.mjs`, runs Capacitor sync, builds with Gradle, and publishes the APK.
 
-## Why the Android project is generated in the cloud
+## Native Android patches
 
-The source repository keeps Capacitor configuration and native patches as the source of truth. The workflow generates a clean Android project from the pinned Capacitor 8 dependency line, applies `scripts/configure-android.mjs`, syncs the web assets/plugins, then runs Gradle.
+`scripts/configure-android.mjs` applies the native pieces that are not part of the React bundle:
 
-This avoids requiring Android Studio or a checked-in generated Android project during phone-only iteration.
+- Master Plan notification sound;
+- exact-alarm permission for task/check-in timing;
+- the `MasterPlanBackupPlugin` Android Storage Access Framework bridge;
+- fixed development signing;
+- monotonically increasing test version code/name.
+
+The custom backup plugin is copied from `native-assets/android/MasterPlanBackupPlugin.java` into the generated app package and registered in `MainActivity` on each cloud build.
+
+## Local-first persistence and backup
+
+The live Master Plan database is local-only. There is no remote database dependency in the current build.
+
+Google Drive is used as a manual recovery destination through a user-selected Android document-tree folder. Master Plan can write/read that folder after the user grants persistent access, rotate the three newest backups, and restore a selected backup. A second portable-export path uses Android's normal save picker.
+
+Weekly backup reminders use local Android notifications and are reset after a successful full backup.
+
+## Native task notifications
+
+Android local notifications cover task check-ins, break completion, and estimate completion. Schedules are derived from local task timestamps, so an internet connection is not required after they are scheduled.
+
+Android notification permission and precise-alarm access must be granted when required by the OS.
+
+## Browser/PWA build
+
+The browser target remains available:
+
+- framework: Vite
+- build: `npm run build`
+- output: `dist`
+- Node: 22+
+
+Native Drive-folder backup is Android-only. Portable backup export/restore remains available in the browser using normal file download/upload behavior.
 
 ## Stable test signing
 
-Cloud runners are disposable. Their ordinary debug keys would change between runs, which would prevent Android from updating an existing test installation.
+`native-assets/android/masterplan-dev.keystore` is deliberately included for development APK continuity under package id `app.masterplan.mobile.dev`.
 
-For that reason, this project includes:
-
-`native-assets/android/masterplan-dev.keystore`
-
-It is used **only for development test APKs** under `app.masterplan.mobile.dev`. The public/Play Store release must use a separate private production key.
-
-## Native notification behavior
-
-The Android build supports local notifications for:
-- task check-ins;
-- break completion;
-- estimated-time completion.
-
-The notification schedule is derived from local `activeTask` state. It does not depend on Firebase or an internet connection after the alarm has been scheduled on the device.
-
-Android notification permission and precise-alarm access must be granted by the user when required by their Android version.
-
-## Cloudflare Pages / web build
-
-The browser/PWA build is still supported.
-
-- Framework: Vite
-- Build command: `npm run build`
-- Output: `dist`
-- Node: 22+
+Do not use that identity/key for production.
 
 ## Public Android release later
 
-When Master Plan is ready for distribution:
-1. create a private production signing key;
-2. move production signing material to GitHub secrets / Play App Signing;
-3. build a signed release `.aab`;
-4. publish the AAB to Google Play.
+For public distribution:
 
-Do not publish the included development signing key as the production identity.
+1. create a separate production application identity as appropriate;
+2. use a private production signing key / Play App Signing;
+3. create a signed release AAB;
+4. publish through Google Play.

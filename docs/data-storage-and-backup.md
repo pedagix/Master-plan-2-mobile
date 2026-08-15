@@ -1,219 +1,86 @@
-# Master Plan Mobile — Data Storage, Backup, Import/Export, and Deletion Reference
+# Master Plan — Data storage and backup
 
-## 1) Where data is stored
+## Source of truth
 
-### Local-first storage (always active)
-- The app stores primary state in browser `localStorage` under:
-  - `master_plan_v1` (full app state JSON)
-  - `master_plan_rollbacks_v1` (recent rollback/import snapshots)
-- `localDataStore.load()` reads `master_plan_v1`, parses JSON, and always runs `migrateData(...)` so older/malformed payloads are normalized to current schema defaults. If parsing fails, defaults are used.  
-- `localDataStore.save()` writes migrated full-state JSON back to `master_plan_v1`.
+Master Plan is local-first. The live database is stored on the Android device/browser in `localStorage` under `master_plan_v1` and is normalized through `migrateData(...)` whenever it is loaded or saved.
 
-### Cloud sync (optional, only when Firebase is configured + user signed in)
-- On each local state change, the app saves local first. Firestore save is queued **only after initial login hydration/merge completes** for the signed-in user.
-- Firestore is structured per user:
-  - `users/{uid}/projects/{projectId}`
-  - `users/{uid}/notes/{captureId}` (this collection stores **captures**)
-  - `users/{uid}/suggestions/{suggestionId}`
-  - `users/{uid}/galleryImages/{imageId}`
-- On login, cloud data is loaded, compared with local state, safely merged, and only then cloud writes are allowed.
+There is no account, server database, or automatic cloud merge in the current architecture. A network connection is not required for normal task/project/note use or for already-scheduled Android notifications.
 
-## 2) Full JSON structure (current schema v7)
+Recent recovery snapshots are kept separately under `master_plan_rollbacks_v1`. These snapshots are intended for safe restore/import operations and are not a substitute for an external backup.
 
-The canonical app state object (local backup/export and in-memory model) contains:
+## Current schema
 
-- `meta`
-  - `appName`: always `Master Plan`
-  - `schemaVersion`: forced to `3`
-  - `exportType`: e.g. `full-backup`
-  - `exportedAt`: ISO timestamp
-
-- `settings`
-  - `activePromptProfileId`
-  - `notesProcessorHiddenActionIds[]`
-  - `lastDestination` (`hmm` or a valid project id)
-  - `lastSelectedProjectId`
-  - `hasCompletedInitialSetup`
-
-  - `activePromptProfileId`
-  - `mainRole`, `tone`, `goal`
+The canonical state is schema version 10. Important root fields include:
 
 - `projects[]`
-  - normalized fields include: `id`, `name`, `title`, `description`, `status`, `tasksDone`, `archived`, `hidden`, `createdAt`, `updatedAt`, `lastInteractedAt`, `interactionCount`, `notes[]` (legacy-compatible), `gallery[]`
-
-- `notes[]` (canonical Aha notes in root app state, distinct from Firestore `users/{uid}/notes/*` capture docs)
-  - typical fields: `id`, `text`, `createdAt`, `updatedAt`, `destination`, `projectId`, `priority`, `important`, `isTodo`, `pendingTodoIntent`, `deleted`, `deletedAt`, `selectedActions[]`, `sourceType`, `sourceId`, `sourceCaptureId`, `sourceSuggestionId`, `legacyShape`
-
+- `notes[]`
 - `completedTasks[]`
-  - normalized fields include: `id`, `projectId`, `text`, `priority`, `completedAt`, and source linkage fields when present
+- `taskSessions[]`
+- `activeTask`
+- `taskTracking`
+- `settings`
+- legacy-compatible arrays such as `captures`, `suggestions`, `tasks`, `checklists`, and `questions`
 
-- `captures[]`
-  - fields include: `id`, `text`, `projectId`, `isNewIdea`, `rawState` (`unprocessed|archived`), `analysisState` (`not-analyzed|analyzed`), `processedAt`, `archivedRawAt`, `needsReanalysis`, `needsProjectAssignment`, `candidateProjectIds[]`, `processingTags[]`, timestamps
+Project gallery images are stored inside project state, so they are included in a full Master Plan backup.
 
-- `suggestions[]`
-  - normalized fields include: `state`, `inboxStatus`, `selectedAction`, `approvedAt`, `dismissedAt`, `hiddenAt`, `hiddenUntil`, `importance`, `sourceCaptureId`, `sourceNoteId`, `sourceSuggestionId`, `needsProjectAssignment`
+## Google Drive backup
 
-- Legacy-compatible arrays still kept in root schema:
-  - `tasks[]`, `checklists[]`, `questions[]`
+The primary external backup flow is deliberately manual and user-controlled.
 
-- Learning/logging arrays:
-  - `badIdeaLog[]`, `inboxActionLog[]`, `questionFeedbackLog[]`
+On Android, Master Plan uses the system document-tree picker through the native `MasterPlanBackup` Capacitor plugin. The user chooses Google Drive and selects or creates a folder such as `Master Plan Backups`. Master Plan retains Android's persisted read/write permission for that chosen folder.
 
-- `questionLearningSettings`
-  - `enabled`, `recentQuestionLimit`, `generationMix`, `avoidRecentlyDownvoted`, `preferAnsweredAndUpvoted`
+After the one-time connection, **Back up now** creates a full `.mpbackup` file in the selected Drive folder. A successful backup is created before rotation occurs. Master Plan then keeps the three newest matching `MasterPlan-*.mpbackup` files and attempts to delete older copies. If the cloud provider refuses an old-file deletion, the new backup is retained and rotation can be retried later.
 
-## 3) How data is read and normalized
+Master Plan does not silently upload live edits. Google Drive contains recovery copies only; the on-device state remains authoritative.
 
-- All major entry points call `migrateData(...)`.
-- `migrateData` guarantees:
-  - schema/app metadata normalization
-  - project normalization and status sanitization
-  - capture/suggestion/note normalization with defaults
-  - automatic migration from legacy note-bearing fields into canonical `notes[]` if `notes[]` missing
-  - invalid project links stripped from notes/tasks
-  - settings repair (`lastSelectedProjectId`, `lastDestination`, prompt profiles)
-  - AI instructions synchronized to active prompt profile
+## Weekly reminder
 
-This means nearly any imported JSON shape is coerced into the current stable schema.
+Backup reminders are enabled by default. The reminder clock is based on the most recent successful complete backup. If no backup has been made yet, it starts from the local reminder anchor created by schema migration/default setup.
 
-## 4) How data is edited by feature
+A successful Google Drive backup or a successful portable backup export resets the weekly reminder clock. The reminder uses the same Android local-notification infrastructure as task reminders and does not require a Master Plan server.
 
-- **Aha / Project detail / Hmm flows** edit canonical `notes[]` (create/update/soft-delete), update note flags (`important`, `isTodo`), and may append to `completedTasks[]`.
-- **Capture/Raw Notes workflows** create and edit `captures[]`, including note-processing lifecycle fields (`rawState`, `analysisState`, `processingTags`, etc.).
-- **Inbox workflows** operate on `suggestions[]`, transitioning state/action selections and may create follow-up items (e.g., questions).
+The Android reminder exposes **Back up** and **Remind tomorrow** actions. If Drive is already connected, **Back up** attempts the full backup immediately and then opens Settings for status/confirmation; otherwise it opens Settings so the folder can be connected. **Remind tomorrow** records a one-day snooze and reschedules the reminder without changing the last-successful-backup timestamp.
 
-## 5) Backup and restore behavior
+## Portable backup
 
-### Full export backup
-- “Export full backup” writes a downloadable JSON file of full migrated state plus metadata (`exportType`, `exportedAt`, etc.).
+The secondary backup option is **Export backup file**. It creates the same complete `.mpbackup` package but opens Android's normal save dialog so the user decides what to do with it.
 
-### Rollback snapshots (local)
-- Before risky operations (imports, reset-all prompt actions, etc.), app may save rollback snapshots into `master_plan_rollbacks_v1`.
-- Snapshot contains:
-  - `id`, `createdAt`, `reason`
-  - summary `counts` (`projects`, `notes`, `captures`, `suggestions`, `questions`, `completedTasks`, `includesSettings`)
-  - full `state`
-- Only latest 3 snapshots are retained.
-- Snapshots can be applied (restore) or deleted in Settings.
+Master Plan does not expose separate Dropbox, OneDrive, email, or other provider buttons. The operating system handles the destination chosen by the user.
 
-### Import behavior
-- JSON import is previewed first; if applied, current state can be snapshotted before replace.
-- Pasted plain text can be imported as a new Hmm note entry.
+In the browser build, portable export falls back to a normal file download.
 
-## 6) Deletion semantics
+## Backup package
 
-### Soft delete vs hard delete
-- Canonical `notes[]` deletes are usually **soft deletes** (`deleted: true`, `deletedAt`), preserving record history in same array.
-- Some destructive maintenance actions perform **hard cleanup** (array/field/document removal), described below.
+New backups use names such as:
 
-### Delete all app data
-- Settings provides one destructive clean-slate action: **“Delete all app data.”**
-- It requires explicit confirmation and typed `DELETE` before execution.
-- It creates a local rollback snapshot first (if rollback storage is available), then replaces active state with a clean migrated `buildResetData()` payload.
-- It performs an explicit signed-in Firestore purge for the current user before finalizing cloud reset state:
-  - Deletes all docs under `users/{uid}/projects/*`
-  - Deletes all docs under `users/{uid}/notes/*` (captures)
-  - Deletes all docs under `users/{uid}/suggestions/*`
-  - Deletes all docs under `users/{uid}/galleryImages/*`
-  - Overwrites canonical root app-data fields on `users/{uid}` with the clean reset payload, including `meta.destructiveResetAt`.
-- It deletes user-created data including: projects, project galleries, captures, canonical notes, suggestions, tasks, completed tasks, checklists, questions, `badIdeaLog`, `inboxActionLog`, `questionFeedbackLog`, and legacy local note keys.
-- Project selection defaults are also reset so deleted project ids are not retained in `settings.lastSelectedProjectId` or `settings.lastDestination`.
-- It also clears saved rollback snapshots after the wipe.
-- Firebase Auth users are intentionally not deleted.
+`MasterPlan-2026-08-15-101530-123.mpbackup`
 
-### What remains after deletion
-- Only minimum run-required defaults remain:
-  - schema/meta defaults,
-  - default settings and prompt profile scaffolding,
-  - default AI instruction scaffolding,
-  - default question-learning settings.
-- User-created projects/content are removed. The `hmm` flow remains a workflow destination, not a persisted normal project card.
+The package contains:
 
-## 7) Categories, states, and options in stored data
+- backup format/version;
+- Master Plan app/schema version;
+- creation timestamp;
+- basic record counts;
+- complete migrated app state;
+- SHA-256 integrity metadata when Web Crypto is available.
 
-### Project status categories
-- `active`, `paused`, `hidden`, `archived`
-- “Real” project logic excludes hidden/archived and special `hmm` pseudo-project.
+`parseAndValidateBackup(...)` checks the format and integrity before returning state for restore. Earlier full JSON exports remain restore-compatible.
 
-### Destinations/categories for notes
-- `destination` is either:
-  - `hmm` (inbox/idea space), or
-  - `project` (with valid `projectId`)
+## Restore safety
 
-### Capture processing categories
-- `rawState`: `unprocessed` or `archived`
-- `analysisState`: `not-analyzed` or `analyzed`
-- re-analysis flags and tag-based processing (`processingTags[]`)
+Restore never directly merges an external file into the live state.
 
-### Suggestion/inbox categories
-- `state` includes lifecycle values like pending/approved/dismissed/hidden/bad-idea/converted
-- `inboxStatus` normalized to values like `pending-review`, `approved`, `dismissed`, `hidden`
-- `selectedAction` captures user decision routing
+1. Read the selected Drive/file backup.
+2. Parse and validate it.
+3. Show the user its date and basic record counts.
+4. Ask for explicit confirmation.
+5. Save the current app state as a local recovery snapshot.
+6. Migrate and replace the live state.
 
-### Prompt action categories (settings)
-Default prompt-action IDs currently include:
-- `suggestions`
-- `nextSteps`
-- `checklists`
-- `weeklyReview`
-- `projectCleanup`
-- `motivation`
-- `brutalFilter`
-- `connections`
-- `archiveDeleteRecommendations`
-- `clarifyingQuestions`
-- `followUpQuestions`
-- `newIdeaRouting`
-- `inboxDecisionWorkflow`
-- `rawNotesWorkflow`
+This means a bad, wrong, or unwanted restore does not silently destroy the immediately previous state. After a backup restore, Settings also exposes **Undo last restore** while that safety snapshot remains available.
 
-Each action has configurable: `title`, `description`, `enabled`, `prompt`.
+## Delete/reset behavior
 
-## 8) Firestore vs local schema differences (important)
+Deleting/resetting Master Plan data only affects the local app state unless the user separately deletes external backup files. Existing Google Drive or portable backup files are not removed by an app reset.
 
-- Local canonical state keeps many arrays (`notes`, `captures`, `suggestions`, `questions`, etc.) in one JSON object.
-- Firestore sync persists two layers:
-  - Cloud collections remain as before for operational data: `projects`, `notes` (captures), `suggestions`, and `galleryImages`.
-- On cloud load, the app now **safe-merges** remote data into current local state:
-  - Canonical/root fields are replaced only when explicitly present on remote payload; missing remote root fields keep local values.
-  - `projects/captures/suggestions/notes` are merged by `id` (not blindly replaced).
-  - For same `id`: if both have valid numeric `updatedAt`, newer wins; ties keep local.
-  - If either `updatedAt` is missing, invalid, or otherwise unclear, local data is preserved (remote does not overwrite local by ambiguity/omission).
-  - Remote-only ids are added; local-only ids are retained unless an explicit reset/delete flow is used.
-- Intentional deletion overrides safe merge:
-  - `buildResetData()` writes `meta.destructiveResetAt`.
-  - During cloud hydration, `meta.destructiveResetAt` is treated as a cutoff timestamp, not a permanent reset mode.
-  - Remote entities older than the reset cutoff are filtered out and cannot be rehydrated.
-  - If local and remote share the same reset marker and remote is still empty, local post-reset entities (newly created projects/notes/suggestions) are preserved and reseeded to Firestore.
-  - If local has a newer destructive reset marker, local post-reset data is preserved and stale remote payloads cannot wipe it.
-  - This prevents deleted pre-reset projects from returning while still allowing newly created post-reset data to survive reload/login.
-- If Firestore has no meaningful collection data (projects/captures/suggestions empty or non-usable) and local has data, local state is kept and uploaded to Firestore (first-login cloud seeding).
-- This prevents empty/partial/legacy Firestore reads from silently erasing unsynced local items.
-
-## 9) Legacy compatibility and migration cleanup
-
-- Model contains explicit legacy note field lists to migrate from and to clean out during global purge.
-- Local storage cleanup also removes old key patterns (e.g., old note/capture/inbox/import/export/review key names) to avoid resurrecting stale data.
-- Migration enforces canonical schema version and repairs malformed/incomplete content.
-
-## 10) Operational summary
-
-1. App boots from local storage (`master_plan_v1`) -> migrate -> state.
-2. If Firebase user is available, remote load fetches cloud data and safe-merges it with local state (including id-based collection merges and local-first protection when remote is empty/partial).
-3. During that initial remote decision window, cloud saves are blocked (local saves still run).
-4. If remote is effectively empty and local has meaningful data, local data is pushed to Firestore.
-5. After hydration completes, state changes continue to save locally immediately and queue cloud sync best-effort.
-6. Exports create full JSON backup files.
-7. Risky ops can snapshot full rollback states locally.
-8. “Delete all app data” intentionally clears local and cloud user data, and its reset marker overrides normal safe-merge preservation behavior.
-
-## 11) Manual destructive-reset regression checklist
-
-- Delete all app data from Settings (type `DELETE` to confirm).
-- Create a new project.
-- Create a new note and assign it to that project.
-- On mobile, pull-to-refresh / reload the page.
-- Confirm the new project and note still exist (Aha dropdown + Ta-da list).
-- Wait 2 minutes, then confirm the same data still exists.
-- Log out and log back in.
-- Confirm the same project and note still exist, and old pre-reset data did not return.
+Uninstalling the Android app can remove its local state and the remembered folder permission. Files already stored in Google Drive remain outside the app and can be selected again after reinstalling.

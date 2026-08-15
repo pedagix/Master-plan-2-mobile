@@ -1,7 +1,7 @@
 {
   "name": "master-plan",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,17 +14,16 @@
     "android:cloud:build": "npm run android:cloud:prepare && chmod +x android/gradlew && cd android && ./gradlew assembleDebug"
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0",
-    "firebase": "^11.0.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "6.28.0",
     "@capacitor/core": "8.5.0",
     "@capacitor/android": "8.5.0",
     "@capacitor/local-notifications": "8.2.1"
   },
   "devDependencies": {
-    "vite": "^5.4.10",
-    "@vitejs/plugin-react": "^4.3.2",
+    "vite": "5.4.10",
+    "@vitejs/plugin-react": "4.3.2",
     "@capacitor/cli": "8.5.0"
   },
   "engines": {

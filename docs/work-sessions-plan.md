@@ -1,125 +1,55 @@
-# Master Plan Work Sessions
+# Master Plan — work sessions / NOW
 
-## Locked product direction
+## Core model
 
-Master Plan remains a notes / plans / projects app. Time tracking is an added work-session layer, not a separate command-center product.
+Checklist/task-like notes remain the underlying work items. Time tracking is separate:
 
-Core rule: time tracking must never make it harder to capture notes and ideas or create tasks and projects while a task is running.
+- `taskSessions[]` contains finished working segments.
+- `activeTask` is the single global current session/runtime record.
+- only one task can be active at a time.
 
-## V1 objectives
+All task/session changes are committed to local state immediately. There is no remote write dependency in the current architecture.
 
-- Existing checklist items remain the tasks.
-- Only one task can be current at a time.
-- Starting a task asks for a Check-in interval; check-ins can also be disabled.
-- Elapsed time is calculated from timestamps. The app never persists one timer tick per second.
-- Pausing/resuming creates accurate work-session history.
-- The persistent NOW bar stays small, visibly active, and leaves the rest of Master Plan usable.
-- Check-ins ask whether the user is still on task and can offer a short break.
-- If the user got distracted, they can estimate how many minutes ago work stopped so the active segment can be corrected.
-- Finishing a task ends the current work segment and completes the existing checklist item.
-- Later V1 batches add manual session editing, 0–5 value ratings, estimates, project progression timelines, and global/project time reports.
+## Starting work
 
-## Batch 1 implemented
+Starting a task opens the task action sheet and allows:
 
-- Schema v4 foundation with `taskSessions` and `activeTask`.
-- Separate Firestore `taskSessions` collection and `runtime/activeTask` document.
-- Project checklist and Plans checklist task-action sheet.
-- Check-in interval slider from Off to 2 hours.
-- Start / pause / resume / finish.
-- Small persistent animated NOW bar above bottom navigation.
-- One active task at a time; starting another pauses the running segment first.
-- In-app check-in prompt.
-- “Still working” continues and schedules the next check-in.
-- “Got distracted” can subtract 5/10/15/30/custom minutes and pause the task.
-- 5- and 10-minute break state.
-- Completed tasks preserve tracked duration and session count.
-- Backups/reset/migration include the new local work-session state.
+- check-in interval: Off → 2 h;
+- estimated time: Off → 8 h.
 
-### Batch 1.1 persistence fix
+Starting creates/updates `activeTask`. Android notifications are reconciled from that persisted state after the local change.
 
-- Task actions are written to local storage immediately, before cloud sync finishes.
-- Active-task state carries an update revision so refresh hydration can keep the newest local/cloud state instead of blindly accepting a stale cloud null.
-- Active-task state is also saved on the canonical user document as a fallback, while the runtime document remains available for later realtime sync.
-- Completed-task history is merged instead of replaced during hydration, preventing just-finished progression from disappearing after refresh.
-- Task-session/runtime Firestore writes are isolated from the core save so a rules/deployment problem on the new tracking collections cannot block normal Master Plan data from saving.
+## Running / paused / break
 
-## Next batch
+`activeTask.status` can be `running`, `paused`, or `break`.
 
-- Manual session history and correction UI.
-- Task completion value rating 0–5.
-- Optional time estimate and estimate-vs-actual display.
-- Project progression timeline: task, completion date, time, value rating.
-- Basic weekly/monthly reports and project drilldown.
-- Improve break-complete prompting/sound behavior.
-- Realtime cross-device listener for only the active-task runtime document.
+- running time contributes to tracked work;
+- pause stops tracked time and cancels/reschedules alarms as needed;
+- break has its own `breakStartedAt` / `breakEndsAt` timestamps;
+- resume starts a new running segment.
 
-## Later / explicitly not required now
+The persistent NOW bar stays available above bottom navigation.
 
-- Service-worker / background notification improvements.
-- Capacitor / native Android wrapper if PWA behavior proves insufficient.
-- AI analysis, XP, achievements, fake productivity scores, automatic app/screen monitoring, or giant analytics dashboards.
+## Check-ins
 
-## Batch 2 implemented — Completion & History
+When enabled, `nextCheckInAt` is a real timestamp rather than a UI-only countdown. Android receives a local notification scheduled for that timestamp.
 
-- Schema v5 adds completion `valueRating`, per-completion `sessionIds`, and restore metadata.
-- Completing any task now opens a shared completion sheet instead of a browser confirm.
-- Completion sheet shows tracked time/session count and asks for **Valuable** rating 0–5; rating can be skipped.
-- 0 is preserved as a real rating and displayed as 0/5; 5 means completely worth doing.
-- Projects now have **Current / History** views.
-- Plans now have **Current / History** views.
-- History is a newest-first progression timeline showing completion date group, task name, tracked time, and Valuable rating.
-- Tapping a history item opens detailed completion history with exact completion time, sessions, total tracked time, and editable Valuable rating.
-- Historical work sessions can be corrected by editing their duration or deleted if they were recorded by mistake.
-- Completed tasks can be restored to the checklist without deleting or rewriting their previous history/rating.
-- Re-completing a restored task creates a new completion event using only the work sessions from the restored work cycle, so earlier timeline totals stay accurate.
+A check-in asks whether the user is still working. Continuing schedules the next check-in. Stopping/correcting work updates the local task/session state before notifications are reconciled again.
 
-## Next recommended batch
+## Estimate notification
 
-- Optional task time estimate and estimate-vs-actual display.
-- Global Reports view plus project report drilldowns (today/week/month).
-- Aggregate time by project/task and Valuable rating.
-- Break totals and average session length.
-- Realtime cross-device listener for the active-task runtime document.
-- PWA/service-worker notification work after the core report workflow has been tested in daily use.
+Estimated time is measured against tracked working time rather than wall-clock time. Pauses and breaks therefore do not consume the estimate. On resume, only the remaining estimate is scheduled.
 
-## Batch 3 implemented — Reports & Time Analysis
+## Completing work
 
-- Schema v6 added optional `estimateMinutes` to tasks, active work, and completion history.
-- Starting a task can optionally capture an estimate with a slider from Off to 8 hours; Off remains the default when a task has no saved estimate.
-- Completion/history details show the estimate when one exists.
-- Added a global **Reports** view with Today / Week / Month periods.
-- Reports are calculated entirely from the current local Master Plan data; no server query is required to render them.
-- Global report summary shows tracked time, tasks completed, average Valuable rating, and average work-session length.
-- Global report groups tracked time by project plus Plans and supports one-tap project/Plans drilldown.
-- Project/Plans report shows completed task rows with time and Valuable rating and opens the existing task-history detail/edit sheet.
-- Added estimate-vs-actual totals for tasks that have both an estimate and tracked time.
-- Added time distribution by Valuable rating.
-- Added **High time / low value** review list for tasks rated 0–2 with the most tracked time.
-- Added **Most time** list for the longest completed tasks in a period.
-- Reports are linked from Projects, Plans History, and each Project History without adding another bottom-navigation tab.
-- Full-backup schema metadata is now kept in sync at v7.
+Finishing closes the active segment, records completion/history data, and clears current native task notifications. Completion can include the Valuable rating used by reporting/history.
 
-## Next recommended batch
+## History deletion
 
-- Record completed break sessions so break totals can be reported accurately.
-- Improve break-complete sound/prompt behavior.
-- Realtime cross-device listener for only the active-task runtime document.
-- PWA/service-worker notifications after the current timer/report workflow has been exercised in daily use.
-- Consider a lightweight review/reflection field for high-time/low-value tasks only if the reports prove useful.
+Deleting a completed item removes its completion/session records from the local database. Local deletion tombstones remain available in the schema for migration/compatibility so removed records are not accidentally reconstructed by older state shapes.
 
+## Window safety on mobile
 
-## Current-item simplification
-- The separate checklist creation UI has been retired.
-- Any current note/item can be started or completed through the same action sheet.
-- Completed History entries can be permanently removed from visible/history data; associated timing sessions are deleted too.
-- Deletion is local-first. Tiny deletion tombstones prevent stale cloud/device data from resurrecting deliberately removed History/session records while Firestore sync catches up.
+Task and History action sheets use the live safe vertical region between the fixed header and the highest persistent bottom UI. They remain content-sized when possible and become internally scrollable when content exceeds that region.
 
-## Mobile task action module layout note
-The task action module uses the full safe vertical region between the fixed header and the highest persistent bottom UI. The panel remains content-sized when everything fits; if it becomes taller than the safe region, the panel itself becomes the scroll container. This keeps controls accessible without allowing the action window to pass behind fixed app modules on Android.
-
-
-## Task action window sizing
-
-The task start/action window has no percentage-based height ceiling. It can grow up to 100% of the currently usable live app region. The live region begins 8 px below the actual rendered bottom edge of the fixed header and ends 8 px above the actual rendered top edge of the NOW/current-task bar, or 8 px above the bottom navigation when NOW is absent. If the content exceeds that space, the window fills the safe region and its own contents scroll vertically.
-
-The usable app area is measured dynamically from the visible viewport and live DOM geometry rather than fixed phone-height assumptions. When NOW expands, its actual top edge immediately becomes the lower boundary. The calculation responds to VisualViewport changes, orientation changes, normal window resizing, and ResizeObserver updates from the header/navigation/NOW modules.
+The safe bounds respond to VisualViewport changes, orientation, the software keyboard, and live header/NOW/navigation geometry. A minimum 8 px visible gap is preserved around persistent modules.

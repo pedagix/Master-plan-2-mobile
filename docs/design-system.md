@@ -22,7 +22,7 @@ The application owns a single palette through CSS variables in `src/styles.css`.
 
 ## Persistence
 
-Visual changes never change the local-first rule. User actions are committed to local storage first; Firebase synchronization follows asynchronously.
+Visual changes never change the local-first rule. User actions are committed to local storage immediately. External backups are explicit recovery copies and never become the live source of truth.
 
 
 ## Unified current items

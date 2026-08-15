@@ -67,17 +67,6 @@ function saveData(data) {
   localStorage.setItem(KEY, JSON.stringify(migrated));
 }
 
-function downloadJson(payload, name) {
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `${name}-${new Date().toISOString().slice(0, 10)}.json`; a.click();
-  URL.revokeObjectURL(url);
-}
-
-function exportFullBackup(data) {
-  downloadJson({ ...migrateData(data), meta: { ...(data.meta || {}), appName: 'Master Plan', schemaVersion: 9, exportType: 'full-backup', exportedAt: new Date().toISOString() } }, 'master-plan-full-backup');
-}
 
 function getRollbacks() {
   try { return JSON.parse(localStorage.getItem(ROLLBACK_KEY) || '[]'); } catch { return []; }
@@ -158,8 +147,6 @@ function purgeLocalNoteData(data) {
 export const localDataStore: DataStore<any> = {
   load: loadData,
   save: saveData,
-  exportJson: exportFullBackup,
-  exportFullBackup,
   saveRollbackSnapshot,
   getLatestRollback,
   getRollbacks,

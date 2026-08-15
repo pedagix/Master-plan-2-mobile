@@ -4,12 +4,17 @@ import { getTaskTrackedMs } from '../lib/taskTracking';
 
 const ALERT_CHANNEL_ID = 'master-plan-alerts-v1';
 const SILENT_CHANNEL_ID = 'master-plan-silent-v1';
+const BACKUP_CHANNEL_ID = 'master-plan-backups-v1';
+const BACKUP_ACTION_TYPE_ID = 'master-plan-backup-actions';
 const TASK_NOTIFICATION_IDS = {
   checkIn: 2181001,
   breakEnd: 2181002,
   estimateEnd: 2181003,
 };
 const TEST_NOTIFICATION_ID = 2181099;
+const BACKUP_REMINDER_IDS = Array.from({ length: 12 }, (_, index) => 2181100 + index);
+const BACKUP_REMINDER_DESCRIPTORS = BACKUP_REMINDER_IDS.map((id) => ({ id }));
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const TASK_NOTIFICATION_DESCRIPTORS = Object.values(TASK_NOTIFICATION_IDS).map((id) => ({ id }));
 
 function isAndroidNative() {
@@ -45,12 +50,30 @@ async function ensureChannels() {
     sound: 'master_plan_alert.wav',
   });
   await LocalNotifications.createChannel({
+    id: BACKUP_CHANNEL_ID,
+    name: 'Backup reminders',
+    description: 'Weekly reminders to protect your local Master Plan data.',
+    importance: 3,
+    visibility: 1,
+    vibration: true,
+    sound: 'master_plan_alert.wav',
+  });
+  await LocalNotifications.createChannel({
     id: SILENT_CHANNEL_ID,
-    name: 'Silent timers & check-ins',
-    description: 'Master Plan task reminders without sound.',
+    name: 'Silent Master Plan reminders',
+    description: 'Task and backup reminders without sound.',
     importance: 3,
     visibility: 1,
     vibration: false,
+  });
+  await LocalNotifications.registerActionTypes({
+    types: [{
+      id: BACKUP_ACTION_TYPE_ID,
+      actions: [
+        { id: 'backup-now', title: 'Back up' },
+        { id: 'remind-tomorrow', title: 'Remind tomorrow' },
+      ],
+    }],
   });
 }
 
@@ -235,4 +258,65 @@ export async function initializeNotificationSystem(data) {
   if (permission.display === 'granted') await ensureChannels();
   await syncTaskNotifications(data);
   return getNotificationStatus();
+}
+
+
+async function cancelBackupReminderNotifications() {
+  if (!isAndroidNative()) return;
+  try {
+    await LocalNotifications.cancel({ notifications: BACKUP_REMINDER_DESCRIPTORS });
+  } catch (error) {
+    console.warn('Could not cancel backup reminder notifications.', error);
+  }
+}
+
+export async function syncBackupReminderNotifications(data) {
+  if (!isAndroidNative()) return { native: false, scheduled: [] };
+  await cancelBackupReminderNotifications();
+
+  const settings = data?.settings || {};
+  if (settings.notificationsEnabled === false || settings.backupReminderEnabled === false) {
+    return { native: true, scheduled: [] };
+  }
+
+  const permission = await LocalNotifications.checkPermissions();
+  if (permission.display !== 'granted') {
+    return { native: true, scheduled: [], permission: permission.display };
+  }
+
+  await ensureChannels();
+  const baseAt = Number(settings.lastSuccessfulBackupAt) || Number(settings.backupReminderAnchorAt) || Date.now();
+  const snoozeUntil = Number(settings.backupReminderSnoozeUntil) || 0;
+  let firstDueAt = Math.max(baseAt + WEEK_MS, snoozeUntil);
+  const now = Date.now();
+  if (firstDueAt <= now + 1000) {
+    const weeksOverdue = Math.floor(Math.max(0, now - firstDueAt) / WEEK_MS);
+    firstDueAt += weeksOverdue * WEEK_MS;
+    while (firstDueAt <= now + 1000) firstDueAt += WEEK_MS;
+  }
+
+  const channelId = settings.notificationSoundEnabled !== false ? BACKUP_CHANNEL_ID : SILENT_CHANNEL_ID;
+  const notifications = BACKUP_REMINDER_IDS.map((id, index) => ({
+    id,
+    title: 'Master Plan backup',
+    body: 'A week has passed since your last backup. Protect your local data now or snooze for one day.',
+    channelId,
+    actionTypeId: BACKUP_ACTION_TYPE_ID,
+    autoCancel: true,
+    schedule: {
+      at: new Date(firstDueAt + (index * WEEK_MS)),
+      allowWhileIdle: false,
+    },
+    extra: { source: 'master-plan', kind: 'backup-reminder' },
+  }));
+
+  await LocalNotifications.schedule({ notifications });
+  return { native: true, scheduled: notifications.map((item) => item.schedule.at.getTime()), permission: permission.display };
+}
+
+export async function addMasterPlanNotificationActionListener(handler) {
+  if (!isAndroidNative()) return { remove: async () => {} };
+  return LocalNotifications.addListener('localNotificationActionPerformed', (event) => {
+    handler?.(event);
+  });
 }

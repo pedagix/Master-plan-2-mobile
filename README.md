@@ -30,6 +30,13 @@ Inside Master Plan, open **SYS → Notifications**:
 - run **Test notification**;
 - lock the screen and confirm the notification makes a sound.
 
+Then open **SYS → Backup**:
+- tap **Connect Google Drive**;
+- in Android's folder picker choose Google Drive and select/create a **Master Plan Backups** folder;
+- tap **Back up now** once to verify the connection.
+
+Master Plan keeps the live database on the device. Drive stores manual recovery copies only, with the three newest Master Plan backups retained when the provider allows old-file deletion. A separate **Export backup file** option creates the same complete backup and lets the user choose the destination.
+
 ## If the automatic build does not start
 
 On GitHub:
@@ -51,6 +58,7 @@ GitHub automatically:
 - generates the Capacitor Android project;
 - copies the native Master Plan notification sound;
 - adds exact-alarm support;
+- adds the native Google Drive-folder backup bridge;
 - signs the APK with the fixed **development-only** key;
 - increases the Android version code for each workflow run;
 - builds `MasterPlan-test.apk`;

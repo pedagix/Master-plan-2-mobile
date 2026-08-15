@@ -227,7 +227,7 @@ export default function TaskHistorySheet({ api, completedTask, projectName, onCl
 
         <div className="history-delete-block">
           <button type="button" className="danger-button" onClick={deleteCompleted}>Delete from history</button>
-          <small>Removes this completion and its timing records from Master Plan and from cloud storage on the next sync.</small>
+          <small>Removes this completion and its timing records from this device.</small>
         </div>
       </section>
     </div>

@@ -1,43 +1,40 @@
-# Phone-only GitHub setup
+# Phone-only GitHub workflow
 
-This project is prepared so the Android APK is built by GitHub, not by your phone.
+Master Plan is prepared so GitHub builds the Android APK in the cloud. Normal testing does not require a computer, Android Studio, Node.js, Termux, or command-line work on the phone.
 
-## One-time repository setup
+## Repository files that must be present
 
-Upload the **contents of this project folder** to the root of your GitHub repository. Make sure the hidden `.github` folder is included; it contains the automatic APK builder.
-
-The repository must contain at least:
+Keep these in the root/source repository:
 
 - `.github/workflows/build-android-apk.yml`
 - `package.json`
-- `capacitor.config.js`
+- `capacitor.config.json`
 - `scripts/configure-android.mjs`
 - `native-assets/android/masterplan-dev.keystore`
+- `native-assets/android/MasterPlanBackupPlugin.java`
 - `native-assets/android/res/raw/master_plan_alert.wav`
 - `src/...`
 
-Commit the files to the `main` branch.
+The generated `android/` directory is deliberately not stored as source; GitHub creates a fresh Android project on each build and applies the native Master Plan patches automatically.
 
 ## Each time Master Plan changes
 
-After the updated source reaches `main`, GitHub builds the test APK automatically.
+After the updated source reaches `main`, GitHub automatically starts **Build Master Plan APK**.
 
 On Android:
 
-**GitHub repository → Releases → newest “Master Plan test #…” → MasterPlan-test.apk → Download → Install/Update**
+**GitHub repository → Releases → newest “Master Plan test #…” → `MasterPlan-test.apk` → Download → Install/Update**
 
-You do not have to run npm commands.
+Do not uninstall the existing test app just to update it. The fixed development package/signature allows normal APK updates to retain app-local data.
 
 ## Build status
 
-If a build fails, open:
+If a build fails:
 
 **Repository → Actions → Build Master Plan APK → newest run**
 
-The failed step will be marked red. Share a screenshot or the error text with ChatGPT and the project can be corrected from that information.
+Open the red failed step and use its error text/screenshot to diagnose the source.
 
-## Local data
+## Back up before risky development changes
 
-The fixed development signature allows Android to install newer test builds over the existing Master Plan app. Do not uninstall Master Plan just to update it unless troubleshooting requires it, because uninstalling an Android app can remove its app-local data.
-
-Keep Master Plan's own export/backup options available during development as an extra safeguard.
+The normal update path preserves local data, but development builds can contain bugs. In Master Plan use **SYS → Backup → Back up now** to keep the three newest Drive copies, or **Export backup file** for a portable copy controlled by you.

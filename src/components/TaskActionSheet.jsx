@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { clampCheckInMinutes, clampEstimateMinutes, formatDuration, getTaskTrackedMs, startTaskData } from '../lib/taskTracking';
-import { ensureNotificationPermission, syncTaskNotifications } from '../services/notificationScheduler';
+import { ensureNotificationPermission, syncBackupReminderNotifications, syncTaskNotifications } from '../services/notificationScheduler';
 
 const CHECK_IN_MAX_MINUTES = 120;
 const CHECK_IN_STEP_MINUTES = 5;
@@ -154,7 +154,7 @@ export default function TaskActionSheet({ api, task, projectName, onClose, onEdi
     // The task starts immediately either way; native scheduling never blocks it.
     if (next.settings?.notificationsEnabled !== false) {
       ensureNotificationPermission()
-        .then(() => syncTaskNotifications(next))
+        .then(() => Promise.all([syncTaskNotifications(next), syncBackupReminderNotifications(next)]))
         .catch((error) => console.warn('Could not prepare task notifications.', error));
     }
   };
