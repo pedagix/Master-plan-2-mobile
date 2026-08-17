@@ -1,4 +1,4 @@
-# Master Plan — phone-first development
+# Master Plan — phone-first development.
 
 Master Plan is a mobile-first React/Vite app wrapped with Capacitor for Android.
 
