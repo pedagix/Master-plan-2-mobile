@@ -1,23 +1,10 @@
 import { useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { compareProjectsByLastOpened, getProjectName } from '../lib/model';
-import {
-  buildDailyProgress,
-  getProjectMeaningfulActivityAt,
-  isDormantProject,
-} from '../lib/projectMomentum';
+import { buildDailyProgress } from '../lib/projectMomentum';
 import ProjectMomentumIndicator from '../components/ProjectMomentumIndicator';
 
-function relativeAge(timestamp) {
-  const age = Math.max(0, Date.now() - Number(timestamp || 0));
-  const days = Math.floor(age / (24 * 60 * 60 * 1000));
-  if (days <= 0) return 'today';
-  if (days === 1) return '1 day ago';
-  return `${days} days ago`;
-}
-
 export default function TaDaPage({ api }) {
-  const navigate = useNavigate();
   const activeProjects = useMemo(() => (api.data.projects || [])
     .filter((project) => project.status === 'active' && !project.archived && !project.hidden && !project.finishedAt)
     .sort(compareProjectsByLastOpened), [api.data.projects]);
@@ -28,9 +15,6 @@ export default function TaDaPage({ api }) {
     .filter((project) => project.status === 'finished' || Boolean(project.finishedAt))
     .sort((a, b) => Number(b.finishedAt || b.updatedAt || 0) - Number(a.finishedAt || a.updatedAt || 0)), [api.data.projects]);
   const daily = useMemo(() => buildDailyProgress(api.data), [api.data]);
-  const dormantProject = useMemo(() => activeProjects
-    .filter((project) => isDormantProject(api.data, project))
-    .sort((a, b) => getProjectMeaningfulActivityAt(api.data, a.id) - getProjectMeaningfulActivityAt(api.data, b.id))[0] || null, [activeProjects, api.data]);
 
   const patchProject = (projectId, patch) => {
     const now = Date.now();
@@ -40,16 +24,6 @@ export default function TaDaPage({ api }) {
     }));
   };
 
-  const pauseDormant = () => {
-    if (!dormantProject) return;
-    patchProject(dormantProject.id, { status: 'paused' });
-  };
-
-  const archiveDormant = () => {
-    if (!dormantProject || !window.confirm(`Archive “${getProjectName(dormantProject)}”?`)) return;
-    patchProject(dormantProject.id, { status: 'archived', archived: true });
-  };
-
   return (
     <div className="stack page-screen">
       <section className="daily-progress-card" aria-label="Today's progress">
@@ -57,22 +31,6 @@ export default function TaDaPage({ api }) {
         <div><small>STEPS</small><strong>{daily.completedCount}</strong><span>completed</span></div>
         <div><small>PROJECTS</small><strong>{daily.projectsAdvanced}</strong><span>advanced</span></div>
       </section>
-
-      {dormantProject && (
-        <section className="dormant-rescue-card">
-          <div className="dormant-rescue-heading">
-            <div><small>PROJECT RESCUE</small><strong>{getProjectName(dormantProject)}</strong></div>
-            <span>quiet since {relativeAge(getProjectMeaningfulActivityAt(api.data, dormantProject.id))}</span>
-          </div>
-          <p>It has stopped moving. Decide what it is now instead of letting it become background clutter.</p>
-          <div className="dormant-rescue-actions">
-            <button type="button" onClick={() => navigate(`/projects/${dormantProject.id}`)}>Continue</button>
-            <button type="button" className="secondary-button" onClick={() => navigate(`/projects/${dormantProject.id}?edit=1`)}>Redefine</button>
-            <button type="button" className="secondary-button" onClick={pauseDormant}>Pause</button>
-            <button type="button" className="text-button" onClick={archiveDormant}>Archive</button>
-          </div>
-        </section>
-      )}
 
       <div className="section-title-row reports-entry-row">
         <div><strong>{activeProjects.length} ACTIVE</strong><p className="helper-text">Momentum shows whether meaningful work has been moving recently.</p></div>

@@ -1539,6 +1539,13 @@ details > summary { color: var(--text-soft); cursor: pointer; font-size: 12px; }
 .project-finish-button { border-color: rgba(125,247,200,.25); color: var(--accent); background: rgba(125,247,200,.06); }
 
 /* ---------- next task suggestion ---------- */
+.welcome-back-backdrop { z-index: 160; align-items: center; }
+.welcome-back-sheet { max-width: 480px; padding: 22px; display: grid; gap: 12px; }
+.welcome-back-sheet > small { color: var(--accent); font: 650 9px/1 "Cascadia Code", Consolas, monospace; letter-spacing: .13em; }
+.welcome-back-sheet h3 { font-size: 22px; line-height: 1.3; }
+.welcome-back-actions { display: grid; gap: 8px; margin-top: 4px; }
+.welcome-back-actions button { width: 100%; }
+
 .next-task-backdrop { z-index: 150; }
 .next-task-sheet { max-width: 520px; display: grid; gap: 12px; }
 .next-task-sheet > small { color: var(--accent); font: 650 9px/1 "Cascadia Code", Consolas, monospace; letter-spacing: .13em; }

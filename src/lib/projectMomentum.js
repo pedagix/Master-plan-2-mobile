@@ -112,6 +112,21 @@ export function isDormantProject(data, project, now = Date.now()) {
   return Boolean(activityAt && now - activityAt >= DORMANT_AFTER_MS);
 }
 
+export function getDormantProjectSuggestion(data, now = Date.now()) {
+  return (data?.projects || [])
+    .filter((project) => !project.archived && !project.hidden && isDormantProject(data, project, now))
+    .sort((a, b) => getProjectMeaningfulActivityAt(data, a.id) - getProjectMeaningfulActivityAt(data, b.id))[0] || null;
+}
+
+export function getLocalCalendarDate(now = new Date()) {
+  const date = now instanceof Date ? now : new Date(now);
+  if (Number.isNaN(date.getTime())) return null;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export function buildProjectReturnPulse(data, projectId, now = Date.now()) {
   const project = (data?.projects || []).find((item) => item.id === projectId);
   if (!project || !project.lastOpenedAt || now - Number(project.lastOpenedAt) < RETURN_PULSE_AFTER_MS) return null;
