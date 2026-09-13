@@ -10,9 +10,10 @@ import SettingsPage from './pages/SettingsPage';
 import ReportsPage from './pages/ReportsPage';
 import NextTaskSuggestionSheet from './components/NextTaskSuggestionSheet';
 import AccomplishmentToast from './components/AccomplishmentToast';
+import WelcomeBackOverlay from './components/WelcomeBackOverlay';
 import { buildResetData, getProjectName, migrateData } from './lib/model';
 import { completeTaskData } from './lib/taskTracking';
-import { buildNextTaskSuggestion } from './lib/projectMomentum';
+import { buildNextTaskSuggestion, getDormantProjectSuggestion, getLocalCalendarDate } from './lib/projectMomentum';
 import {
   addMasterPlanNotificationActionListener,
   syncBackupReminderNotifications,
@@ -51,6 +52,9 @@ export default function App() {
   const [nextTaskSuggestion, setNextTaskSuggestion] = useState(null);
   const nextTaskSuggestionRef = useRef(nextTaskSuggestion);
   nextTaskSuggestionRef.current = nextTaskSuggestion;
+  const [welcomeBackProject, setWelcomeBackProject] = useState(null);
+  const welcomeBackProjectRef = useRef(welcomeBackProject);
+  welcomeBackProjectRef.current = welcomeBackProject;
   const [accomplishment, setAccomplishment] = useState(null);
   const startupSuggestionCheckedRef = useRef(false);
   const accomplishmentTimerRef = useRef(null);
@@ -73,6 +77,8 @@ export default function App() {
     }, 1500);
   }, []);
 
+  const dismissWelcomeBack = useCallback(() => setWelcomeBackProject(null), []);
+
   useEffect(() => () => {
     window.clearTimeout(noteSaveConfirmationTimerRef.current);
     window.clearTimeout(accomplishmentTimerRef.current);
@@ -80,9 +86,27 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const today = getLocalCalendarDate();
+    if (!today || dataRef.current.settings?.lastResumeCheckDate === today) return;
+    const project = getDormantProjectSuggestion(dataRef.current);
+    try {
+      setDataPersisted((previous) => ({
+        ...previous,
+        settings: { ...(previous.settings || {}), lastResumeCheckDate: today },
+      }));
+    } catch (error) {
+      console.warn('Could not persist the daily project resume check.', error);
+    }
+    if (project) {
+      welcomeBackProjectRef.current = project;
+      setWelcomeBackProject(project);
+    }
+  }, [setDataPersisted]);
+
+  useEffect(() => {
     if (startupSuggestionCheckedRef.current) return;
     startupSuggestionCheckedRef.current = true;
-    if (dataRef.current.activeTask) return;
+    if (dataRef.current.activeTask || welcomeBackProjectRef.current) return;
     const suggestion = buildNextTaskSuggestion(dataRef.current);
     if (suggestion) window.setTimeout(() => setNextTaskSuggestion(suggestion), 450);
   }, []);
@@ -92,7 +116,7 @@ export default function App() {
   // offer the highest-priority continuation from the last worked project.
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.visibilityState !== 'visible' || dataRef.current.activeTask || nextTaskSuggestionRef.current) return;
+      if (document.visibilityState !== 'visible' || dataRef.current.activeTask || nextTaskSuggestionRef.current || welcomeBackProjectRef.current) return;
       const suggestion = buildNextTaskSuggestion(dataRef.current);
       if (suggestion) window.setTimeout(() => {
         if (!dataRef.current.activeTask && !nextTaskSuggestionRef.current) setNextTaskSuggestion(suggestion);
@@ -293,5 +317,6 @@ export default function App() {
     </Routes></Layout>
     <AccomplishmentToast accomplishment={accomplishment} />
     <NextTaskSuggestionSheet api={api} suggestion={nextTaskSuggestion} onDismiss={() => setNextTaskSuggestion(null)} />
+    <WelcomeBackOverlay api={api} project={welcomeBackProject} onClose={dismissWelcomeBack} />
   </>;
 }
