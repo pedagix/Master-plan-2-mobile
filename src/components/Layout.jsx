@@ -136,7 +136,12 @@ export default function Layout({ children, api, noteSaveConfirmation = { visible
           </div>
         )}
 
-        {api && <NavLink to="/settings" className="header-settings-link" aria-label="Open system settings" onClick={() => { if (focusModeActive) setFocusDismissedTaskId(activeTask.id); }}>SYS</NavLink>}
+        {api && <div className="header-controls">
+          <button type="button" className="appearance-toggle" aria-label={`Switch to ${api.data.settings?.appearance === 'light' ? 'dark' : 'light'} appearance`} aria-pressed={api.data.settings?.appearance === 'light'} onClick={() => api.setData((previous) => ({ ...previous, settings: { ...previous.settings, appearance: previous.settings?.appearance === 'light' ? 'dark' : 'light' } }))}>
+            <span aria-hidden="true">{api.data.settings?.appearance === 'light' ? '☀' : '☾'}</span>
+          </button>
+          <NavLink to="/settings" className="header-settings-link" aria-label="Open system settings" onClick={() => { if (focusModeActive) setFocusDismissedTaskId(activeTask.id); }}>SYS</NavLink>
+        </div>}
       </header>
 
       <main className="app-main">{focusModeActive ? <FocusModePanel api={api} onShowApp={() => setFocusDismissedTaskId(activeTask.id)} /> : children}</main>
