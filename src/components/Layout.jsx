@@ -42,6 +42,9 @@ export default function Layout({ children, api, noteSaveConfirmation = { visible
 
     const rootStyle = document.documentElement.style;
     const keyboardThreshold = 80;
+    let layoutViewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+    let frame = 0;
+    let orientationTimer = 0;
 
     const isKeyboardFocusable = (element) => {
       if (!element || !(element instanceof HTMLElement)) return false;
@@ -51,35 +54,61 @@ export default function Layout({ children, api, noteSaveConfirmation = { visible
       return !ignoredTypes.includes(element.type);
     };
 
-    const updateKeyboardOffset = () => {
+    const updateKeyboardMetrics = () => {
       const viewport = window.visualViewport;
-      const fullHeight = window.innerHeight || 0;
-      const viewportHeight = viewport?.height ?? fullHeight;
+      const innerHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+      const viewportHeight = viewport?.height ?? innerHeight;
       const viewportOffsetTop = viewport?.offsetTop ?? 0;
-      const keyboardHeight = Math.max(0, fullHeight - viewportHeight - viewportOffsetTop);
+      const focused = isKeyboardFocusable(document.activeElement);
+
+      // Keep an unoccluded layout-viewport baseline for WebViews that resize
+      // window.innerHeight as well as visualViewport when the IME appears.
+      if (!focused) layoutViewportHeight = innerHeight;
+      else layoutViewportHeight = Math.max(layoutViewportHeight, innerHeight);
+
+      const keyboardHeight = Math.max(0, layoutViewportHeight - viewportHeight - viewportOffsetTop);
       const shouldLiftNav = keyboardHeight > keyboardThreshold && isKeyboardFocusable(document.activeElement);
 
-      rootStyle.setProperty('--keyboard-offset', shouldLiftNav ? `${keyboardHeight}px` : '0px');
+      rootStyle.setProperty('--visible-viewport-top', `${viewportOffsetTop}px`);
+      rootStyle.setProperty('--visible-viewport-height', `${viewportHeight}px`);
       setKeyboardOpen(shouldLiftNav);
     };
 
-    updateKeyboardOffset();
+    const scheduleUpdate = () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        updateKeyboardMetrics();
+      });
+    };
+
+    const handleOrientationChange = () => {
+      layoutViewportHeight = 0;
+      scheduleUpdate();
+      window.clearTimeout(orientationTimer);
+      orientationTimer = window.setTimeout(scheduleUpdate, 250);
+    };
+
+    updateKeyboardMetrics();
     const viewport = window.visualViewport;
-    viewport?.addEventListener('resize', updateKeyboardOffset);
-    viewport?.addEventListener('scroll', updateKeyboardOffset);
-    window.addEventListener('resize', updateKeyboardOffset);
-    window.addEventListener('orientationchange', updateKeyboardOffset);
-    window.addEventListener('focusin', updateKeyboardOffset);
-    window.addEventListener('focusout', updateKeyboardOffset);
+    viewport?.addEventListener('resize', scheduleUpdate);
+    viewport?.addEventListener('scroll', scheduleUpdate);
+    window.addEventListener('resize', scheduleUpdate);
+    window.addEventListener('orientationchange', handleOrientationChange);
+    window.addEventListener('focusin', scheduleUpdate);
+    window.addEventListener('focusout', scheduleUpdate);
 
     return () => {
-      viewport?.removeEventListener('resize', updateKeyboardOffset);
-      viewport?.removeEventListener('scroll', updateKeyboardOffset);
-      window.removeEventListener('resize', updateKeyboardOffset);
-      window.removeEventListener('orientationchange', updateKeyboardOffset);
-      window.removeEventListener('focusin', updateKeyboardOffset);
-      window.removeEventListener('focusout', updateKeyboardOffset);
-      rootStyle.setProperty('--keyboard-offset', '0px');
+      if (frame) window.cancelAnimationFrame(frame);
+      window.clearTimeout(orientationTimer);
+      viewport?.removeEventListener('resize', scheduleUpdate);
+      viewport?.removeEventListener('scroll', scheduleUpdate);
+      window.removeEventListener('resize', scheduleUpdate);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      window.removeEventListener('focusin', scheduleUpdate);
+      window.removeEventListener('focusout', scheduleUpdate);
+      rootStyle.removeProperty('--visible-viewport-top');
+      rootStyle.removeProperty('--visible-viewport-height');
     };
   }, []);
 

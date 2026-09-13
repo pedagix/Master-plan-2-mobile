@@ -12,7 +12,6 @@ import {
 import {
   focusTextareaForMobileEdit,
   noteCursorStorageKey,
-  scrollEditPanelIntoView,
   storeCursorPosition,
 } from '../lib/mobileEditorFocus';
 
@@ -55,7 +54,6 @@ export default function NoteEditForm({
   const [error, setError] = useState('');
   const textareaRef = useRef(null);
   const formRef = useRef(null);
-  const captureRef = useRef(null);
   const cursorStorageKey = useMemo(() => noteCursorStorageKey(initialNote?.id), [initialNote?.id]);
 
   useEffect(() => {
@@ -73,121 +71,6 @@ export default function NoteEditForm({
     registerSubmitHandler(() => formRef.current?.requestSubmit());
     return () => registerSubmitHandler(null);
   }, [registerSubmitHandler]);
-
-  useEffect(() => {
-    if (!fitAvailableSpace || typeof window === 'undefined') return undefined;
-
-    const form = formRef.current;
-    const capture = captureRef.current;
-    if (!form || !capture) return undefined;
-
-    let frame = 0;
-    const observed = new Set();
-    const resizeObserver = typeof ResizeObserver !== 'undefined'
-      ? new ResizeObserver(() => scheduleMeasure())
-      : null;
-
-    const observe = (element) => {
-      if (!resizeObserver || !element || observed.has(element)) return;
-      observed.add(element);
-      resizeObserver.observe(element);
-    };
-
-    const measureAvailableSpace = () => {
-      frame = 0;
-      const viewport = window.visualViewport;
-      const viewportTop = viewport?.offsetTop ?? 0;
-      const viewportHeight = viewport?.height ?? window.innerHeight ?? document.documentElement.clientHeight ?? 0;
-      const viewportBottom = viewportTop + viewportHeight;
-      const header = document.querySelector('.top-header');
-      const nav = document.querySelector('.bottom-nav');
-      const nowBar = document.querySelector('.now-bar');
-
-      observe(form);
-      observe(capture);
-      observe(header);
-      observe(nav);
-      observe(nowBar);
-
-      const formRect = form.getBoundingClientRect();
-      const captureRect = capture.getBoundingClientRect();
-      const headerBottom = header?.getBoundingClientRect().bottom ?? viewportTop;
-      const moduleGap = 8; // Never let the note module touch/slide under persistent UI. User minimum is 5 px.
-
-      const visibleTop = (element) => {
-        if (!element) return null;
-        const style = window.getComputedStyle(element);
-        if (style.display === 'none' || style.visibility === 'hidden') return null;
-        const rect = element.getBoundingClientRect();
-        if (rect.height <= 0) return null;
-        return rect.top;
-      };
-
-      const navRect = nav?.getBoundingClientRect();
-      let navTop = visibleTop(nav);
-
-      // Android browsers can report fixed-element coordinates against the layout
-      // viewport while visualViewport is already reduced by the keyboard. When the
-      // keyboard is open the nav is intentionally lifted to the bottom of the visual
-      // viewport, so use that position as an additional conservative boundary.
-      const shell = form.closest('.app-shell');
-      if (navRect && shell?.classList.contains('keyboard-open')) {
-        navTop = Math.min(navTop ?? viewportBottom, viewportBottom - navRect.height);
-      }
-
-      const nowTop = visibleTop(nowBar);
-      const persistentModuleTops = [navTop, nowTop]
-        .filter((value) => Number.isFinite(value))
-        .map((value) => Math.max(viewportTop, value));
-      const bottomModuleTop = persistentModuleTops.length
-        ? Math.min(...persistentModuleTops)
-        : viewportBottom;
-
-      const safeTop = Math.max(viewportTop + moduleGap, headerBottom + moduleGap);
-      const safeBottom = Math.max(
-        safeTop,
-        Math.min(viewportBottom - moduleGap, bottomModuleTop - moduleGap),
-      );
-
-      // Keep room for any validation/actions rendered below the capture window.
-      // The capture itself is the only flexible part of this form.
-      const outsideCaptureHeight = Math.max(0, formRect.height - captureRect.height);
-      const captureTop = Math.max(captureRect.top, safeTop);
-      const availableHeight = Math.max(0, Math.floor(safeBottom - captureTop - outsideCaptureHeight));
-
-      form.style.setProperty('--note-capture-max-height', `${availableHeight}px`);
-
-      if (document.activeElement === textareaRef.current) {
-        window.requestAnimationFrame(() => scrollEditPanelIntoView(form, textareaRef.current));
-      }
-    };
-
-    const scheduleMeasure = () => {
-      if (frame) window.cancelAnimationFrame(frame);
-      frame = window.requestAnimationFrame(measureAvailableSpace);
-    };
-
-    scheduleMeasure();
-    const viewport = window.visualViewport;
-    viewport?.addEventListener('resize', scheduleMeasure);
-    viewport?.addEventListener('scroll', scheduleMeasure);
-    window.addEventListener('resize', scheduleMeasure);
-    window.addEventListener('orientationchange', scheduleMeasure);
-    window.addEventListener('focusin', scheduleMeasure);
-    window.addEventListener('focusout', scheduleMeasure);
-
-    return () => {
-      if (frame) window.cancelAnimationFrame(frame);
-      resizeObserver?.disconnect();
-      viewport?.removeEventListener('resize', scheduleMeasure);
-      viewport?.removeEventListener('scroll', scheduleMeasure);
-      window.removeEventListener('resize', scheduleMeasure);
-      window.removeEventListener('orientationchange', scheduleMeasure);
-      window.removeEventListener('focusin', scheduleMeasure);
-      window.removeEventListener('focusout', scheduleMeasure);
-      form.style.removeProperty('--note-capture-max-height');
-    };
-  }, [fitAvailableSpace, Boolean(api.data.activeTask)]);
 
   useEffect(() => {
     setText(initialNote?.text || '');
@@ -246,7 +129,7 @@ export default function NoteEditForm({
       className={`note-form stack ${fitAvailableSpace ? 'note-form-fit-viewport' : ''}`.trim()}
       onSubmit={submit}
     >
-      <div ref={captureRef} className="capture-input-wrap">
+      <div className="capture-input-wrap">
         <div className="capture-top-controls" style={{ '--priority-color': getPriorityColor(priority) }}>
           <div className="priority-picker priority-picker-inline">
             <span className="priority-scale-label">priority</span>
