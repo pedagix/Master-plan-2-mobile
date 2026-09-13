@@ -314,6 +314,9 @@ export function buildDefaultData() {
       lastSuccessfulBackupAt: null,
       backupReminderSnoozeUntil: null,
       focusModeEnabled: true,
+      appearance: 'dark',
+      palette: 'mint',
+      paletteChoiceCompleted: false,
     },
     projects: [],
     notes: [],
@@ -496,6 +499,10 @@ export function migrateData(input) {
   data.settings.lastSuccessfulBackupAt = data.settings.lastSuccessfulBackupAt == null ? null : Number(data.settings.lastSuccessfulBackupAt) || null;
   data.settings.backupReminderSnoozeUntil = data.settings.backupReminderSnoozeUntil == null ? null : Number(data.settings.backupReminderSnoozeUntil) || null;
   data.settings.focusModeEnabled = data.settings.focusModeEnabled !== false;
+  data.settings.appearance = ['light', 'dark'].includes(input?.settings?.appearance) ? input.settings.appearance : 'dark';
+  data.settings.palette = ['mint', 'red', 'blue', 'cyan', 'orange'].includes(input?.settings?.palette) ? input.settings.palette : 'mint';
+  // Old databases silently retain Mint Dark; only a new database gets the chooser.
+  data.settings.paletteChoiceCompleted = input?.settings ? input.settings.paletteChoiceCompleted !== false : false;
   if (data.settings.lastSelectedProjectId && !data.projects.some((p) => p.id === data.settings.lastSelectedProjectId && p.status !== 'archived' && p.status !== 'hidden' && p.status !== 'finished' && !p.finishedAt)) {
     data.settings.lastSelectedProjectId = data.projects.find((p) => p.status === 'active')?.id || null;
   }

@@ -23,6 +23,7 @@ import {
   getDriveBackupStatus,
   saveDriveBackup,
 } from './services/backupService';
+import { applyTheme, THEME_PALETTES } from './lib/theme';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -59,6 +60,10 @@ export default function App() {
   const startupSuggestionCheckedRef = useRef(false);
   const accomplishmentTimerRef = useRef(null);
   const suggestionTimerRef = useRef(null);
+
+  useEffect(() => {
+    applyTheme(data.settings);
+  }, [data.settings?.appearance, data.settings?.palette]);
 
   const setDataPersisted = useCallback((nextOrUpdater) => {
     const previous = dataRef.current;
@@ -318,5 +323,21 @@ export default function App() {
     <AccomplishmentToast accomplishment={accomplishment} />
     <NextTaskSuggestionSheet api={api} suggestion={nextTaskSuggestion} onDismiss={() => setNextTaskSuggestion(null)} />
     <WelcomeBackOverlay api={api} project={welcomeBackProject} onClose={dismissWelcomeBack} />
+    {data.settings?.paletteChoiceCompleted === false && (
+      <div className="overlay theme-welcome-overlay" role="dialog" aria-modal="true" aria-labelledby="theme-welcome-title">
+        <section className="theme-welcome-card">
+          <small>MAKE IT YOURS</small>
+          <h2 id="theme-welcome-title">Choose a color</h2>
+          <p className="helper-text">You can change this any time in System settings.</p>
+          <div className="palette-options palette-options-welcome">
+            {THEME_PALETTES.map((palette) => (
+              <button key={palette} type="button" className="palette-option" data-swatch={palette} onClick={() => setDataPersisted((previous) => ({ ...previous, settings: { ...previous.settings, palette, paletteChoiceCompleted: true } }))}>
+                <span className="palette-swatch" aria-hidden="true" /><span>{palette === 'mint' ? 'Mint / Current' : palette[0].toUpperCase() + palette.slice(1)}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      </div>
+    )}
   </>;
 }

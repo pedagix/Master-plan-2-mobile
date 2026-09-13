@@ -22,6 +22,7 @@ import {
   readDriveBackup,
   saveDriveBackup,
 } from '../services/backupService';
+import { THEME_PALETTES } from '../lib/theme';
 
 function NotificationToggle({ label, description, checked, disabled = false, onChange }) {
   return (
@@ -439,6 +440,18 @@ export default function SettingsPage({ api }) {
 
   return (
     <div className="stack page-screen settings-page">
+      <section className="system-panel theme-settings-panel">
+        <div className="system-panel-heading"><span>APPEARANCE</span><small>{notificationSettings.appearance === 'light' ? 'Light' : 'Dark'}</small></div>
+        <p className="helper-text">Choose an accent palette. The sun/moon control in the top bar switches its light and dark version.</p>
+        <div className="palette-options" role="radiogroup" aria-label="Color palette">
+          {THEME_PALETTES.map((palette) => {
+            const selected = (notificationSettings.palette || 'mint') === palette;
+            return <button key={palette} type="button" role="radio" aria-checked={selected} className={`palette-option ${selected ? 'is-selected' : ''}`} data-swatch={palette} onClick={() => updateSetting('palette', palette)}>
+              <span className="palette-swatch" aria-hidden="true" /><span>{palette === 'mint' ? 'Mint / Current' : palette[0].toUpperCase() + palette.slice(1)}</span><span className="palette-check" aria-hidden="true">{selected ? '✓' : ''}</span>
+            </button>;
+          })}
+        </div>
+      </section>
       <section className="system-panel focus-settings-panel">
         <div className="system-panel-heading">
           <span>FOCUS</span>
