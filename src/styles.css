@@ -24,7 +24,8 @@
   --header-h: 56px;
   --nav-h: 58px;
   --now-h: 48px;
-  --keyboard-offset: 0px;
+  --visible-viewport-top: 0px;
+  --visible-viewport-height: 100dvh;
   --persistent-module-gap: 8px;
   font-family: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--bg);
@@ -56,7 +57,7 @@ button { color: inherit; }
 .app-shell {
   min-height: 100dvh;
   padding-top: calc(var(--header-h) + env(safe-area-inset-top));
-  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + var(--keyboard-offset));
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
 }
 .app-shell.has-now-bar:not(.keyboard-open) {
   padding-bottom: calc(var(--nav-h) + var(--now-h) + env(safe-area-inset-bottom));
@@ -175,7 +176,7 @@ button { color: inherit; }
   position: fixed;
   z-index: 60;
   left: 0; right: 0;
-  bottom: var(--keyboard-offset);
+  bottom: 0;
   height: calc(var(--nav-h) + env(safe-area-inset-bottom));
   padding: 0 max(10px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(10px, env(safe-area-inset-left));
   display: grid;
@@ -183,7 +184,6 @@ button { color: inherit; }
   background: rgba(7,9,11,.94);
   backdrop-filter: blur(18px) saturate(130%);
   border-top: 1px solid var(--line);
-  transition: bottom .18s ease;
 }
 .has-now-bar:not(.keyboard-open) .bottom-nav { bottom: 0; }
 .bottom-nav a {
@@ -423,17 +423,44 @@ select:-webkit-autofill {
 .note-edit-actions-row { justify-content: space-between; }
 .capture-delete-pill { background: transparent; border-color: transparent; color: var(--danger); }
 
-/* The main Notes capture window is bounded by the live space between the
-   header and whichever persistent module is currently lowest on screen
-   (NOW, bottom navigation, or the software-keyboard-shifted navigation). */
+/* During main Notes entry, Layout exposes the single live visual viewport.
+   Nonessential fixed modules are removed and the capture consumes that space. */
 .note-form-fit-viewport .capture-input-wrap {
   display: flex;
   flex-direction: column;
-  max-height: var(--note-capture-max-height, calc(100dvh - var(--header-h) - var(--nav-h) - 52px - var(--persistent-module-gap)));
+  max-height: calc(100dvh - var(--header-h) - var(--nav-h) - 52px - var(--persistent-module-gap));
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+}
+
+.section-notes.keyboard-open {
+  position: fixed;
+  top: var(--visible-viewport-top);
+  left: 0;
+  width: 100%;
+  height: var(--visible-viewport-height);
+  min-height: 0;
+  padding-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.section-notes.keyboard-open .top-header { position: absolute; }
+.section-notes.keyboard-open .bottom-nav { display: none; }
+.section-notes.keyboard-open .app-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  overflow: hidden;
+}
+.section-notes.keyboard-open .page-screen,
+.section-notes.keyboard-open .note-form-fit-viewport { height: 100%; min-height: 0; }
+.section-notes.keyboard-open .note-form-fit-viewport .capture-input-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
 }
 .note-form-fit-viewport .capture-top-controls,
 .note-form-fit-viewport .capture-secondary-row {

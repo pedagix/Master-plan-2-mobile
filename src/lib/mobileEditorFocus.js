@@ -121,7 +121,11 @@ export function focusTextareaForMobileEdit({ textarea, formElement, storageKey, 
     if (shouldFocus && document.activeElement !== textarea) {
       textarea.focus({ preventScroll: true });
     }
-    scrollEditPanelIntoView(formElement || textarea, textarea);
+    // The main Notes form is sized directly to the visual viewport. Scrolling the
+    // layout viewport as well would apply a second, conflicting IME adjustment.
+    if (!formElement?.classList.contains('note-form-fit-viewport')) {
+      scrollEditPanelIntoView(formElement || textarea, textarea);
+    }
   };
 
   firstFrame = window.requestAnimationFrame(() => {
